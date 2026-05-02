@@ -1,3 +1,8 @@
+// DEPRECATED — use braille_cam2.scad
+// This file uses 1.0mm pin lift and a pre-baked polyhedron mesh (not parametric).
+// braille_cam2.scad supersedes this with 0.8mm lift, S-curve ramps, D-shaft hub,
+// magnet homing pocket, and full parameter control.
+//
 // Generated Braille Cam Disk
 // Tracks: 6, Sectors: 64, Lift: 1.0mm
 

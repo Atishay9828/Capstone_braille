@@ -15,6 +15,12 @@ angular_ramp_fraction = 0.3;// % of slice used for ramping (0.0-1.0)
 subdivisions_per_slice = 4; // Smoothness (Higher = smoother, slower)
 preview_mode = false;       // Set FALSE for final high-quality render!
 
+// Homing magnet pocket (on disc underside, triggers Hall sensor on base plate)
+magnet_dia    = 3.0;   // 3mm dia neodymium disc magnet
+magnet_depth  = 2.0;   // 2mm deep (leaves 0mm floor — magnet flush with bottom)
+magnet_radius = 17.35; // Radius from centre (centre of outermost track, just inside disc edge)
+magnet_angle  = 0;     // Angular position (arbitrary — define as "home" reference)
+
 // Calculated Variables
 slice_angle = 360 / states;
 ramp_angle = slice_angle * angular_ramp_fraction;
@@ -113,6 +119,7 @@ module build_track_polyhedron(t_idx) {
 
 // --- 4. MAIN ASSEMBLY ---
 
+difference() {
 union() {
     // 0. THE SOLID FLOOR (Fuses all tracks together!)
     outermost_r = inner_radius + (dots * (track_width + track_gap));
@@ -146,4 +153,12 @@ union() {
             cube([0.5, 0.5, 5], center=true);
         }
     }
-}
+} // end union
+
+// Homing magnet pocket (subtracted from disc underside)
+translate([magnet_radius * cos(magnet_angle),
+           magnet_radius * sin(magnet_angle),
+           -1])
+    cylinder(d=magnet_dia + 0.2, h=magnet_depth + 1, $fn=30);
+
+} // end difference

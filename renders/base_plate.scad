@@ -15,7 +15,7 @@ motor_mount_spacing = 31;
 motor_mount_hole = 3.4;
 
 // Cam Interface
-cam_pocket_diameter = 35;
+cam_pocket_diameter = 37; // 36.4mm cam + 0.3mm clearance each side
 cam_pocket_depth = 3;
 
 // Pin Plate Standoffs
@@ -27,6 +27,15 @@ standoff_offset = 15;  // 15mm from center (symmetrical)
 spring_cavity_width = 22;
 spring_cavity_depth = 16;
 spring_cavity_height = 10; // Making it a through-hole for service access
+
+// Hall Effect Sensor (homing)
+hall_pocket_x = 19;     // Just outside cam track area (cam radius 18.2mm + 0.8mm)
+hall_pocket_y = 0;
+hall_pocket_w = 5;      // SS49E / A3144 footprint
+hall_pocket_d = 4;
+hall_pocket_h = 3;      // Leaves 2mm floor under sensor
+hall_wire_w   = 2;      // Wire channel width
+hall_wire_d   = 1;      // Wire channel depth
 
 // Ribbing
 rib_thickness = 3;
@@ -65,6 +74,20 @@ module cam_features() {
     // Cam Pocket (From Top)
     translate([0,0, base_thickness - cam_pocket_depth])
         cylinder(d=cam_pocket_diameter, h=cam_pocket_depth + 1);
+}
+
+module hall_sensor_pocket() {
+    // Rectangular recess for Hall effect sensor body
+    translate([hall_pocket_x - hall_pocket_w/2,
+               hall_pocket_y - hall_pocket_d/2,
+               base_thickness - hall_pocket_h])
+        cube([hall_pocket_w, hall_pocket_d, hall_pocket_h + 1]);
+    // Wire channel running to edge of plate
+    translate([hall_pocket_x + hall_pocket_w/2,
+               hall_pocket_y - hall_wire_w/2,
+               base_thickness - hall_wire_d])
+        cube([base_length/2 - hall_pocket_x - hall_pocket_w/2 + 1,
+              hall_wire_w, hall_wire_d + 1]);
 }
 
 module spring_cavity() {
@@ -115,15 +138,11 @@ union() {
         motor_features();
         cam_features();
         spring_cavity();
+        hall_sensor_pocket();
     }
     standoffs();
-    
-    // Add Ribs (only where they intersect the base to make a solid object)
     intersection() {
-        translate([0,0, -rib_height]) main_body(); // Constrain ribs to body footprint
+        translate([0,0, -rib_height]) main_body();
         ribs();
     }
-    // Note: In real print, ribs are added to the bottom. 
-    // The intersection above is a trick. Let's just place them explicitly:
-    translate([0,0,0]) ribs(); 
 }
