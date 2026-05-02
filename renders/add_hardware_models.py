@@ -1,330 +1,374 @@
 """
-Braillix — Hardware Models for Blender Assembly Scene
-======================================================
-Run this inside Blender:  Scripting tab → Paste → Run Script
+Braillix — Hardware Models v2 (dimension-accurate)
+===================================================
+All dimensions pulled directly from the .scad files.
 
-Adds parametric proxy meshes for every real hardware component
-so you can see WHERE each part lives inside the assembly.
+Key fixes vs v1:
+  - Hall sensor floated 15mm above base plate layer (was buried inside it)
+  - Pogo pins now EXTRUDE out of the box wall faces (not inside them)
+  - pogo_z = floor_thickness + (shell_height - floor_thickness)/2 = 16mm (correct)
+  - Motor placed BELOW base plate (hangs down from floor pocket)
+  - Springs at exact dot grid positions from top_plate.scad
+  - All sizes from .scad parameters, not guesses
 
-All coordinates are in mm (Blender units = mm for this scene).
-Z-positions match the exploded-view spacing already in the .blend.
-
-Stack (bottom → top, assembled Z):
-  Z = 0     → Outer box floor
-  Z = 4     → Motor body top (motor seated from BELOW into base plate)
-  Z = 8.5   → Base plate top surface
-  Z = 8.5   → Hall sensor (on base plate top, at X=19)
-  Z = 10.5  → Cam disc bottom  (2mm floor + sits in 3mm pocket)
-  Z = 13.3  → Cam disc top (10.5 + 2.8 disk_base_thickness + 0.8 max bump)
-  Z = 22.5  → Top plate bottom (standoffs 3.5mm above base plate top = 12mm)
-  Z = 25    → Top plate top
-  Z = 25.8  → Braille pin tips (0.8mm lift max)
-
-For the EXPLODED view (matching CHANGES.md offsets ÷ 3.5 scale):
-  Use the Z_EXPLODE dict below — matches the existing .blend layers.
+Run: Blender → Scripting tab → Open this file → Run Script
 """
 
 import bpy
 import math
 
-# ── Purge default cube if it's still there ──────────────────────────────────
+# ── CLEANUP: delete ALL objects from any previous run of this script ─────────
+# Matches every name prefix used by v1 AND v2.
+CLEANUP_PREFIXES = (
+    # v1 prefixes
+    "Motor_28BYJ48", "Motor_Ear", "Motor_Shaft", "Motor_Wire",
+    "ULN2003", "HallSensor", "Homing_Magnet", "Return_Spring",
+    "ESP32", "Pogo_", "Label_",
+    # v2 prefixes
+    "Motor_Body", "Motor_Wires",
+    "HallSensor_Body", "HallSensor_Leg", "HallSensor_Wire",
+    "Homing_Magnet_NdFeB",
+    "ReturnSpring_",
+    "Pogo_SpringSide", "Pogo_PadSide",
+    "ESP32_XIAO", "ESP32_Module", "ESP32_Antenna", "ESP32_USB_C",
+    "LBL_",
+)
+
+def _is_hw_obj(name):
+    return any(name.startswith(p) for p in CLEANUP_PREFIXES)
+
+# Delete objects
+for obj in list(bpy.data.objects):
+    if _is_hw_obj(obj.name):
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+# Delete the old collection (will be recreated fresh below)
+COL_NAME = "Hardware_Components"
+if COL_NAME in bpy.data.collections:
+    old_col = bpy.data.collections[COL_NAME]
+    bpy.data.collections.remove(old_col)
+
+# Purge orphaned meshes/curves left over
+for block in list(bpy.data.meshes):
+    if block.users == 0:
+        bpy.data.meshes.remove(block)
+for block in list(bpy.data.curves):
+    if block.users == 0:
+        bpy.data.curves.remove(block)
+
+# Remove default cube if present
 for obj in list(bpy.data.objects):
     if obj.name == "Cube":
         bpy.data.objects.remove(obj, do_unlink=True)
 
-# ── Helper utilities ─────────────────────────────────────────────────────────
+print("Cleanup done — previous hardware objects removed.")
 
-def make_mat(name, color_rgba, metallic=0.0, roughness=0.5, alpha=1.0):
-    """Create or reuse a Principled BSDF material."""
+# ── Helpers ──────────────────────────────────────────────────────────────────
+def mat(name, rgb, metallic=0.0, rough=0.5, alpha=1.0):
     if name in bpy.data.materials:
         return bpy.data.materials[name]
-    mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
-    bsdf = mat.node_tree.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value   = color_rgba
-    bsdf.inputs["Metallic"].default_value     = metallic
-    bsdf.inputs["Roughness"].default_value    = roughness
-    if alpha < 1.0:
-        mat.blend_method = "BLEND"
-        bsdf.inputs["Alpha"].default_value    = alpha
-    return mat
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    b = m.node_tree.nodes["Principled BSDF"]
+    b.inputs["Base Color"].default_value = (*rgb, 1)
+    b.inputs["Metallic"].default_value   = metallic
+    b.inputs["Roughness"].default_value  = rough
+    if alpha < 1:
+        m.blend_method = "BLEND"
+        b.inputs["Alpha"].default_value = alpha
+    return m
 
-def assign_mat(obj, mat):
-    if obj.data.materials:
-        obj.data.materials[0] = mat
-    else:
-        obj.data.materials.append(mat)
+def link(obj, col):
+    for c in obj.users_collection:
+        c.objects.unlink(obj)
+    col.objects.link(obj)
 
-def add_label(text, location, size=1.5):
-    """Add a 3-D text label at location (mm coords)."""
-    bpy.ops.object.text_add(location=location)
-    obj = bpy.context.active_object
-    obj.data.body = text
-    obj.data.size = size
-    obj.name = f"Label_{text[:20]}"
-    mat = make_mat("MAT_Label", (1, 1, 0.2, 1), roughness=1.0)
-    assign_mat(obj, mat)
-    return obj
+def cyl(name, r, h, loc, material, segs=48):
+    bpy.ops.mesh.primitive_cylinder_add(radius=r, depth=h, vertices=segs, location=loc)
+    o = bpy.context.active_object
+    o.name = name
+    o.data.materials.append(material)
+    return o
 
-def add_cylinder(name, radius, depth, location, mat, segments=32):
-    bpy.ops.mesh.primitive_cylinder_add(
-        radius=radius, depth=depth, vertices=segments, location=location)
-    obj = bpy.context.active_object
-    obj.name = name
-    assign_mat(obj, mat)
-    return obj
-
-def add_box(name, dims_xyz, location, mat):
-    """dims_xyz = (x,y,z) half-extents OR full size — we use full size."""
-    bpy.ops.mesh.primitive_cube_add(location=location)
-    obj = bpy.context.active_object
-    obj.name = name
-    obj.scale = (dims_xyz[0]/2, dims_xyz[1]/2, dims_xyz[2]/2)
+def box(name, sx, sy, sz, loc, material):
+    bpy.ops.mesh.primitive_cube_add(location=loc)
+    o = bpy.context.active_object
+    o.name = name
+    o.scale = (sx/2, sy/2, sz/2)
     bpy.ops.object.transform_apply(scale=True)
-    assign_mat(obj, mat)
-    return obj
+    o.data.materials.append(material)
+    return o
 
-# ── Exploded Z offsets (mm) ──────────────────────────────────────────────────
-# Matches the CHANGES.md exploded-view table (kept in mm as the .blend uses mm)
-Z = {
-    "box":      0,
-    "motor":    0,        # motor body sits inside/below base plate
-    "uln2003":  0,        # board clipped beside motor
-    "base":     86,
-    "hall":     86,
-    "magnet":   86,
-    "cam":      149.5,
-    "springs":  149.5,    # springs live between cam and top plate
-    "linkages": 214.5,
-    "top":      275.5,
-    "esp32":    340,      # placeholder: mounted externally / above for vis
-}
+def label(text, loc, size=2.0):
+    bpy.ops.object.text_add(location=loc)
+    o = bpy.context.active_object
+    o.data.body = text
+    o.data.size = size
+    o.name = "LBL_" + text[:24]
+    o.data.materials.append(mat("M_Label", (1, 0.9, 0.1)))
+    return o
+
+# ── True dimensions (from .scad) ─────────────────────────────────────────────
+# outer_box.scad
+SHELL_L, SHELL_W, SHELL_H = 78, 68, 28
+WALL_T, FLOOR_T            = 4, 4
+POGO_SLOT_W, POGO_SLOT_H   = 10, 8
+POGO_Z = FLOOR_T + (SHELL_H - FLOOR_T) / 2   # = 16 mm above box bottom
+
+# base_plate.scad
+BASE_L, BASE_W, BASE_T     = 60, 50, 5
+MOTOR_DIA                  = 28.3
+MOTOR_H                    = 19.0        # 28BYJ-48 body height
+MOTOR_MOUNT_SPACING        = 31          # ear-to-ear centre distance
+STANDOFF_OFFSET            = 15          # ±15mm from plate centre
+STANDOFF_H                 = 3.5
+HALL_X, HALL_Y             = 19, 0
+HALL_W, HALL_D, HALL_H     = 5, 4, 3    # pocket dimensions
+
+# top_plate.scad
+COL_SPACING = 4.8      # ±2.4mm columns
+ROW_SPACING = 2.6      # ±2.6, 0
+SPRING_OD   = 3.5
+SPRING_D    = 1.5      # pocket depth
+
+# braille_cam2.scad
+INNER_R   = 8.0
+TRACK_W   = 1.6
+TRACK_GAP = 0.1
+MAGNET_R  = 17.35
+DISK_BASE_T = 2.0
+PIN_LIFT    = 0.8
+
+# ── Exploded view Z layers (from CHANGES.md, matching existing .blend) ────────
+Z_BOX   = 0
+Z_BASE  = 86
+Z_CAM   = 149.5
+Z_LINK  = 214.5
+Z_TOP   = 275.5
+
+# ── Collection ───────────────────────────────────────────────────────────────
+COL_NAME = "Hardware_Components"
+if COL_NAME not in bpy.data.collections:
+    hw = bpy.data.collections.new(COL_NAME)
+    bpy.context.scene.collection.children.link(hw)
+else:
+    hw = bpy.data.collections[COL_NAME]
+
+objs = []  # track everything added
+
+# ── Materials ────────────────────────────────────────────────────────────────
+M_MOTOR    = mat("M_Motor",    (0.15, 0.15, 0.15), metallic=0.3, rough=0.7)
+M_SHAFT    = mat("M_Shaft",    (0.55, 0.55, 0.55), metallic=0.85, rough=0.2)
+M_COPPER   = mat("M_Copper",   (0.8,  0.45, 0.1 ), metallic=0.9, rough=0.3)
+M_PCB      = mat("M_PCB",      (0.03, 0.22, 0.04), rough=0.9)
+M_IC       = mat("M_IC",       (0.08, 0.08, 0.08), rough=1.0)
+M_SENSOR   = mat("M_Sensor",   (0.1,  0.1,  0.1 ), rough=0.95)
+M_LEG      = mat("M_Leg",      (0.7,  0.7,  0.7 ), metallic=0.8, rough=0.2)
+M_MAGNET   = mat("M_Magnet",   (0.75, 0.1,  0.1 ), metallic=0.7, rough=0.3)
+M_SPRING   = mat("M_Spring",   (0.65, 0.65, 0.65), metallic=0.9, rough=0.2)
+M_POGO     = mat("M_Pogo",     (0.9,  0.8,  0.1 ), metallic=0.8, rough=0.2)
+M_ESP_PCB  = mat("M_ESP_PCB",  (0.03, 0.18, 0.04), rough=0.9)
+M_ESP_MOD  = mat("M_ESP_Mod",  (0.12, 0.12, 0.12), metallic=0.2, rough=0.7)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 1.  28BYJ-48 STEPPER MOTOR
-#     Real dimensions: body Ø28mm, height 19mm, shaft stub Ø5mm × 10mm
+# 1. 28BYJ-48 STEPPER MOTOR
+#    Body: Ø28.3mm, 19mm tall.
+#    Motor is seated from BELOW into base plate floor pocket.
+#    In exploded view base plate is at Z_BASE=86.
+#    Base plate bottom = Z_BASE, floor pocket = 1.5mm deep on BOTTOM face,
+#    so motor TOP is at Z_BASE (flush with base bottom), body extends DOWN.
+#    Motor bottom = Z_BASE - MOTOR_H = 86 - 19 = 67 → centre Z = 86 - 9.5 = 76.5
 # ─────────────────────────────────────────────────────────────────────────────
-mat_motor = make_mat("MAT_Motor", (0.15, 0.15, 0.15, 1), metallic=0.3, roughness=0.7)
-mat_motor_blue = make_mat("MAT_Motor_Blue", (0.1, 0.3, 0.8, 1), metallic=0.1, roughness=0.8)
-mat_copper = make_mat("MAT_Copper", (0.8, 0.45, 0.15, 1), metallic=0.9, roughness=0.3)
+motor_cz = Z_BASE - MOTOR_H/2       # = 76.5
+objs += [cyl("Motor_Body", MOTOR_DIA/2, MOTOR_H, (0, 0, motor_cz), M_MOTOR)]
 
-# Body (round can)
-motor_body = add_cylinder("Motor_28BYJ48_Body", radius=14.15, depth=19,
-                           location=(0, 0, Z["motor"] + 9.5), mat=mat_motor)
+# Mounting ears: 4mm wide, 3mm thick tabs at ±motor_mount_spacing/2 = ±15.5mm
+for s in (-1, 1):
+    objs += [box(f"Motor_Ear_{'L' if s<0 else 'R'}", 8, 5, 3,
+                 (s * MOTOR_MOUNT_SPACING/2, 0, Z_BASE - 3), M_MOTOR)]
 
-# Mounting ears (flat tabs on each side)
-for side in (-1, 1):
-    ear = add_box(f"Motor_Ear_{'L' if side<0 else 'R'}",
-                  (8, 5, 3),
-                  (side * 15.5, 0, Z["motor"] + 3.5),
-                  mat_motor)
+# D-shaft: Ø5mm, sticks 10mm UP from motor top (through base plate, into cam)
+objs += [cyl("Motor_Shaft", 2.5, 10, (0, 0, Z_BASE + 5), M_SHAFT)]
 
-# Shaft stub (D-shaft 5mm dia, 10mm long, sticking UP)
-shaft = add_cylinder("Motor_Shaft", radius=2.5, depth=10,
-                     location=(0, 0, Z["motor"] + 19 + 5), mat=make_mat(
-                         "MAT_Shaft", (0.6, 0.6, 0.6, 1), metallic=0.8, roughness=0.2))
+# Wire harness stub (5 wires exit side)
+objs += [box("Motor_Wires", 4, 2, 18, (-16, 0, motor_cz + 3), M_COPPER)]
 
-# Coil wires (5-wire harness stub — just a thin rect bundle)
-wires = add_box("Motor_Wire_Harness", (4, 2, 15),
-                (-16, 0, Z["motor"] + 12), mat_copper)
-
-add_label("28BYJ-48 Stepper", (20, 5, Z["motor"] + 18))
+objs += [label("28BYJ-48 Stepper Motor", (18, 10, motor_cz + 5), size=2)]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 2.  ULN2003 DRIVER BOARD
-#     Real: ~28mm × 35mm PCB, 5mm tall with header pins
+# 2. ULN2003 DRIVER BOARD  (28×35mm PCB, beside motor below base plate)
+#    Positioned at X=-50 (offset so it's clearly visible, not inside box walls)
 # ─────────────────────────────────────────────────────────────────────────────
-mat_pcb = make_mat("MAT_PCB", (0.02, 0.25, 0.04, 1), roughness=0.9)
-mat_ic = make_mat("MAT_IC", (0.05, 0.05, 0.05, 1), roughness=1.0)
+ULN_X = -50
+objs += [box("ULN2003_PCB", 28, 35, 1.6, (ULN_X, 0, motor_cz), M_PCB)]
+objs += [box("ULN2003_IC",   7, 14, 3.5, (ULN_X, 0, motor_cz + 2.5), M_IC)]
 
-uln_board = add_box("ULN2003_PCB", (28, 35, 2),
-                    (-45, 0, Z["uln2003"] + 17), mat_pcb)
-
-# IC chip on board
-uln_ic = add_box("ULN2003_IC", (6, 12, 3),
-                 (-45, 0, Z["uln2003"] + 19.5), mat_ic)
-
-# LED row (4 tiny boxes)
-for i, col in enumerate([(1,0.1,0.1,1),(0.1,1,0.1,1),(1,0.5,0,1),(1,0.1,0.1,1)]):
-    led_mat = make_mat(f"MAT_LED_{i}", col, roughness=0.2)
-    bpy.ops.mesh.primitive_cube_add(location=(-39 + i*3, -14, Z["uln2003"] + 19))
+LED_COLS = [(1,0.1,0.1), (0.1,1,0.1), (1,0.5,0), (0.1,0.1,1)]
+for i, c in enumerate(LED_COLS):
+    bpy.ops.mesh.primitive_cube_add(location=(ULN_X - 8 + i*4, -14, motor_cz + 2))
     led = bpy.context.active_object
     led.name = f"ULN2003_LED_{i}"
-    led.scale = (1, 1, 1.5)
+    led.scale = (1, 0.8, 1.5)
     bpy.ops.object.transform_apply(scale=True)
-    assign_mat(led, led_mat)
+    led.data.materials.append(mat(f"M_LED{i}", c, rough=0.1))
+    objs.append(led)
 
-add_label("ULN2003 Driver", (-60, 0, Z["uln2003"] + 25))
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 3.  HALL EFFECT SENSOR  (SS49E / A3144)
-#     Real: ~4mm × 3mm × 1.5mm package, 3 legs
-#     Sits in pocket at X=19, Y=0 on base plate top
-# ─────────────────────────────────────────────────────────────────────────────
-mat_sensor = make_mat("MAT_HallSensor", (0.1, 0.1, 0.1, 1), roughness=1.0)
-mat_leg    = make_mat("MAT_SensorLeg",  (0.7, 0.7, 0.7, 1), metallic=0.8, roughness=0.2)
-
-hall_body = add_box("HallSensor_Body", (4, 3, 3),
-                    (19, 0, Z["hall"] + 1.5), mat_sensor)
-
-# 3 legs
-for i, yoff in enumerate([-1, 0, 1]):
-    leg = add_box(f"HallSensor_Leg_{i}", (0.5, 0.5, 5),
-                  (19, yoff, Z["hall"] - 2.5), mat_leg)
-
-add_label("Hall Sensor (SS49E)", (25, 5, Z["hall"] + 6))
+objs += [label("ULN2003 Driver Board", (ULN_X - 20, 20, motor_cz + 8), size=2)]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 4.  NEODYMIUM HOMING MAGNET  (3mm dia disc, 2mm thick)
-#     Sits on cam disc underside at radius 17.35mm, angle 0° → X=17.35, Y=0
-#     In exploded view it's with the cam layer
+# 3. HALL EFFECT SENSOR (SS49E / A3144)
+#    Sits in pocket on BASE PLATE TOP at X=19, Y=0.
+#    Pocket: 5×4×3mm deep. Sensor body: ~4×3×1.5mm.
+#    In exploded view: base plate bottom = Z_BASE=86, plate is 5mm thick,
+#    so plate TOP = Z_BASE + BASE_T = 91.
+#    Pocket starts at Z = 91 - 3 = 88, sensor top = 91.
+#    Float it 12mm ABOVE plate top so it's clearly visible → Z_centre = 91 + 12 + 1.5 = 104.5
 # ─────────────────────────────────────────────────────────────────────────────
-mat_magnet = make_mat("MAT_Magnet", (0.7, 0.1, 0.1, 1), metallic=0.6, roughness=0.3)
+HALL_FLOAT_Z = Z_BASE + BASE_T + 15   # = 106
+objs += [box("HallSensor_Body", HALL_W, HALL_D, HALL_H,
+             (HALL_X, HALL_Y, HALL_FLOAT_Z + HALL_H/2), M_SENSOR)]
 
-magnet = add_cylinder("Homing_Magnet", radius=1.5, depth=2,
-                      location=(17.35, 0, Z["cam"] - 1), mat=mat_magnet)
+# 3 legs (0.5mm dia, 6mm long, pointing DOWN)
+for i, yo in enumerate([-1, 0, 1]):
+    objs += [cyl(f"HallSensor_Leg{i}", 0.4, 7,
+                 (HALL_X, yo, HALL_FLOAT_Z - 3.5), M_LEG, segs=8)]
 
-add_label("Homing Magnet (3mm NdFeB)", (22, 5, Z["cam"]))
+# Dashed line from sensor down to pocket position (thin box = wire)
+objs += [box("HallSensor_Wire", 0.5, 0.5, 12,
+             (HALL_X, HALL_Y, Z_BASE + BASE_T + 6), M_LEG)]
+
+objs += [label("Hall Sensor SS49E\n(homing — X=19mm)", (HALL_X + 6, 6, HALL_FLOAT_Z + 5), size=1.8)]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 5.  RETURN SPRINGS  (6× compression springs, one per Braille dot)
-#     Real: ~3.5mm OD, ~8mm free length, 0.3mm wire
-#     Sit in top-plate underside pockets, push linkages DOWN onto cam
-#     X/Y positions match the Braille dot grid (±2.4mm, ±2.6mm)
+# 4. NEODYMIUM HOMING MAGNET (3mm dia × 2mm thick)
+#    On cam disc UNDERSIDE at radius 17.35mm, angle 0° → (17.35, 0)
+#    Cam disc bottom = Z_CAM, so magnet centre = Z_CAM - 1
 # ─────────────────────────────────────────────────────────────────────────────
-mat_spring = make_mat("MAT_Spring", (0.6, 0.6, 0.6, 1), metallic=0.9, roughness=0.2)
+objs += [cyl("Homing_Magnet_NdFeB", 1.5, 2, (MAGNET_R, 0, Z_CAM - 1), M_MAGNET)]
+objs += [label("NdFeB Magnet (3mm)\nhoming ref", (MAGNET_R + 5, 5, Z_CAM + 3), size=1.8)]
 
-dot_positions = [
-    (-2.4,  2.6),   # dot 1
-    (-2.4,  0.0),   # dot 2
-    (-2.4, -2.6),   # dot 3
-    ( 2.4,  2.6),   # dot 4
-    ( 2.4,  0.0),   # dot 5
-    ( 2.4, -2.6),   # dot 6
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. RETURN SPRINGS ×6 (compression, Ø3.5mm OD, ~8mm free length)
+#    Sit in 3.5mm dia × 1.5mm pockets on top plate UNDERSIDE.
+#    Top plate bottom = Z_TOP, springs hang DOWN from it.
+#    Spring centre Z = Z_TOP - 4 (midpoint of 8mm spring)
+#    X/Y = dot positions: (±col_spacing/2, ±row_spacing, 0)
+# ─────────────────────────────────────────────────────────────────────────────
+dot_xy = [
+    (-COL_SPACING/2,  ROW_SPACING),
+    (-COL_SPACING/2,  0),
+    (-COL_SPACING/2, -ROW_SPACING),
+    ( COL_SPACING/2,  ROW_SPACING),
+    ( COL_SPACING/2,  0),
+    ( COL_SPACING/2, -ROW_SPACING),
 ]
 
-def add_spring(name, x, y, z_base, coils=8, od=3.5, wire_d=0.3, free_len=8.0):
-    """
-    Build a helical spring from torus segments stacked along Z.
-    Simple approximation: stack flattened tori.
-    """
+SPRING_FREE_LEN = 8.0
+SPRING_COILS    = 10
+WIRE_R          = 0.25
+
+for i, (dx, dy) in enumerate(dot_xy):
     verts = []
-    faces = []
-    seg = 16         # segments per ring
-    pitch = free_len / coils
+    for step in range(SPRING_COILS * 16):
+        frac = step / (SPRING_COILS * 16)
+        angle = frac * SPRING_COILS * 2 * math.pi
+        r = SPRING_OD / 2 - WIRE_R
+        vx = dx + r * math.cos(angle)
+        vy = dy + r * math.sin(angle)
+        vz = (Z_TOP - SPRING_FREE_LEN) + frac * SPRING_FREE_LEN
+        verts.append((vx, vy, vz))
 
-    for c in range(coils):
-        angle_start = c * 2 * math.pi
-        for s in range(seg):
-            a = angle_start + s * (2 * math.pi / seg)
-            z = (c + s / seg) * pitch
-            rx = (od / 2) * math.cos(a)
-            ry = (od / 2) * math.sin(a)
-            # wire cross-section (simple point, will look like a helix line)
-            verts.append((x + rx, y + ry, z_base + z))
-
-    # Connect as a line strip (no faces — just edges for clarity)
-    mesh = bpy.data.meshes.new(name + "_mesh")
-    mesh.from_pydata(verts, [(i, i+1) for i in range(len(verts)-1)], [])
+    mesh = bpy.data.meshes.new(f"Spring_dot{i+1}_mesh")
+    edges = [(j, j+1) for j in range(len(verts)-1)]
+    mesh.from_pydata(verts, edges, [])
     mesh.update()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
-    assign_mat(obj, mat_spring)
-    return obj
+    spr = bpy.data.objects.new(f"ReturnSpring_dot{i+1}", mesh)
+    bpy.context.collection.objects.link(spr)
+    spr.data.materials.append(M_SPRING)
+    objs.append(spr)
 
-for i, (dx, dy) in enumerate(dot_positions):
-    add_spring(f"Return_Spring_dot{i+1}", dx, dy,
-               z_base=Z["springs"] + 5,   # just below top plate
-               coils=8, od=3.2, free_len=8.0)
-
-add_label("Return Springs (×6)", (10, 10, Z["springs"] + 10))
+objs += [label("Return Springs ×6\n(Ø3.5mm compression)", (12, 12, Z_TOP - 5), size=1.8)]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 6.  ESP32 (placeholder — Seeed XIAO form factor 21×17.5mm)
-#     Shown above the stack (external mount TBD per CHANGES.md)
+# 6. POGO PIN CONNECTORS
+#    outer_box.scad: pogo_z = floor_thickness + (shell_height - floor_thickness)/2
+#                           = 4 + (28-4)/2 = 4 + 12 = 16mm above BOX BOTTOM (Z_BOX)
+#    Left wall at X = -shell_length/2 = -39mm (spring pins face LEFT, extrude OUT)
+#    Right wall at X = +shell_length/2 = +39mm (pad side, extrude OUT)
+#    Slot cutout: pogo_slot_w=10mm (Y), pogo_slot_h=8mm (Z), wall_thickness=4mm (X)
+#    The CONNECTOR PCB/body sits inside the slot, pins extrude OUTWARD.
 # ─────────────────────────────────────────────────────────────────────────────
-mat_esp_pcb = make_mat("MAT_ESP_PCB", (0.04, 0.18, 0.04, 1), roughness=0.9)
-mat_esp_mod = make_mat("MAT_ESP_Module", (0.15, 0.15, 0.15, 1), metallic=0.2, roughness=0.7)
-mat_esp_ant = make_mat("MAT_ESP_Antenna", (0.8, 0.8, 0.8, 1), metallic=0.7, roughness=0.3)
+POGO_Z_ABS = Z_BOX + POGO_Z           # = 16mm
+WALL_X_L   = -SHELL_L/2              # = -39mm
+WALL_X_R   =  SHELL_L/2              # = +39mm
 
-esp_board = add_box("ESP32_PCB", (21, 17.5, 1.6),
-                    (0, 0, Z["esp32"]), mat_esp_pcb)
+for side, name, x_wall in [(-1, "Pogo_SpringSide", WALL_X_L),
+                             (1,  "Pogo_PadSide",   WALL_X_R)]:
+    # Connector body flush with inner wall face, 4mm deep into the slot
+    body_x = x_wall + side * (WALL_T / 2)    # centre of connector in wall
+    objs += [box(f"{name}_Body", WALL_T + 2, POGO_SLOT_W, POGO_SLOT_H,
+                 (body_x, 0, POGO_Z_ABS), M_POGO)]
 
-esp_module = add_box("ESP32_Module", (18, 25.5, 3.1),
-                     (0, 0, Z["esp32"] + 2.35), mat_esp_mod)
-
-# Antenna bump
-esp_ant = add_box("ESP32_Antenna", (2, 6, 1),
-                  (0, 14, Z["esp32"] + 2.5), mat_esp_ant)
-
-# USB-C connector stub
-usb = add_box("ESP32_USB_C", (5, 2, 3),
-              (0, -10, Z["esp32"] + 1.2), make_mat("MAT_USB", (0.5,0.5,0.5,1), metallic=0.8))
-
-add_label("ESP32 (XIAO / ext. mount)", (-30, 10, Z["esp32"] + 8))
-add_label("⚠ ESP32 PLACEMENT TBD", (-30, 10, Z["esp32"] + 14), size=2)
-
-# ─────────────────────────────────────────────────────────────────────────────
-# 7.  POGO PIN CONNECTORS  (4-pin, 2mm pitch — on left & right walls of box)
-#     Shown as small rectangles at mid-height on box side walls
-# ─────────────────────────────────────────────────────────────────────────────
-mat_pogo = make_mat("MAT_Pogo", (0.85, 0.75, 0.1, 1), metallic=0.7, roughness=0.2)
-
-for side, label in [(-1, "Pogo_Spring_Side"), (1, "Pogo_Pad_Side")]:
-    pogo = add_box(label, (4, 10, 8),
-                   (side * 32, 0, Z["box"] + 14), mat_pogo)
-    # individual pins
+    # 4 individual pins extruding OUTWARD (2mm pitch, Y-axis)
+    PIN_PROTRUDE = 5  # mm sticking out from wall face
+    pin_start_x  = x_wall + side * (WALL_T/2 + 1)   # starts at outer wall face
     for p in range(4):
-        pin = add_cylinder(f"{label}_Pin{p}", radius=0.5, depth=6,
-                           location=(side * 34, -3 + p*2, Z["box"] + 14),
-                           mat=make_mat(f"MAT_PinMetal_{p}", (0.9,0.9,0.9,1), metallic=0.9))
+        py = -3 + p * 2   # 2mm pitch, centred
+        pin_tip_x = pin_start_x + side * PIN_PROTRUDE
+        pin_mid_x = (pin_start_x + pin_tip_x) / 2
+        objs += [cyl(f"{name}_Pin{p}", 0.5, PIN_PROTRUDE,
+                     (pin_mid_x, py, POGO_Z_ABS),
+                     mat(f"M_PinMetal_{side}_{p}", (0.9, 0.9, 0.9), metallic=0.95, rough=0.1),
+                     segs=8)]
+        # Rotate pin to horizontal (X-axis)
+        pin = objs[-1]
+        pin.rotation_euler = (0, math.radians(90), 0)
+        bpy.ops.object.transform_apply(rotation=True)
 
-add_label("Pogo Pins (4-pin UART)", (35, 15, Z["box"] + 20))
+    side_label = "Spring Pins →" if side == -1 else "← Contact Pads"
+    objs += [label(f"Pogo Connector\n{side_label}\n(5V GND TX RX)",
+                   (x_wall + side * 15, 12, POGO_Z_ABS + 8), size=1.8)]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 8.  SELECT ALL NEW OBJECTS AND SET SCENE UNITS → mm
+# 7. ESP32 (Seeed XIAO ESP32-C3: 21×17.5×3.7mm)
+#    Marked as TBD — shown floating above the stack
 # ─────────────────────────────────────────────────────────────────────────────
+ESP_Z = Z_TOP + 60
+objs += [box("ESP32_XIAO_PCB",    21,   17.5, 1.6, (0, 0, ESP_Z),         M_ESP_PCB)]
+objs += [box("ESP32_Module",      13.5, 15,   2.5, (0, 0, ESP_Z + 2),     M_ESP_MOD)]
+objs += [box("ESP32_Antenna",     2,    5,    1,   (0, 9.5, ESP_Z + 2),   M_SHAFT)]
+objs += [box("ESP32_USB_C",       5,    1.8,  2.5, (0, -10, ESP_Z + 1),   M_SHAFT)]
+objs += [label("ESP32 XIAO C3\n⚠ Placement TBD\n(see CHANGES.md)",
+               (-30, 12, ESP_Z + 6), size=1.8)]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 8. Assign everything to Hardware_Components collection
+# ─────────────────────────────────────────────────────────────────────────────
+for obj in objs:
+    if obj is None:
+        continue
+    for c in list(obj.users_collection):
+        c.objects.unlink(obj)
+    hw.objects.link(obj)
+
+# ── Scene units → mm ─────────────────────────────────────────────────────────
 bpy.context.scene.unit_settings.system       = "METRIC"
-bpy.context.scene.unit_settings.scale_length = 0.001   # 1 Blender unit = 1 mm
+bpy.context.scene.unit_settings.scale_length = 0.001
 bpy.context.scene.unit_settings.length_unit  = "MILLIMETERS"
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 9.  COLLECTIONS — group hardware into a "Hardware_Components" collection
-# ─────────────────────────────────────────────────────────────────────────────
-hw_col_name = "Hardware_Components"
-if hw_col_name not in bpy.data.collections:
-    hw_col = bpy.data.collections.new(hw_col_name)
-    bpy.context.scene.collection.children.link(hw_col)
-else:
-    hw_col = bpy.data.collections[hw_col_name]
-
-hardware_keywords = [
-    "Motor_", "ULN2003", "HallSensor", "Homing_Magnet",
-    "Return_Spring", "ESP32", "Pogo_", "Label_",
-]
-
-for obj in bpy.data.objects:
-    for kw in hardware_keywords:
-        if obj.name.startswith(kw):
-            # unlink from scene root collection if present
-            for col in obj.users_collection:
-                col.objects.unlink(obj)
-            hw_col.objects.link(obj)
-            break
-
-print("=" * 60)
-print("Braillix hardware models added successfully!")
-print("Collection: 'Hardware_Components'")
-print()
-print("Parts added:")
-print("  [1] 28BYJ-48 Stepper Motor   — Z = 0")
-print("  [2] ULN2003 Driver Board     — Z = 0 (beside motor)")
-print("  [3] Hall Effect Sensor SS49E — Z = 86 (on base plate)")
-print("  [4] Homing Magnet 3mm NdFeB  — Z = 149 (cam underside)")
-print("  [5] Return Springs ×6        — Z = 149 (below top plate)")
-print("  [6] ESP32 XIAO (placeholder) — Z = 340 (ext. mount TBD)")
-print("  [7] Pogo Pin Connectors ×2   — Z = 0  (box side walls)")
-print()
-print("Labels are in yellow — visible in viewport.")
-print("Press NUMPAD 5 → NUMPAD 1 to get a front view of the stack.")
-print("=" * 60)
+# ── Summary ──────────────────────────────────────────────────────────────────
+print("\n" + "="*60)
+print("Braillix Hardware Models v2 — added successfully")
+print("="*60)
+print(f"  Motor body centre    Z = {motor_cz:.1f} mm  (below base plate)")
+print(f"  Motor shaft tip      Z = {Z_BASE + 10:.1f} mm  (into cam)")
+print(f"  ULN2003 board        X = {ULN_X}, Z = {motor_cz:.1f}")
+print(f"  Hall sensor (float)  X = {HALL_X}, Z = {HALL_FLOAT_Z:.1f} mm")
+print(f"  Homing magnet        X = {MAGNET_R}, Z = {Z_CAM - 1:.1f} mm")
+print(f"  Return springs ×6    Z = {Z_TOP - SPRING_FREE_LEN:.1f}–{Z_TOP:.1f} mm")
+print(f"  Pogo L-wall          X = {WALL_X_L:.1f}, Z = {POGO_Z_ABS:.1f} mm")
+print(f"  Pogo R-wall          X = {WALL_X_R:.1f}, Z = {POGO_Z_ABS:.1f} mm")
+print(f"  ESP32 XIAO           Z = {ESP_Z:.1f} mm (TBD placeholder)")
+print("="*60)
+print("Collection 'Hardware_Components' created.")
+print("Press NUMPAD-1 + NUMPAD-5 for front ortho view of the stack.")
