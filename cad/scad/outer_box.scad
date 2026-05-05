@@ -52,6 +52,27 @@ pogo_slot_h     = 8;    // Height of the rectangular window
 pogo_slot_depth = wall_thickness + 2; // Through-wall cutout
 pogo_z          = floor_thickness + (shell_height - floor_thickness)/2; // Mid-height of side wall
 
+// Navigation Buttons — front face (y = -shell_width/2)
+// Standard 12×12mm momentary tactile switch (e.g. TS-A2PS-130, very common ₹5/pc)
+btn_hole_dia    = 12.5;  // 12mm switch body + 0.5mm clearance
+btn_recess_dia  = 16.0;  // Outer recess for button cap/bezel flush-fit
+btn_recess_depth = 1.5;  // Depth of cosmetic recess
+btn_z           = 10;    // Height from floor — comfortable thumb reach while reading
+// Button X positions chosen so button hole edges (r=6.25mm) never exactly
+// coincide with vent slot faces (at x=−15.75, −10.25, −4.75, +0.75, +6.25mm).
+// At x=−22 the right hole edge lands on x=−15.75 = vent left face → CGAL breaks.
+// Moved to ±24mm: right edge of Back = −17.75mm (2mm clear of −15.75 vent face).
+btn_x_back      = -24;   // "Back / Prev" button — LEFT side
+btn_x_next      =  24;   // "Next / Fwd"  button — RIGHT side
+
+// MCQ / Select button — CENTRE, disabled by default.
+// Enable when software MCQ feature is implemented.
+// Without a 3rd button, MCQ answer selection needs another method
+// (double-tap, long-press, or voice). Decide before final print.
+has_select_btn  = true;
+btn_x_select    = 1;    // 1mm off-centre: right hole edge at +7.25mm,
+                        // avoids exact coincidence with vent slot face at +6.25mm
+
 // Aesthetics
 fillet_outer = 2.0;
 fillet_inner = 1.0;
@@ -117,6 +138,32 @@ module pogo_connector_slots() {
             cube([pogo_slot_depth, pogo_slot_w, pogo_slot_h], center=true);
 }
 
+module one_button_hole(bx) {
+    // Plain 12.5mm through-hole for a 12×12mm momentary tactile switch.
+    // No cosmetic recess — the d=16mm recess at x=±22mm overlaps the nearest
+    // vent slot (at x=−15mm, extends to x=−14.25mm; recess extends to x=−14mm),
+    // causing a near-tangent cylinder/face intersection that breaks CGAL manifold.
+    // A plain hole is sufficient for a prototype; add a countersink in a v2 revision
+    // once vent slot positions are adjusted to give ≥8mm clearance from button centres.
+    translate([bx, -shell_width/2 - 1, btn_z])
+    rotate([-90, 0, 0])
+        cylinder(d=btn_hole_dia, h=wall_thickness + 2);
+}
+
+module nav_button_holes() {
+    one_button_hole(btn_x_back);
+    one_button_hole(btn_x_next);
+    if(has_select_btn) one_button_hole(btn_x_select);
+}
+
+// nav_button_guards() — NOT IMPLEMENTED
+// Tactile bumps between buttons are not needed: the recessed button holes
+// themselves are sufficient tactile reference (user feels hole = button).
+// Left hole = Back, Right hole = Next — simple positional convention.
+// If guards are added in a future revision, ensure X positions avoid
+// ventilation slot centres at x = -15, -9.5, -4, +1.5, +7 mm (±0.75mm each)
+// to prevent the guard cube intersecting the vent slot cutout region.
+
 module wire_exit() {
     // Back lower corner slot for motor cables
     translate([-shell_length/2 + 10, shell_width/2, floor_thickness + wire_slot_height/2])
@@ -168,16 +215,21 @@ union() {
         // K. Pogo Pin Connector Slots (Left always, Right conditional)
         pogo_connector_slots();
         
-        // G. Nameplate Recess (Top Front Edge)
+        // G. Nameplate Recess (Top Front Edge — kept narrow so it clears buttons)
         translate([0, -shell_width/2, shell_height - 5])
-            cube([30, 2, 10], center=true);
+            cube([24, 2, 8], center=true);
+
+        // L. Navigation Button Holes (Back + Next on front face)
+        nav_button_holes();
     }
-    
+
     // H. Add Modular Tongue (Left Side)
     docking_tongue();
-    
+
     // I. Add Internal Screw Bosses
     corner_bosses();
+
+    // M. (Future) nav_button_guards() — see comment above module definition
     
     // J. Base Plate Seating Ledge (Supports the 60x50 plate)
     translate([0,0, floor_thickness])

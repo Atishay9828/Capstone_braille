@@ -355,6 +355,50 @@ Open `braillix_assembly.blend` in Blender → click the 3D viewport → press **
 
 ---
 
+## 8. `outer box.scad` — Navigation Buttons (2026-05-03)
+
+Three 12×12mm momentary tactile switches added to the front face of the enclosure.
+
+### Button layout
+
+```
+Front face (y = −shell_width/2):
+
+ [BACK]        [SELECT]    [NEXT]
+  x=−24mm       x=+1mm     x=+24mm
+  z=10mm        z=10mm     z=10mm
+```
+
+**BACK (left):** display previous character  
+**SELECT (centre):** confirm MCQ answer / enter  
+**NEXT (right):** display next character
+
+### Parameters added
+
+```openscad
+btn_hole_dia    = 12.5;   // 12mm switch body + 0.5mm clearance
+btn_z           = 10;     // comfortable thumb height from floor
+btn_x_back      = -24;    // LEFT
+btn_x_next      =  24;    // RIGHT
+has_select_btn  = true;
+btn_x_select    =  1;     // 1mm off-centre (see note below)
+```
+
+### Why x=−24 and x=+1 (not x=−22 and x=0)
+
+OpenSCAD CGAL requires that no two subtracted shapes share an exact coplanar face or edge. The vent slots are 1.5mm wide centred at x = −15, −9.5, −4, +1.5, +7mm — their faces fall at ±0.75mm from each centre. The button hole radius is 6.25mm.
+
+At x=−22: hole right edge = −22+6.25 = **−15.75mm** = vent slot left face at x=−15. Exact match → CGAL non-manifold.  
+At x=0: hole right edge = +**6.25mm** = vent slot left face at x=+7. Exact match → CGAL non-manifold.
+
+Moved to x=−24 (right edge −17.75mm, 2mm clear) and x=+1 (right edge +7.25mm, 1mm clear). Both `Simple: yes`, no warnings.
+
+### Switch spec
+
+Standard **12×12mm momentary tactile push switch**, ~₹5/pc. Examples: TS-A2PS-130, TC-1212T, or any generic "12×12 tact switch" from LCSC/Robocraze/Robu. Through-hole mount, 4-pin. Solder leads to ESP32 GPIO + GND.
+
+---
+
 ## Known Issues / Pending Decisions
 
 ### CRITICAL — ESP32 does not fit inside outer box
