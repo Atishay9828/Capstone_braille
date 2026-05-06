@@ -1,6 +1,15 @@
 // =========================================================
 // ADVANCED PARAMETRIC BRAILLE CAM GENERATOR (Production Spec)
-// FINAL FIXED VERSION: D-Shaft + Solid Floor
+// Revision 2 — Hub Inverted (drops below disc underside)
+// Updated 2026-05-06
+//
+// Changes from v1:
+//   - D-shaft hub now extends DOWNWARD from disc underside
+//     (was protruding upward above tracks — blocked linkage feet)
+//   - Hub height = 4mm below z=0 (drops over motor shaft from above)
+//   - Top surface of disc is now completely flat/clear for linkage
+//     contact across all 6 tracks
+//   - Magnet pocket unchanged (still on underside, flush)
 // =========================================================
 
 // --- 1. CONFIGURATION PARAMETERS ---
@@ -127,16 +136,21 @@ union() {
     color("darkgray") 
         cylinder(h=disk_base_thickness, r=outermost_r, $fn=100);
 
-    // 1. Central Hub (28BYJ-48 D-Shaft Edition)
-    color("gray") 
+    // 1. Central Hub — INVERTED (drops BELOW disc, clears top surface for linkage feet)
+    //    Hub extends 4mm below disc bottom (z=0 → z=−4)
+    //    28BYJ-48 D-Shaft: 5mm dia flattened to 3mm across flats
+    hub_h = 4;
+    color("gray")
+    translate([0, 0, -hub_h])
     difference() {
-        // The Hub Body (Slightly thicker for strength)
-        cylinder(h=disk_base_thickness + 2, r=4.5, $fn=50); 
-        
-        // The "Double-Flat" Shaft Hole (5mm dia, flattened to 3.2mm)
+        // Hub body cylinder (below disc underside)
+        cylinder(h=hub_h, r=4.5, $fn=50);
+
+        // D-shaft hole — through entire hub height
+        translate([0, 0, -1])
         intersection() {
-            translate([0,0,-1]) cylinder(h=20, r=2.6, $fn=50); // 5.2mm clearance hole
-            translate([0,0,-1]) cube([3.2, 10, 20], center=true); // Flatten sides
+            cylinder(h=hub_h + 2, r=2.6, $fn=50); // 5.2mm clearance hole
+            cube([3.2, 10, hub_h + 2], center=true); // Flatten sides to 3.2mm
         }
     }
 

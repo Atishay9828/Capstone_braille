@@ -1,36 +1,43 @@
 // =========================================================
-// BRAILLE CELL TOP PLATE — v2.1
+// BRAILLE CELL TOP PLATE — v3.0
 // Updated 2026-05-06
 //
-// Changes from v2.0:
-//   - Spring pockets REMOVED for v1 prototype (gravity return is sufficient
-//     for desk use; springs add complexity and the pocket/slot overlap
-//     created degenerate geometry where 3.5mm pocket met 1.2mm slot).
-//     Springs can be added in v2 once linkage flange geometry is finalised.
-//   - Slot chamfers kept (aid linkage insertion during assembly).
-//   - All other geometry unchanged.
-//
-// Unchanged from v2.0:
-//   - 34×34mm footprint (reaches standoffs at ±15mm)
-//   - 4 corner M2.5 screw holes matching base_plate standoffs at ±15mm
-//   - 1.2×3mm rectangular linkage slots (constrains 1mm metal linkage to
-//     vertical travel only — no rotation possible)
-//   - Finger pad recess (ergonomic boundary)
-//   - Thumb ridge (orientation reference for blind user)
+// Changes from v2.1 (Full Audit Redesign):
+//   - plate_size 34x34mm -> plate_length=52mm x plate_width=60mm (rectangular)
+//     Now fully covers outer_box internal cavity (52x60mm). No gaps. (Audit 3.2)
+//   - Rectangular 1.2x3mm slots -> round 2mm holes (Audit Fix 5)
+//     Round holes prevent dust funnelling into cam mechanism
+//     Holes sized for braille_cap pin shaft (1.9mm dia + 0.1mm clearance)
+//   - Spring pockets RE-INTRODUCED on underside (Audit 4.2)
+//     3.5mm dia x 3mm deep concentric pockets around each braille hole
+//     Retains 3mm compression springs that push linkages DOWN (gravity alone
+//     is insufficient for 1mm sheet metal in tight slots)
+//   - plate_thickness 3mm -> 4mm (need 3mm pocket + 1mm floor above)
+//   - Slots replaced by round holes — slot chamfers removed
+//   - Thumb ridge kept for blind user orientation
 // =========================================================
 
 // --- 1. PARAMETERS ---
 
-col_spacing     = 4.8;    // Horizontal distance between pin columns
-row_spacing     = 2.6;    // Vertical distance between pin rows
-slot_width      = 1.2;    // Linkage slot width (1mm metal + 0.2mm clearance)
-slot_length     = 3.0;    // Slot length along travel axis (Y)
-plate_thickness = 3.0;
-plate_size      = 34.0;   // Square — must span standoffs at ±15mm (2mm margin each side)
-corner_radius   = 2.0;
-finger_pad_depth = 0.8;   // Shallow recess on top face — tactile cell boundary
+// Braille dot positions (must match linkage.scad, braille_cam2.scad)
+col_spacing     = 4.8;    // Left col at x=-2.4, right at x=+2.4
+row_spacing     = 2.6;    // Rows at y=+2.6, 0, -2.6
 
-// Mounting — 4 corner holes at ±15mm matching base_plate standoffs
+// Braille holes — round (replaces 1.2x3mm rectangular slots)
+hole_dia        = 2.0;    // Fits braille_cap pin shaft (1.9mm + 0.1mm clearance)
+
+// Spring pockets — on underside, concentric around each braille hole
+spring_pocket_dia   = 3.5;   // Compression spring OD
+spring_pocket_depth = 3.0;   // Pocket depth from underside upward
+
+// Plate body — rectangular, matches outer_box internal cavity
+plate_length    = 52.0;   // X — matches internal_length (flush fit, was 34mm square)
+plate_width     = 60.0;   // Y — matches internal_width (flush fit)
+plate_thickness = 4.0;    // Z — increased from 3mm: 3mm pocket + 1mm floor
+corner_radius   = 2.0;
+finger_pad_depth = 0.8;   // Shallow recess on top face
+
+// Mounting — 4 corner holes at +/-15mm matching base_plate standoffs
 standoff_offset  = 15.0;
 screw_dia        = 2.8;   // M2.5 clearance
 counterbore_dia  = 5.0;   // M2.5 button-head
@@ -40,37 +47,46 @@ $fn = 60;
 
 // --- 2. MODULES ---
 
-module rounded_square(size, r, h) {
+module rounded_rect(lx, ly, r, h) {
     hull() {
-        for(sx = [-1,1]) for(sy = [-1,1])
-            translate([sx*(size/2 - r), sy*(size/2 - r), 0])
-                cylinder(r=r, h=h);
+        translate([-lx/2 + r, -ly/2 + r, 0]) cylinder(r=r, h=h);
+        translate([ lx/2 - r, -ly/2 + r, 0]) cylinder(r=r, h=h);
+        translate([-lx/2 + r,  ly/2 - r, 0]) cylinder(r=r, h=h);
+        translate([ lx/2 - r,  ly/2 - r, 0]) cylinder(r=r, h=h);
     }
 }
 
-// 1.2×3mm rectangular slot, oriented along Y (linkage travel direction)
-// Constrains flat laser-cut linkage: can only translate up/down, cannot rotate
-module linkage_slot() {
-    translate([-slot_width/2, -slot_length/2, -1])
-        cube([slot_width, slot_length, plate_thickness + 5]);
+// One braille hole with spring pocket underneath
+module braille_hole_with_spring(cx, cy) {
+    // Through hole — round, allows braille_cap pin to travel vertically
+    translate([cx, cy, -1])
+        cylinder(d=hole_dia, h=plate_thickness + 2);
+
+    // Spring retaining pocket — from underside (z=0) upward
+    // Spring sits in this pocket, pushes cap/linkage downward
+    translate([cx, cy, -0.01])
+        cylinder(d=spring_pocket_dia, h=spring_pocket_depth + 0.01);
 }
 
-module braille_slots() {
-    // Left column: dots 1 (top), 2 (mid), 3 (bot)
-    translate([-col_spacing/2,  row_spacing, 0]) linkage_slot();
-    translate([-col_spacing/2,  0,           0]) linkage_slot();
-    translate([-col_spacing/2, -row_spacing, 0]) linkage_slot();
-    // Right column: dots 4 (top), 5 (mid), 6 (bot)
-    translate([ col_spacing/2,  row_spacing, 0]) linkage_slot();
-    translate([ col_spacing/2,  0,           0]) linkage_slot();
-    translate([ col_spacing/2, -row_spacing, 0]) linkage_slot();
+module braille_holes() {
+    // 6 Braille dot positions: 2 columns x 3 rows
+    // Left column: dots 0 (top), 1 (mid), 2 (bot)
+    braille_hole_with_spring(-col_spacing/2,  row_spacing);
+    braille_hole_with_spring(-col_spacing/2,  0);
+    braille_hole_with_spring(-col_spacing/2, -row_spacing);
+    // Right column: dots 3 (top), 4 (mid), 5 (bot)
+    braille_hole_with_spring( col_spacing/2,  row_spacing);
+    braille_hole_with_spring( col_spacing/2,  0);
+    braille_hole_with_spring( col_spacing/2, -row_spacing);
 }
 
 module mounting_holes() {
     for(sx = [-1,1]) for(sy = [-1,1]) {
         translate([sx * standoff_offset, sy * standoff_offset, 0]) {
+            // Through hole
             translate([0, 0, -1])
                 cylinder(d=screw_dia, h=plate_thickness + 5);
+            // Counterbore on top face
             translate([0, 0, plate_thickness - counterbore_depth])
                 cylinder(d=counterbore_dia, h=counterbore_depth + 1);
         }
@@ -80,15 +96,15 @@ module mounting_holes() {
 // --- 3. MAIN ASSEMBLY ---
 
 difference() {
-    // A. Main body
-    rounded_square(plate_size, corner_radius, plate_thickness);
+    // A. Rectangular body (52x60mm — full cavity coverage)
+    rounded_rect(plate_length, plate_width, corner_radius, plate_thickness);
 
     // B. Finger pad recess (ergonomic boundary on top face)
     translate([0, 0, plate_thickness - finger_pad_depth])
-        rounded_square(plate_size - 6, corner_radius, finger_pad_depth + 1);
+        rounded_rect(plate_length - 6, plate_width - 6, corner_radius, finger_pad_depth + 1);
 
-    // C. Linkage slots (through holes, rectangular)
-    braille_slots();
+    // C. 6 round braille holes + spring pockets on underside
+    braille_holes();
 
     // D. Mounting holes (4 corners, M2.5)
     mounting_holes();
@@ -97,22 +113,15 @@ difference() {
 // --- 4. TACTILE FEATURES ---
 
 // Thumb ridge — left edge, guides blind user to cell orientation by touch
-translate([-plate_size/2 + 1.5, 0, plate_thickness])
+translate([-plate_length/2 + 1.5, 0, plate_thickness])
     hull() {
         translate([0, -3, 0]) sphere(r=0.6);
         translate([0,  3, 0]) sphere(r=0.6);
     }
 
-// Slot chamfers — 0.3mm lead-in on each slot to guide linkage insertion from below
-intersection() {
-    translate([0, 0, plate_thickness - finger_pad_depth]) {
-        for(cx = [-col_spacing/2, col_spacing/2]) {
-            for(cy = [-row_spacing, 0, row_spacing]) {
-                translate([cx, cy, 0])
-                    translate([-slot_width/2 - 0.3, -slot_length/2 - 0.3, 0])
-                        cube([slot_width + 0.6, slot_length + 0.6, 0.4]);
-            }
-        }
-    }
-    rounded_square(plate_size, corner_radius, plate_thickness);
-}
+// --- 5. SPRING SPEC (for BOM / sourcing) ---
+// OD:  3.0-3.5mm (fits 3.5mm pocket)
+// ID:  >= 2.0mm (clears 1.9mm cap pin)
+// Free length: 6-8mm
+// Spring constant: <= 0.1 N/mm (lowest available — avoid motor stall)
+// Source: 3mm x 6mm or 3.5mm x 8mm micro compression spring

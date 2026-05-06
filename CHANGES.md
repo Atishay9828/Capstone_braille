@@ -794,3 +794,108 @@ Return springs for braille dots were **intentionally removed for v1 prototype** 
 | Linkage total height | 12mm | 48−36=12mm | exact | ✓ |
 | Linkage nub proud (dot UP) | 0.8mm | 1.2mm shell margin | 0.4mm | ✓ |
 | Hall sensor vs new cam OD | r=20mm sensor | r=18.2mm cam | 1.8mm | ✓ |
+
+---
+
+## Section 16 — Full Audit Redesign (May 6 2026)
+
+**Responding to:** Mechanical Design Audit Report (7 critical failures)
+**Scope:** All SCAD files rewritten/created. All V3 features implemented. ESP32 Brain Pod added.
+
+### 16.1 Audit Fixes Applied
+
+| Audit Item | Issue | Fix | File |
+|------------|-------|-----|------|
+| 2.1 Electronics pocket too shallow | 9mm pocket, ULN2003 needs 12-14mm | `elec_pocket_h` 9 -> 16mm | outer_box v4.0 |
+| 2.2 Hanging motor (no torque support) | Motor held only by plastic ears | 2mm mid-plate + motor retaining collar (Ø29.5mm ID, 8mm tall) | outer_box v4.0 |
+| 3.1 Uncentered motor shaft (8mm offset) | Body pocket and shaft at same x=0 | Body pocket/ears offset to x=-8mm, shaft stays at x=0 | base_plate v2.2 |
+| 3.2 Inadequate top plate coverage | 34x34mm plate in 52x60mm cavity | Plate resized to 52x60mm (flush fit) | top_plate v3.0 |
+| 4.1 Linkage phase shift (SHOWSTOPPER) | Radial feet at different cam angles | All 6 feet at Y=0 via inline geometry | linkage v3.0 |
+| 4.2 Missing spring pockets | Gravity return insufficient | 3.5mm dia x 3mm spring pockets on plate underside | top_plate v3.0 |
+| 4.3 Flat rectangular Braille dots | Sharp tabs, illegible to blind users | 2mm round holes + bearing ball caps | top_plate v3.0, braille_cap v1.0 |
+
+### 16.2 V3 Features Implemented
+
+| Feature | Audit Ref | Implementation |
+|---------|-----------|----------------|
+| Cam hub inversion | 6.1 | Hub extends below disc underside, top surface clear | braille_cam2 v2 |
+| Pogo pin safety recess | 6.2 | Left wall pogo slot 1mm deeper | outer_box v4.0 |
+| Pogo end cap | 6.2 | TPU snap-fit cover for last cell | pogo_end_cap v1.0 (NEW) |
+| Magnetic snap alignment | 6.3 | 3x Ø3.2mm x 2.1mm NeFeB pockets, dock screws removed | outer_box v4.0 |
+| Linkage comb guide | 6.4 | 6-slit guide block, clips on mid-plate | linkage_comb v1.0 (NEW) |
+| Bearing ball Braille dots | 6.5 | 2mm SS bearing ball in cup on cap | braille_cap v1.0 (NEW) |
+| Wire routing gutters | 6.8 | 4mm x 4mm channels along floor edges | outer_box v4.0 |
+
+### 16.3 New Files Created
+
+| File | Purpose |
+|------|---------|
+| `cad/scad/esp32_pod.scad` | ESP32 NodeMCU 30-pin enclosure (74x38x58mm), barrel jack, USB, pogo interface, magnet snap |
+| `cad/scad/braille_cap.scad` | Bearing ball dot caps (1.9mm pin, 3.5mm body, 2mm SS ball cup) |
+| `cad/scad/linkage_comb.scad` | PETG guide block with 6 vertical slits (1.25mm wide) |
+| `cad/scad/pogo_end_cap.scad` | TPU snap-fit cover for exposed spring pogo pins |
+
+### 16.4 Revised Stack Table (v4.0)
+
+| z (mm) | Component |
+|--------|-----------|
+| 0 | Outer box bottom |
+| 4 | Inner floor top |
+| 4-20 | Electronics pocket (16mm) |
+| 20-22 | 2mm mid-plate (seals electronics) |
+| 22-30 | Motor retaining collar (8mm, at x=-8) |
+| 22-41 | Motor body (19mm) |
+| 41 | Motor ears / base plate bottom |
+| 46 | Base plate top (5mm plate) |
+| 43-45 | Cam disc (in 3mm pocket) |
+| 45.8 | Cam bump top (0.8mm lift) |
+| 54 | Top plate bottom (8mm standoffs from z=46) |
+| 57 | Top plate top (4mm plate) = box top |
+| 57.8 | Braille dot UP (0.8mm proud) |
+
+### 16.5 Linkage Phase-Shift Fix (Critical)
+
+**Problem:** v2.0 rotated each linkage by `atan2(dot_y, dot_x)` placing feet at
+different cam angles. At 5.625deg/character, output was completely scrambled.
+
+**Fix:** All 6 feet land at Y=0 on cam via:
+- `arm_span(d) = sqrt((track_r(d) - dot_x(d))^2 + dot_y(d)^2)`
+- `asm_ang(d) = atan2(-dot_y(d), track_r(d) - dot_x(d))`
+
+Arm heights re-staggered (dot 1: 4.0mm, dot 4: 7.8mm) giving 2.0mm worst-case
+clearance with cam bump. No collision risk.
+
+### 16.6 ESP32 Pod Specifications
+
+- Shell: 74 x 38 x 58mm (L x W x H)
+- PCB: ESP32 NodeMCU 30-pin (51x29mm) on M2 bosses
+- Power: 11mm barrel jack on top face
+- Programming: micro-USB cutout on left face
+- Docking: slot + 3x magnet pockets on right face (matches cell tongue)
+- Pogo: 10x8mm pad recess at z=30.5mm (aligns with cell pogo_z)
+- Antenna: 1.5mm thin wall + grille slots on right end
+
+### 16.7 STL Export Verification
+
+All 9 STLs exported via OpenSCAD CLI — **all manifold (Simple: yes)**:
+
+| File | Size | Simple |
+|------|------|--------|
+| braille_cam2.stl | 1334 KB | yes |
+| outer_box.stl | 1267 KB | yes |
+| base_plate.stl | 611 KB | yes |
+| linkage.stl | 160 KB | yes |
+| top_plate.stl | 1188 KB | yes |
+| braille_cap.stl | 2659 KB | yes |
+| esp32_pod.stl | 453 KB | yes |
+| linkage_comb.stl | 37 KB | yes |
+| pogo_end_cap.stl | 29 KB | yes |
+
+### 16.8 Blender Scene Updated
+
+`renders/braillix_assembly.blend` rebuilt with all 9 new STLs:
+- **Final_Assembly** collection: all parts at correct v4.0 stack positions
+- **Exploded_Assembly** collection: Z-separated for clear component visibility
+- ESP32 pod positioned beside cell (x=-71mm)
+- All meshes: Shade Flat, material colors assigned
+- 9 materials: Shell grey, Plate dark metal, Cam blue, Linkage steel, Top cream, Cap white, Pod dark grey, Comb PETG green, EndCap TPU

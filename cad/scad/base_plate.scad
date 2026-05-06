@@ -1,21 +1,23 @@
 // =========================================================
 // COMPONENT 03: BASE PLATE (28BYJ-48 OPTIMIZED)
-// Revision 2.1 — Motor now centred in box (outer_box v3.0)
+// Revision 2.2 — Motor body offset -8mm (shaft ≠ body centre)
 // Updated 2026-05-06
 //
-// Changes from v2.0:
-//   - Plate is now centred at x=0 (motor centre = box centre).
-//     Previously placed at x=−20 in the two-zone layout.
-//   - base_length widened from 42→50mm to sit symmetrically and
-//     give 1mm clearance to boss pillar centres at ±15mm each side.
-//     Internal box is now 52mm wide — 50mm plate + 1mm each side. ✓
-//   - All other geometry unchanged (correct since v2.0).
+// Changes from v2.1:
+//   - CRITICAL FIX (Audit 3.1): 28BYJ-48 shaft is offset ~8mm from
+//     motor body centre. Shaft stays at x=0 (cam centred). Motor body
+//     pocket and ear holes now translated to x=-8mm.
+//   - base_length widened from 50→56mm to accommodate left ear at
+//     x=-25.5mm (ear centre = -8 - 17.5 = -25.5mm). Plate edge at
+//     -28mm gives 0.35mm clearance past hole edge.
+//   - Plate fits in new outer_box v4.0 internal_length (60mm):
+//     56mm plate + 2mm clearance each side. ✓
 // =========================================================
 
 // --- 1. PARAMETERS ---
 
 // Plate body — centred over motor shaft (box centre x=0)
-base_length     = 50;      // X — widened from 42; centred at x=0 in new 60mm shell
+base_length     = 56;      // X — widened from 50 to fit offset motor left ear at x=-25.5mm
 base_width      = 50;      // Y — unchanged
 base_thickness  = 5;       // Z
 
@@ -68,19 +70,23 @@ module main_body() {
         cube([base_length, base_width, base_thickness]);
 }
 
+// Motor body offset: shaft is NOT at body centre on the 28BYJ-48
+// Shaft stays at x=0 (cam must be centred). Body centre at x=-8mm.
+motor_body_x_offset = -8;
+
 module motor_features() {
-    // 1. Shaft clearance through-hole (7mm dia for 5mm shaft)
+    // 1. Shaft clearance through-hole — STAYS at x=0 (cam disc centred here)
     cylinder(d=shaft_clearance, h=20, center=true);
 
-    // 2. Motor body seating pocket (from bottom — locates motor axially)
-    translate([0, 0, -0.1])
+    // 2. Motor body seating pocket — OFFSET -8mm (body centre ≠ shaft centre)
+    translate([motor_body_x_offset, 0, -0.1])
         cylinder(d=motor_body_diameter, h=motor_seat_depth + 0.1);
 
-    // 3. Motor mounting ear screw holes (35mm spacing, along X axis)
-    //    Motor ears are at the TOP face of the motor body (same face as shaft)
-    //    Screws go UP through the ear holes into the base plate underside
+    // 3. Motor mounting ear screw holes — SAME -8mm offset (ears fixed to body)
+    //    Left ear:  x = -8 - 17.5 = -25.5mm
+    //    Right ear: x = -8 + 17.5 = +9.5mm
     for(sx = [-1, 1]) {
-        translate([sx * (motor_mount_spacing / 2), 0, 0])
+        translate([sx * (motor_mount_spacing / 2) + motor_body_x_offset, 0, 0])
             cylinder(d=motor_mount_hole, h=20, center=true);
     }
 }
