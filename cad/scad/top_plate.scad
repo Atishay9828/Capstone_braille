@@ -31,7 +31,7 @@ spring_pocket_dia   = 3.5;   // Compression spring OD
 spring_pocket_depth = 3.0;   // Pocket depth from underside upward
 
 // Plate body — rectangular, matches outer_box internal cavity
-plate_length    = 52.0;   // X — matches internal_length (flush fit, was 34mm square)
+plate_length    = 60.0;   // X — matches internal_length (flush fit, was 34mm square)
 plate_width     = 60.0;   // Y — matches internal_width (flush fit)
 plate_thickness = 4.0;    // Z — increased from 3mm: 3mm pocket + 1mm floor
 corner_radius   = 2.0;

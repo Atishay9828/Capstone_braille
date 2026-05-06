@@ -76,12 +76,9 @@ function asm_ang(d) = atan2(-dot_y(d), track_r(d) - dot_x(d));
 // Arm Y position from foot bottom — per-dot stagger for collision safety
 // Critical pair: dots 1 and 4 (both at world Y=0, arms overlap in X)
 //   dot 1: arm_y=4.0, dot 4: arm_y=7.8 -> gap=2.8mm static, 2.0mm with bump
-function arm_y(d) = (d == 0) ? 3.5 :
-                    (d == 1) ? 4.0 :
-                    (d == 2) ? 9.5 :
-                    (d == 3) ? 3.5 :
-                    (d == 4) ? 7.8 :
-                               9.5;
+function arm_y(d) = (d == 0 || d == 3) ? 2.0 :
+                    (d == 1 || d == 4) ? 5.5 :
+                                         9.0;
 
 // Derived heights
 function lower_riser_h(d) = arm_y(d) - foot_len;

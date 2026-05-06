@@ -19,58 +19,35 @@
 // Ball: 2mm stainless steel bearing ball (CA glue into cup)
 // =========================================================
 
-// --- 1. PARAMETERS ---
-
-// Reference: top_plate.scad plate_thickness
+// braille_cap_v2.scad
 plate_thickness  = 4.0;
-
-// Pin shaft — passes through top plate hole
-cap_pin_dia      = 1.9;    // Slides through 2.0mm hole (0.1mm clearance)
-cap_pin_len      = 3.5;    // 3mm through plate + 0.5mm keyed into linkage nub slot
-
-// Retention flange — sits on underside of top plate
-cap_flange_dia   = 3.0;    // Wider than 2mm hole — prevents cap falling through
-cap_flange_h     = 1.0;    // Flange height
-
-// Body — sits above top plate surface when dot is UP
-cap_body_dia     = 3.5;    // Visible cap body diameter
-cap_body_h       = 1.5;    // Body height above plate surface
-
-// Bearing ball cup — hemispherical recess on top
-ball_dia         = 2.0;    // Standard 2mm stainless steel bearing ball
-cup_depth        = 0.8;    // Depth of hemispherical cup
-cup_r            = ball_dia / 2 + 0.1; // 1.1mm radius — slight interference fit
+cap_pin_dia      = 1.9;    
+cap_pin_len      = 5.5;  // FIXED: Was 3.5mm. Now 4.0mm (plate) + 1.5mm (nub overlap)
+cap_flange_dia   = 3.0;    
+cap_flange_h     = 1.0;    
+cap_body_dia     = 3.5;    
+cap_body_h       = 1.5;    
+ball_dia         = 2.0;    
+cup_depth        = 0.8;    
+cup_r            = ball_dia / 2 + 0.1; 
 
 $fn = 60;
 
-// --- 2. MODULES ---
-
 module braille_cap() {
-    // Build upward from pin bottom (z=0) to cup top
-
-    // A. Pin shaft (through top plate hole + into linkage nub)
+    // A. Pin shaft 
     cylinder(d=cap_pin_dia, h=cap_pin_len);
 
-    // B. Retention flange on underside of top plate
-    // Position: pin goes through plate_thickness of plate, flange sits
-    // at the bottom face of the plate
+    // B. Retention flange (Now correctly sits below 4mm plate)
     flange_z = cap_pin_len - plate_thickness - cap_flange_h;
-    translate([0, 0, flange_z])
-        cylinder(d=cap_flange_dia, h=cap_flange_h);
+    translate([0, 0, flange_z]) cylinder(d=cap_flange_dia, h=cap_flange_h);
 
-    // C. Body + bearing ball cup (above plate surface)
-    translate([0, 0, cap_pin_len])
-    difference() {
-        // Cylindrical body
+    // C. Body + bearing ball cup 
+    translate([0, 0, cap_pin_len]) difference() {
         cylinder(d=cap_body_dia, h=cap_body_h);
-
-        // Hemispherical cup — centred on top face
-        // Sphere centre is at z = cap_body_h - cup_depth + cup_r
-        // (sphere extends cup_depth below the top surface)
-        translate([0, 0, cap_body_h - cup_depth + cup_r])
-            sphere(r=cup_r);
+        translate([0, 0, cap_body_h - cup_depth + cup_r]) sphere(r=cup_r);
     }
 }
+braille_cap();
 
 // Preview: bearing ball in cup (for visual check only)
 module bearing_ball_preview() {
