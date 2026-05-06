@@ -19,7 +19,8 @@ preview_mode = false;       // Set FALSE for final high-quality render!
 magnet_dia    = 3.0;   // 3mm dia neodymium disc magnet
 magnet_depth  = 2.0;   // 2mm deep (leaves 0mm floor — magnet flush with bottom)
 magnet_radius = 17.35; // Radius from centre (centre of outermost track, just inside disc edge)
-magnet_angle  = 0;     // Angular position (arbitrary — define as "home" reference)
+magnet_angle  = 90;    // Changed from 0° → 90° to match hall sensor repositioned at
+                       // base_plate y=+20mm (+Y axis). Was x=+19mm (+X axis, now outside plate).
 
 // Calculated Variables
 slice_angle = 360 / states;

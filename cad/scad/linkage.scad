@@ -1,136 +1,179 @@
 // =========================================================
 // BRAILLIX LINKAGE SET — Laser-Cut Metal Cranks
-// 6 stair-step flat metal pieces (1mm thick stainless/aluminium)
-// that bridge each concentric cam track to its Braille dot slot.
+// Revision 2.0 — Staggered arm heights, corrected total height
+// Updated 2026-05-06
 //
-// PRINT INTENT: These are NOT 3D-printed.
-// Export as DXF from OpenSCAD (File > Export > DXF) for laser cutting.
+// NOT 3D-printed. Export as DXF for laser cutting.
 // Material: 1mm stainless steel or 1mm aluminium sheet.
-// Post-processing: sand foot tip smooth, lubricate with silicone grease.
+// Post-process: sand foot tip smooth, lubricate with silicone grease.
+//
+// --- KEY DESIGN CHANGE FROM v1.0 ---
+// v1.0: all 6 linkages had the same riser_h = 9.0mm — WRONG.
+//   The available gap (base plate top to top plate bottom) is only 8mm.
+//   All linkages had identical arm positions — arms in same column overlap.
+//
+// v2.0 fixes:
+//   1. total_h = 12.0mm (foot bottom to nub top) — matches corrected stack.
+//   2. Arm heights are STAGGERED per column row to prevent collision:
+//        Top row (dots 1,4): arm at 3.5mm from foot
+//        Mid row (dots 2,5): arm at 6.5mm from foot
+//        Bot row (dots 3,6): arm at 9.5mm from foot
+//      Minimum inter-arm gap at worst case (adjacent arms, one +0.8mm travel):
+//        3.0mm stagger - 1.0mm arm_h - 0.8mm travel = 1.2mm clearance ✓
+//   3. arm_h reduced from 1.5mm to 1.0mm to accommodate stagger within total_h.
+//
+// --- VERIFIED STACK (z from outer box bottom) ---
+//   z=27.0  cam flat surface  → foot bottom (nub flush with top plate = dot DOWN)
+//   z=27.8  cam bump top      → foot bottom (nub 0.8mm above top plate = dot UP)
+//   z=39.0  top plate top surface
+//   total_h = 39.0 - 27.0 = 12.0mm ✓
 // =========================================================
 
 // --- 1. PARAMETERS ---
 
-thickness     = 1.0;   // Sheet metal thickness (mm)
-foot_w        = 2.0;   // Foot width (glides on cam track)
-foot_len      = 2.5;   // Foot length (contact patch)
-foot_radius   = 0.8;   // Rounded tip radius (minimise wear on resin cam)
-riser_h       = 9.0;   // Vertical riser height (clears cam disc + base plate top surface)
-nub_w         = 1.2;   // Top nub width — must match top_plate slot_width exactly
-nub_len       = 2.0;   // Top nub length
-nub_h         = 1.5;   // Top nub height (protrudes above top plate surface)
-arm_h         = 1.5;   // Horizontal arm thickness
+thickness     = 1.0;    // Sheet metal thickness (extrusion depth for DXF)
+foot_w        = 2.0;    // Foot width — straddles cam track (1.6mm wide), 0.2mm overhang each side
+foot_len      = 2.5;    // Foot contact patch length
+foot_radius   = 0.8;    // Rounded foot tip (reduces cam surface wear)
+nub_w         = 1.2;    // Nub width — matches top_plate slot_width (1.2mm) exactly
+nub_len       = 2.0;    // Nub length (radial extent)
+nub_h         = 1.5;    // Nub protrusion above arm/upper-riser top
+arm_h         = 1.0;    // Horizontal arm thickness (was 1.5 — reduced for stagger fit)
+total_h       = 12.0;   // Total height: foot bottom → nub top (matches corrected stack)
 
-// Cam track geometry (must match braille_cam2.scad)
+// Cam geometry (must match braille_cam2.scad exactly)
 track_width   = 1.6;
 track_gap     = 0.1;
 inner_radius  = 8.0;
 
-// Braille dot positions (must match top_plate.scad col/row spacing)
-col_spacing   = 4.8;   // ±2.4mm from centre
-row_spacing   = 2.6;   // +2.6, 0, -2.6mm
+// Braille dot positions (must match top_plate.scad)
+col_spacing   = 4.8;    // Left column at x=-2.4, right at x=+2.4
+row_spacing   = 2.6;    // Rows at y=+2.6, 0, -2.6
 
-// Derived: centre radius of each track
+// Track centre radius for track index t
 function track_r(t) = inner_radius + t * (track_width + track_gap) + track_width / 2;
+//  t=0: 8.85mm   t=1: 10.55mm   t=2: 12.25mm
+//  t=3: 13.95mm  t=4: 15.65mm   t=5: 17.35mm
 
-// Dot x positions: dots 1-3 on left column, dots 4-6 on right
 function dot_x(dot) = (dot < 3) ? -col_spacing/2 : col_spacing/2;
 function dot_y(dot) = (dot == 0 || dot == 3) ?  row_spacing :
                       (dot == 1 || dot == 4) ?  0 :
                                                 -row_spacing;
 
-// Track assignment: dot 0→track 0 (innermost), dot 5→track 5 (outermost)
-function dot_track(dot) = dot;
+// Arm Y position from foot bottom — STAGGERED per row to prevent collision
+// Dots 0,3 = top row (innermost tracks)  → lowest arm
+// Dots 1,4 = mid row                     → middle arm
+// Dots 2,5 = bottom row (outermost)      → highest arm
+function arm_y(dot) = (dot == 0 || dot == 3) ? 3.5 :
+                      (dot == 1 || dot == 4) ? 6.5 :
+                                               9.5;
+
+// Derived heights
+function lower_riser_h(dot) = arm_y(dot) - foot_len;
+//   dot 0,3: 3.5 - 2.5 = 1.0mm
+//   dot 1,4: 6.5 - 2.5 = 4.0mm
+//   dot 2,5: 9.5 - 2.5 = 7.0mm
+
+function upper_riser_h(dot) = total_h - arm_y(dot) - arm_h - nub_h;
+//   dot 0,3: 12.0 - 3.5 - 1.0 - 1.5 = 6.0mm
+//   dot 1,4: 12.0 - 6.5 - 1.0 - 1.5 = 3.0mm
+//   dot 2,5: 12.0 - 9.5 - 1.0 - 1.5 = 0.0mm  (nub sits directly on arm top)
 
 $fn = 40;
 
 // --- 2. MODULES ---
 
-// One complete linkage rendered as a flat 2D profile extruded to thickness.
-// origin = foot bottom-centre, x = horizontal, y = vertical (up = towards top plate)
-// The foot rests on the cam track; the nub protrudes through the top plate slot.
+// 2D profile of one linkage in the radial plane.
+// Local axes: X = radial (larger = outer/track side), Y = vertical (up).
+// Extruded to 'thickness' in Z for laser-cut preview.
 //
 // Parameters:
-//   tr   — cam track centre radius (where the foot sits)
-//   dx   — Braille dot x position (offset from cell centreline)
+//   tr  — cam track centre radius (where foot sits)
+//   dx  — Braille dot X column position (absolute, ±2.4mm)
+//   dot — dot index 0..5 (determines arm height stagger)
 
-module linkage_2d(tr, dx) {
-    // Calculate horizontal arm reach: from track centre to dot column
-    arm_x = dx - 0;   // dx is already the absolute x of the dot column
+module linkage_2d(tr, dx, dot) {
+    ay  = arm_y(dot);
+    lr  = lower_riser_h(dot);
+    ur  = upper_riser_h(dot);
 
-    // Foot (centred at x=tr, y=0)
-    // Riser bottom to top: y=0 to y=riser_h
-    // Horizontal arm: at y=riser_h, spanning from x=tr to x=dx
-    // Second riser: x=dx, from y=riser_h up to y=riser_h+nub_h+arm_h
-    // Nub: top nub_h at x=dx, width=nub_w
+    // Arm goes from track radius (outer end) to dot radius (inner end)
+    // dot_r = radial distance from cam centre to dot position
+    dot_r = sqrt(dx*dx + dot_y(dot)*dot_y(dot));
 
     union() {
-        // Foot — rounded rectangle at bottom
+        // A. Foot — rounded rectangle, centred at x=tr
         translate([tr - foot_w/2, 0])
             hull() {
-                translate([foot_radius, foot_radius])       circle(r=foot_radius);
-                translate([foot_w - foot_radius, foot_radius]) circle(r=foot_radius);
-                translate([foot_radius, foot_len])           square([foot_w - 2*foot_radius, 0.01]);
-                translate([foot_w - foot_radius, foot_len])  square([0.01, 0.01]);
+                translate([foot_radius, foot_radius])
+                    circle(r=foot_radius);
+                translate([foot_w - foot_radius, foot_radius])
+                    circle(r=foot_radius);
+                translate([foot_radius, foot_len])
+                    square([foot_w - 2*foot_radius, 0.01]);
+                translate([foot_w - foot_radius, foot_len])
+                    square([0.01, 0.01]);
             }
 
-        // Vertical riser (lower) — from foot top to horizontal arm
-        translate([tr - thickness/2, foot_len])
-            square([thickness, riser_h - foot_len]);
+        // B. Lower riser — from foot top up to arm bottom
+        if(lr > 0.01)
+            translate([tr - thickness/2, foot_len])
+                square([thickness, lr]);
 
-        // Horizontal arm — connects lower riser to upper riser at dx
-        x_lo = min(tr, dx) - thickness/2;
-        x_hi = max(tr, dx) + thickness/2;
-        translate([x_lo, riser_h - arm_h])
-            square([x_hi - x_lo, arm_h]);
+        // C. Horizontal arm — spans from dot_r (inner) to tr (outer)
+        translate([dot_r, ay])
+            square([tr - dot_r, arm_h]);
 
-        // Vertical riser (upper) — from horizontal arm to nub base
-        translate([dx - thickness/2, riser_h])
-            square([thickness, arm_h]);
+        // D. Upper riser — from arm top up to nub bottom (zero on outermost row)
+        if(ur > 0.01)
+            translate([dot_r - thickness/2, ay + arm_h])
+                square([thickness, ur]);
 
-        // Nub — fits into top_plate rectangular slot (width = nub_w)
-        translate([dx - nub_w/2, riser_h + arm_h])
+        // E. Nub — rectangular tab, fits top_plate slot (1.2mm wide × 2.0mm long)
+        //    Centred on dot_r in X, at the very top
+        translate([dot_r - nub_w/2, total_h - nub_h])
             square([nub_w, nub_h]);
     }
 }
 
-// 3D render (1mm thick extrusion) — for visual preview in OpenSCAD
-module linkage_3d(tr, dx) {
+module linkage_3d(tr, dx, dot) {
     linear_extrude(height=thickness)
-        linkage_2d(tr, dx);
+        linkage_2d(tr, dx, dot);
 }
 
 // --- 3. GENERATE ALL 6 LINKAGES ---
-// For DXF export: all 6 laid flat side-by-side with 3mm spacing.
-// For assembly preview: comment the flat layout and use the positioned version below.
+// Laid flat side-by-side for DXF export. 3mm gap between each.
+// For assembly preview: use the commented section below instead.
 
-// ----- FLAT LAYOUT (use this for DXF export) -----
-spacing = 30;   // mm between linkages on DXF sheet
+spacing = 30; // mm between linkage origins on DXF sheet
 
 for(dot = [0:5]) {
-    tr = track_r(dot_track(dot));
+    tr = track_r(dot);
     dx = dot_x(dot);
     translate([dot * spacing, 0, 0])
-        linkage_3d(tr, dx);
+        linkage_3d(tr, dx, dot);
 }
 
-// ----- ASSEMBLY PREVIEW (comment out above, uncomment below for visualisation) -----
-// Positions each linkage at its correct x offset for assembly check.
-// The foot should sit at the correct cam track radius.
-//
+// --- ASSEMBLY PREVIEW (comment out flat layout above, uncomment here) ---
 // for(dot = [0:5]) {
-//     tr = track_r(dot_track(dot));
-//     dx = dot_x(dot);
-//     color( (dot<3) ? "silver" : "lightgray" )
-//     translate([0, 0, 0])
-//         linkage_3d(tr, dx);
+//     tr  = track_r(dot);
+//     dx  = dot_x(dot);
+//     dy  = dot_y(dot);
+//     ang = atan2(dy, dx);  // angle from cam centre to dot position
+//     color((dot < 3) ? "silver" : "lightgray")
+//     rotate([0, 0, ang])
+//         linkage_3d(tr, dx, dot);
 // }
 
 // --- 4. REFERENCE TABLE ---
-// Linkage | Track # | Track centre radius | Dot   | Dot X  | Dot Y
-//    0    |    0    |     8.85 mm         | dot1  | -2.4mm | +2.6mm
-//    1    |    1    |    10.55 mm         | dot2  | -2.4mm |  0 mm
-//    2    |    2    |    12.25 mm         | dot3  | -2.4mm | -2.6mm
-//    3    |    3    |    13.95 mm         | dot4  | +2.4mm | +2.6mm
-//    4    |    4    |    15.65 mm         | dot5  | +2.4mm |  0 mm
-//    5    |    5    |    17.35 mm         | dot6  | +2.4mm | -2.6mm
+// Dot | Track | Track r (mm) | Dot X  | Dot Y  | Arm Y | Lower R | Upper R
+//  0  |   0   |   8.85       | -2.4   | +2.6   |  3.5  |  1.0    |  6.0
+//  1  |   1   |  10.55       | -2.4   |  0.0   |  6.5  |  4.0    |  3.0
+//  2  |   2   |  12.25       | -2.4   | -2.6   |  9.5  |  7.0    |  0.0
+//  3  |   3   |  13.95       | +2.4   | +2.6   |  3.5  |  1.0    |  6.0
+//  4  |   4   |  15.65       | +2.4   |  0.0   |  6.5  |  4.0    |  3.0
+//  5  |   5   |  17.35       | +2.4   | -2.6   |  9.5  |  7.0    |  0.0
+//
+// Collision clearance check (adjacent arms in same column, worst case):
+//   Stagger = 3.0mm, arm_h = 1.0mm, cam travel = 0.8mm
+//   Minimum gap = 3.0 - 1.0 - 0.8 = 1.2mm  ✓

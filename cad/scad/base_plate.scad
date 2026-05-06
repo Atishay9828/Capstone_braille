@@ -1,47 +1,64 @@
 // =========================================================
 // COMPONENT 03: BASE PLATE (28BYJ-48 OPTIMIZED)
+// Revision 2.1 — Motor now centred in box (outer_box v3.0)
+// Updated 2026-05-06
+//
+// Changes from v2.0:
+//   - Plate is now centred at x=0 (motor centre = box centre).
+//     Previously placed at x=−20 in the two-zone layout.
+//   - base_length widened from 42→50mm to sit symmetrically and
+//     give 1mm clearance to boss pillar centres at ±15mm each side.
+//     Internal box is now 52mm wide — 50mm plate + 1mm each side. ✓
+//   - All other geometry unchanged (correct since v2.0).
 // =========================================================
 
-// --- 1. PARAMETERS (Section 12) ---
-base_length = 60;
-base_width = 50;
-base_thickness = 5;
+// --- 1. PARAMETERS ---
 
-// Motor Interface (28BYJ-48)
-shaft_clearance = 8;
-motor_body_diameter = 28.3; // +0.3mm tolerance
-motor_seat_depth = 1.5;
-motor_mount_spacing = 31;
-motor_mount_hole = 3.4;
+// Plate body — centred over motor shaft (box centre x=0)
+base_length     = 50;      // X — widened from 42; centred at x=0 in new 60mm shell
+base_width      = 50;      // Y — unchanged
+base_thickness  = 5;       // Z
 
-// Cam Interface
-cam_pocket_diameter = 37; // 36.4mm cam + 0.3mm clearance each side
-cam_pocket_depth = 3;
+// Motor Interface — CORRECTED for actual 28BYJ-48 measurements
+// Previous values were wrong (body 28.3→29, mount hole 3.4→4.3, spacing 31→35)
+shaft_clearance      = 7;      // 5mm shaft + 1mm clearance each side
+motor_body_diameter  = 29;     // 28mm + 1mm tolerance (was 28.3mm — wrong)
+motor_seat_depth     = 1.5;    // Shallow pocket to locate motor body centrally
+motor_mount_spacing  = 35;     // Hole-to-hole distance (was 31mm — wrong)
+motor_mount_hole     = 4.3;    // 4mm hole + 0.3mm clearance (was 3.4mm — wrong)
 
-// Pin Plate Standoffs
+// Cam Interface (unchanged — matches braille_cam2.scad)
+cam_pocket_diameter = 37;   // 36.4mm cam OD + 0.3mm clearance each side
+cam_pocket_depth    = 3;    // Disc base (2mm) sits in pocket; bumps 0.2mm below plate top
+
+// Standoffs — CRITICAL FIX: was 3.5mm, now 8mm
+// Stack above plate: 8mm standoff + 3mm top plate = 11mm
+// Linkage total height = 12mm, foot on cam bump (0.2mm below plate top) → nub at +0.8mm
 standoff_diameter = 6;
-standoff_height = 3.5; // Above base surface
-standoff_offset = 15;  // 15mm from center (symmetrical)
+standoff_height   = 8;     // Was 3.5mm — FAR too short for cam + linkage + top plate stack
+standoff_offset   = 15;    // ±15mm from plate centre (must match outer_box boss_x/y_off)
 
-// Spring Cavity
-spring_cavity_width = 22;
-spring_cavity_depth = 16;
-spring_cavity_height = 10; // Making it a through-hole for service access
+// Spring Cavity — through-hole window for service access (unchanged)
+spring_cavity_width  = 22;
+spring_cavity_depth  = 16;
 
-// Hall Effect Sensor (homing)
-hall_pocket_x = 19;     // Just outside cam track area (cam radius 18.2mm + 0.8mm)
-hall_pocket_y = 0;
-hall_pocket_w = 5;      // SS49E / A3144 footprint
-hall_pocket_d = 4;
-hall_pocket_h = 3;      // Leaves 2mm floor under sensor
-hall_wire_w   = 2;      // Wire channel width
-hall_wire_d   = 1;      // Wire channel depth
+// Hall Effect Sensor pocket — REPOSITIONED
+// Previous: x=19mm → pocket exceeded 42mm plate width (21.5mm > 21mm edge)
+// New: at x=0, y=+20mm (along +Y axis, well within 25mm plate edge)
+// Magnet angle in braille_cam2.scad changed from 0° to 90° to match
+hall_pocket_x   = 0;
+hall_pocket_y   = 20;      // +Y axis, outside cam OD (18.2mm) by 1.8mm
+hall_pocket_w   = 5;       // SS49E / A3144 body footprint
+hall_pocket_d   = 4;
+hall_pocket_h   = 3;       // 2mm floor remaining below sensor
+// Wire channel runs from sensor pocket to +Y plate edge (25mm)
+hall_wire_w     = 2;
+hall_wire_d     = 1;
 
-// Ribbing
-rib_thickness = 3;
-rib_height = 3;
+// Ribbing (underside structural ribs)
+rib_thickness   = 3;
+rib_height      = 3;
 
-// Smoothness
 $fn = 80;
 
 // --- 2. MODULES ---
@@ -52,78 +69,74 @@ module main_body() {
 }
 
 module motor_features() {
-    // 1. Shaft Clearance (Through Hole)
+    // 1. Shaft clearance through-hole (7mm dia for 5mm shaft)
     cylinder(d=shaft_clearance, h=20, center=true);
-    
-    // 2. Motor Seating Pocket (From Bottom)
-    translate([0,0, -0.1])
+
+    // 2. Motor body seating pocket (from bottom — locates motor axially)
+    translate([0, 0, -0.1])
         cylinder(d=motor_body_diameter, h=motor_seat_depth + 0.1);
-        
-    // 3. Mounting Ears (Cutout for ears + Screw Holes)
-    for(i = [-1, 1]) {
-        translate([i * (motor_mount_spacing/2), 0, 0]) {
-            // Screw Hole
+
+    // 3. Motor mounting ear screw holes (35mm spacing, along X axis)
+    //    Motor ears are at the TOP face of the motor body (same face as shaft)
+    //    Screws go UP through the ear holes into the base plate underside
+    for(sx = [-1, 1]) {
+        translate([sx * (motor_mount_spacing / 2), 0, 0])
             cylinder(d=motor_mount_hole, h=20, center=true);
-            // Ear Recess (Optional, to let ears sit flush if needed, usually just screw hole is enough)
-            // We keep it simple per spec: just holes.
-        }
     }
 }
 
 module cam_features() {
-    // Cam Pocket (From Top)
-    translate([0,0, base_thickness - cam_pocket_depth])
+    // Cam disc pocket (from top face, 3mm deep)
+    // Disc base (2mm) sits here; bump tops end up 0.2mm below plate top
+    translate([0, 0, base_thickness - cam_pocket_depth])
         cylinder(d=cam_pocket_diameter, h=cam_pocket_depth + 1);
 }
 
 module hall_sensor_pocket() {
-    // Rectangular recess for Hall effect sensor body
+    // Rectangular recess on top face for Hall effect sensor (SS49E / A3144)
+    // Sensor detects magnet on cam disc underside as it passes at r=17.35mm
+    // Sensor at y=20mm is 1.8mm outside cam OD (18.2mm) — detects at 1.8mm radial gap
     translate([hall_pocket_x - hall_pocket_w/2,
                hall_pocket_y - hall_pocket_d/2,
                base_thickness - hall_pocket_h])
         cube([hall_pocket_w, hall_pocket_d, hall_pocket_h + 1]);
-    // Wire channel running to edge of plate
-    translate([hall_pocket_x + hall_pocket_w/2,
-               hall_pocket_y - hall_wire_w/2,
+
+    // Wire channel from pocket to +Y plate edge (for routing hall sensor wires)
+    translate([hall_pocket_x - hall_wire_w/2,
+               hall_pocket_y + hall_pocket_d/2,
                base_thickness - hall_wire_d])
-        cube([base_length/2 - hall_pocket_x - hall_pocket_w/2 + 1,
-              hall_wire_w, hall_wire_d + 1]);
+        cube([hall_wire_w,
+              base_width/2 - hall_pocket_y - hall_pocket_d/2 + 1,
+              hall_wire_d + 1]);
 }
 
 module spring_cavity() {
-    // Centered rectangular cutout (Section 10)
-    // We make it a through-hole window for easier assembly
+    // Through-hole window — service access and weight reduction
     cube([spring_cavity_width, spring_cavity_depth, 20], center=true);
 }
 
 module standoffs() {
-    // 4 Corner Posts (Section 9)
-    for(x = [-1, 1]) for(y = [-1, 1]) {
-        translate([x * standoff_offset, y * standoff_offset, base_thickness]) {
+    // 4 corner posts — support top plate 8mm above base plate top
+    // M2.5 tap holes for top plate mounting screws
+    for(sx = [-1, 1]) for(sy = [-1, 1]) {
+        translate([sx * standoff_offset, sy * standoff_offset, base_thickness]) {
             difference() {
-                // Post Body
                 cylinder(d=standoff_diameter, h=standoff_height);
-                // Screw Hole (M2.5)
-                translate([0,0,-1])
-                    cylinder(d=2.6, h=standoff_height + 2);
+                translate([0, 0, -1])
+                    cylinder(d=2.6, h=standoff_height + 2); // M2.5 clearance
             }
         }
     }
 }
 
 module ribs() {
-    // Underside Structural Ribs (Section 11)
-    // Must avoid the Motor Seat (approx R=15)
-    
-    safe_radius = motor_body_diameter/2 + 2;
-    
-    // X-Axis Ribs (Top and Bottom edges approx)
+    // Underside structural ribs — avoid motor body area
+    // X-axis ribs (along plate edges in Y)
     for(y_pos = [-base_width/2 + 2, base_width/2 - 2 - rib_thickness]) {
         translate([-base_length/2, y_pos, -rib_height])
             cube([base_length, rib_thickness, rib_height]);
     }
-    
-    // Y-Axis Ribs (Left and Right edges approx)
+    // Y-axis ribs (along plate edges in X)
     for(x_pos = [-base_length/2 + 2, base_length/2 - 2 - rib_thickness]) {
         translate([x_pos, -base_width/2, -rib_height])
             cube([rib_thickness, base_width, rib_height]);
@@ -141,8 +154,9 @@ union() {
         hall_sensor_pocket();
     }
     standoffs();
+    // Ribs clipped to plate footprint (no floating geometry)
     intersection() {
-        translate([0,0, -rib_height]) main_body();
+        translate([0, 0, -rib_height]) main_body();
         ribs();
     }
 }
