@@ -1,0 +1,69 @@
+name: Braillix CI
+
+on:
+  push:
+    branches: [ main, "backend/**", "feature/**" ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: "pytest (ubuntu / system python3)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # python-louis is NOT on PyPI for Linux — install via apt alongside liblouis.
+      # This installs liblouis C library + Python bindings in one step.
+      - name: Install liblouis + Python bindings
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            liblouis-dev \
+            liblouis-data \
+            python3-louis \
+            python3-pip
+
+      - name: Install nemeth.ctb compatibility wrapper
+        run: |
+          TABLES_DIR=$(python3 -c "import louis,os; print(os.path.dirname(louis.listTables()[0]))")
+          if [ ! -f "$TABLES_DIR/nemeth.ctb" ]; then
+            sudo cp scripts/nemeth.ctb "$TABLES_DIR/nemeth.ctb"
+            echo "Installed nemeth.ctb wrapper → $TABLES_DIR/nemeth.ctb"
+          else
+            echo "nemeth.ctb already present"
+          fi
+
+      # Install all pip deps except python-louis (handled by apt above).
+      - name: Install Python dependencies
+        run: |
+          pip install --break-system-packages \
+            $(grep -v "^python-louis\|^#" requirements.txt | tr '\n' ' ')
+
+      - name: Verify liblouis + Nemeth
+        run: |
+          python3 -c "
+          import louis, os
+          print('liblouis version:', louis.version())
+          basenames = {os.path.basename(t) for t in louis.listTables()}
+          print('grade1 available:', 'en-us-g1.ctb' in basenames)
+          print('nemeth available:', 'nemeth.ctb' in basenames)
+          r = louis.translateString(['unicode.dis','en-us-g1.ctb'], 'hello')
+          print('Grade 1 test:', repr(r), 'cells:', len(r))
+          "
+
+      - name: Run full pytest suite
+        run: |
+          python3 -m pytest tests/ -v --tb=short 2>&1 | tee pytest-output.txt
+          # Print summary line
+          grep -E "passed|failed|error|skipped" pytest-output.txt | tail -1
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-output
+          path: pytest-output.txt
+          retention-days: 7

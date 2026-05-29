@@ -18,6 +18,7 @@ Examples:
 from __future__ import annotations
 
 import os
+import pathlib
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -34,6 +35,9 @@ _BRAILLE_UNICODE_OFFSET = 0x2800
 _TABLE_GRADE1 = "en-us-g1.ctb"
 _TABLE_GRADE2 = "en-us-g2.ctb"
 _TABLE_NEMETH = "nemeth.ctb"
+
+# Project scripts/ directory — contains our nemeth.ctb compatibility wrapper.
+_SCRIPTS_DIR = pathlib.Path(__file__).parent.parent.parent / "scripts"
 
 
 class BrailleGrade(str, Enum):
@@ -128,30 +132,55 @@ def _table_for_grade(grade: BrailleGrade) -> str:
     return mapping[grade]
 
 
+def _system_tables_dir() -> str:
+    """Return the liblouis system tables directory (empty string on failure)."""
+    try:
+        tables = louis.listTables()
+        if tables:
+            return os.path.dirname(tables[0])
+    except Exception:
+        pass
+    return ""
+
+
 def _table_list(table_name: str) -> list[str]:
     """Return the translateString table list, prepending unicode.dis when available.
 
-    Real liblouis on Linux/macOS returns internal ASCII from translateString by
-    default. Prepending unicode.dis makes it output Unicode Braille (U+2800+).
-    The Windows pure-Python shim ignores the table list and always outputs
-    Unicode Braille, so this is safe on all platforms.
+    Real liblouis on Linux/macOS outputs internal ASCII by default.
+    Prepending unicode.dis (via absolute path) forces Unicode Braille output.
+    The Windows shim ignores the table list and always outputs Unicode Braille.
 
-    Note: listTables() only returns translation tables (.ctb/.utb), NOT display
-    tables (.dis). We check for unicode.dis by inspecting the tables directory
-    directly, derived from the path of any translation table entry.
+    We use absolute paths because liblouis only searches LOUIS_TABLEPATH when
+    table names are relative — absolute paths always resolve correctly.
     """
-    try:
-        all_tables = louis.listTables()
-        if all_tables:
-            # Extract the directory containing the translation tables.
-            tables_dir = os.path.dirname(all_tables[0])
-            if tables_dir and os.path.exists(
-                os.path.join(tables_dir, "unicode.dis")
-            ):
-                return ["unicode.dis", table_name]
-    except Exception:
-        pass
+    sys_dir = _system_tables_dir()
+    if not sys_dir:
+        return [table_name]
+
+    unicode_dis = os.path.join(sys_dir, "unicode.dis")
+    if os.path.exists(unicode_dis):
+        return [unicode_dis, table_name]
     return [table_name]
+
+
+def _nemeth_path() -> str | None:
+    """Return the absolute path to nemeth.ctb if available, else None.
+
+    Checks two locations in order:
+    1. The system liblouis tables directory (where the user may have installed it)
+    2. The project scripts/ directory (where our compatibility wrapper lives)
+    """
+    sys_dir = _system_tables_dir()
+    if sys_dir:
+        sys_nemeth = os.path.join(sys_dir, "nemeth.ctb")
+        if os.path.exists(sys_nemeth):
+            return sys_nemeth
+
+    scripts_nemeth = _SCRIPTS_DIR / "nemeth.ctb"
+    if scripts_nemeth.exists():
+        return str(scripts_nemeth)
+
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -231,13 +260,19 @@ def translate_math(latex: str) -> TranslationResult:
             "liblouis is not installed. Run 'make check-louis' or scripts/setup.sh."
         )
 
-    tables = check_tables_available()
-    if not tables.get("nemeth"):
+    nemeth = _nemeth_path()
+    if nemeth is None:
         raise RuntimeError(
-            "nemeth.ctb table is not available in this liblouis installation."
+            "nemeth.ctb is not available. Install liblouis-data or place "
+            "scripts/nemeth.ctb in the project."
         )
 
-    braille_unicode: str = louis.translateString(_table_list(_TABLE_NEMETH), latex)
+    sys_dir = _system_tables_dir()
+    unicode_dis = os.path.join(sys_dir, "unicode.dis") if sys_dir else "unicode.dis"
+    table_args = (
+        [unicode_dis, nemeth] if os.path.exists(unicode_dis) else [nemeth]
+    )
+    braille_unicode: str = louis.translateString(table_args, latex)
     dot_patterns = _unicode_to_dot_patterns(braille_unicode)
 
     return TranslationResult(
@@ -268,11 +303,11 @@ def check_tables_available() -> dict[str, bool]:
     if not _LOUIS_AVAILABLE:
         return {"grade1": False, "grade2": False, "nemeth": False}
 
-    # listTables() returns full paths on Linux (/usr/share/liblouis/tables/foo.ctb).
-    # Compare basenames so the check works on all platforms.
+    # listTables() returns full paths on Linux — compare basenames.
     available_basenames = [os.path.basename(t) for t in louis.listTables()]
     return {
         "grade1": _TABLE_GRADE1 in available_basenames,
         "grade2": _TABLE_GRADE2 in available_basenames,
-        "nemeth": _TABLE_NEMETH in available_basenames,
+        # nemeth.ctb may be in the system dir OR in our scripts/ wrapper
+        "nemeth": _nemeth_path() is not None,
     }

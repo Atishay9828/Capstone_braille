@@ -1,0 +1,8 @@
+# nemeth.ctb -- Nemeth Code for Mathematics and Science Notation
+#
+# nemeth.ctb was removed from the liblouis 3.x table set.
+# This wrapper delegates to en-us-mathtext.ctb which provides
+# equivalent coverage for math notation in US Braille/Nemeth.
+# Created for the Braillix project for liblouis >= 3.28 compatibility.
+
+include en-us-mathtext.ctb
