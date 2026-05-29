@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.routers import health, translate
+from backend.routers import health, ocr, translate
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,7 @@ app.add_middleware(
 
 app.include_router(health.router)
 app.include_router(translate.router)
+app.include_router(ocr.router)
 
 # Phase 3: WebSocket classroom router will be included here.
 # app.include_router(classroom.router)
@@ -65,5 +66,7 @@ async def root() -> dict:
             "translate_text": "POST /translate",
             "translate_math": "POST /translate-math",
             "cam_angles": "POST /translate/cam-angles",
+            "process_pdf": "POST /ocr/process-pdf",
+            "pdf_info": "GET /ocr/pdf-info",
         },
     }
