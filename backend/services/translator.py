@@ -17,6 +17,7 @@ Examples:
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -127,6 +128,32 @@ def _table_for_grade(grade: BrailleGrade) -> str:
     return mapping[grade]
 
 
+def _table_list(table_name: str) -> list[str]:
+    """Return the translateString table list, prepending unicode.dis when available.
+
+    Real liblouis on Linux/macOS returns internal ASCII from translateString by
+    default. Prepending unicode.dis makes it output Unicode Braille (U+2800+).
+    The Windows pure-Python shim ignores the table list and always outputs
+    Unicode Braille, so this is safe on all platforms.
+
+    Note: listTables() only returns translation tables (.ctb/.utb), NOT display
+    tables (.dis). We check for unicode.dis by inspecting the tables directory
+    directly, derived from the path of any translation table entry.
+    """
+    try:
+        all_tables = louis.listTables()
+        if all_tables:
+            # Extract the directory containing the translation tables.
+            tables_dir = os.path.dirname(all_tables[0])
+            if tables_dir and os.path.exists(
+                os.path.join(tables_dir, "unicode.dis")
+            ):
+                return ["unicode.dis", table_name]
+    except Exception:
+        pass
+    return [table_name]
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -166,7 +193,7 @@ def translate_text(
         )
 
     table = _table_for_grade(grade)
-    braille_unicode: str = louis.translateString([table], text)
+    braille_unicode: str = louis.translateString(_table_list(table), text)
     dot_patterns = _unicode_to_dot_patterns(braille_unicode)
 
     return TranslationResult(
@@ -210,7 +237,7 @@ def translate_math(latex: str) -> TranslationResult:
             "nemeth.ctb table is not available in this liblouis installation."
         )
 
-    braille_unicode: str = louis.translateString([_TABLE_NEMETH], latex)
+    braille_unicode: str = louis.translateString(_table_list(_TABLE_NEMETH), latex)
     dot_patterns = _unicode_to_dot_patterns(braille_unicode)
 
     return TranslationResult(
@@ -241,9 +268,11 @@ def check_tables_available() -> dict[str, bool]:
     if not _LOUIS_AVAILABLE:
         return {"grade1": False, "grade2": False, "nemeth": False}
 
-    available_tables: list[str] = louis.listTables()
+    # listTables() returns full paths on Linux (/usr/share/liblouis/tables/foo.ctb).
+    # Compare basenames so the check works on all platforms.
+    available_basenames = [os.path.basename(t) for t in louis.listTables()]
     return {
-        "grade1": _TABLE_GRADE1 in available_tables,
-        "grade2": _TABLE_GRADE2 in available_tables,
-        "nemeth": _TABLE_NEMETH in available_tables,
+        "grade1": _TABLE_GRADE1 in available_basenames,
+        "grade2": _TABLE_GRADE2 in available_basenames,
+        "nemeth": _TABLE_NEMETH in available_basenames,
     }
