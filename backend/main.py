@@ -23,8 +23,12 @@ async def lifespan(app: FastAPI):
             "Run scripts/setup.sh to install."
         )
 
+    from backend.core.db import create_all_tables
+    create_all_tables()
+    logger.info("SQLite tables ready.")
+
     yield
-    # --- Shutdown (nothing to clean up in Phase 0/1) ---
+    # --- Shutdown ---
 
 
 app = FastAPI(
