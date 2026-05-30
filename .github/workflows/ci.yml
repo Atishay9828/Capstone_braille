@@ -28,7 +28,10 @@ jobs:
 
       - name: Install nemeth.ctb compatibility wrapper
         run: |
-          TABLES_DIR=$(python3 -c "import louis,os; print(os.path.dirname(louis.listTables()[0]))")
+          # Ubuntu's apt python3-louis binding has no listTables(); locate the
+          # tables dir from the installed liblouis-data package instead.
+          TABLES_DIR=$(dpkg -L liblouis-data 2>/dev/null | grep -m1 '/tables$' || echo /usr/share/liblouis/tables)
+          echo "Using tables dir: $TABLES_DIR"
           if [ ! -f "$TABLES_DIR/nemeth.ctb" ]; then
             sudo cp scripts/nemeth.ctb "$TABLES_DIR/nemeth.ctb"
             echo "Installed nemeth.ctb wrapper → $TABLES_DIR/nemeth.ctb"
@@ -52,13 +55,19 @@ jobs:
 
       - name: Verify liblouis + Nemeth
         run: |
+          TABLES_DIR=$(dpkg -L liblouis-data 2>/dev/null | grep -m1 '/tables$' || echo /usr/share/liblouis/tables)
           python3 -c "
           import louis, os
+          tables_dir = '$TABLES_DIR'
           print('liblouis version:', louis.version())
-          basenames = {os.path.basename(t) for t in louis.listTables()}
-          print('grade1 available:', 'en-us-g1.ctb' in basenames)
-          print('nemeth available:', 'nemeth.ctb' in basenames)
-          r = louis.translateString(['unicode.dis','en-us-g1.ctb'], 'hello')
+          files = set(os.listdir(tables_dir)) if os.path.isdir(tables_dir) else set()
+          print('tables dir:', tables_dir)
+          print('grade1 available:', 'en-us-g1.ctb' in files)
+          print('nemeth available:', 'nemeth.ctb' in files)
+          r = louis.translateString(
+              [os.path.join(tables_dir, 'unicode.dis'), os.path.join(tables_dir, 'en-us-g1.ctb')],
+              'hello',
+          )
           print('Grade 1 test:', repr(r), 'cells:', len(r))
           "
 

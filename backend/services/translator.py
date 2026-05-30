@@ -132,6 +132,15 @@ def _table_for_grade(grade: BrailleGrade) -> str:
     return mapping[grade]
 
 
+# Known liblouis table install locations, used as a fallback when the Python
+# binding does not expose listTables() (e.g. Ubuntu's apt python3-louis, unlike
+# the PyPI python-louis shim used on Windows).
+_FALLBACK_TABLE_DIRS = (
+    "/usr/share/liblouis/tables",
+    "/usr/local/share/liblouis/tables",
+)
+
+
 def _system_tables_dir() -> str:
     """Return the liblouis system tables directory (empty string on failure)."""
     try:
@@ -139,7 +148,11 @@ def _system_tables_dir() -> str:
         if tables:
             return os.path.dirname(tables[0])
     except Exception:
+        # Binding may lack listTables(); fall through to known locations.
         pass
+    for candidate in _FALLBACK_TABLE_DIRS:
+        if os.path.isdir(candidate):
+            return candidate
     return ""
 
 
@@ -304,7 +317,14 @@ def check_tables_available() -> dict[str, bool]:
         return {"grade1": False, "grade2": False, "nemeth": False}
 
     # listTables() returns full paths on Linux — compare basenames.
-    available_basenames = [os.path.basename(t) for t in louis.listTables()]
+    try:
+        available_basenames = [os.path.basename(t) for t in louis.listTables()]
+    except Exception:
+        # Binding without listTables() (e.g. apt python3-louis): detect on disk.
+        sys_dir = _system_tables_dir()
+        available_basenames = (
+            os.listdir(sys_dir) if sys_dir and os.path.isdir(sys_dir) else []
+        )
     return {
         "grade1": _TABLE_GRADE1 in available_basenames,
         "grade2": _TABLE_GRADE2 in available_basenames,
