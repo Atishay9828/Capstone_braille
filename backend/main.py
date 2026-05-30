@@ -69,6 +69,8 @@ async def root() -> dict:
             "translate_math": "POST /translate-math",
             "cam_angles": "POST /translate/cam-angles",
             "process_pdf": "POST /ocr/process-pdf",
+            "ocr_image": "POST /ocr/image",
+            "image_to_braille": "POST /ocr/image-to-braille",
             "create_session": "POST /classroom/sessions",
             "teacher_ws": "WS /classroom/teacher/{code}",
             "student_ws": "WS /classroom/student/{code}",
