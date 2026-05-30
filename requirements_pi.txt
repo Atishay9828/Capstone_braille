@@ -1,0 +1,38 @@
+# Braillix — Raspberry Pi deployment requirements
+#
+# The Pi runs the BACKEND only: FastAPI (translation + WebSocket classroom +
+# assessment), liblouis, SQLite, PDF text extraction. It does NOT run pix2tex —
+# torch on ARM is slow (minutes per image) and heavy (>1 GB). Image OCR runs on
+# Shaurya's laptop; the Pi receives dot patterns over the network.
+#
+# So this file deliberately OMITS: torch, pix2tex, timm, einops, matplotlib,
+# and the test stack (pytest/httpx) — none are needed to run the service.
+#
+# Versions match the validated local environment (Phase 4: 511 tests green).
+# Tested target: Raspberry Pi OS Bookworm (Debian 12), Python 3.11.
+
+# --- Web framework ---
+fastapi==0.136.3
+uvicorn[standard]==0.48.0
+python-multipart==0.0.29
+
+# --- Braille translation ---
+# python-louis is NOT installed via pip on the Pi (no reliable ARM wheel).
+# setup_pi.sh installs it from apt as python3-louis (+ liblouis-data).
+#   python-louis==3.28.0   # <-- apt: sudo apt-get install python3-louis
+
+# --- Data validation / config ---
+pydantic==2.13.4
+pydantic-settings==2.14.1
+python-dotenv==1.2.2
+
+# --- Database ---
+sqlmodel==0.0.38
+
+# --- PDF text extraction (no OCR) ---
+pdfplumber==0.11.9
+PyMuPDF==1.27.2.3
+
+# --- Image decode (image_preprocessor is imported at startup even though the Pi
+#     never runs OCR; Pillow is light and ARM wheels exist) ---
+Pillow==11.1.0
