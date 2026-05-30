@@ -1,3 +1,13 @@
 GEMINI.md
 .claude
 __pycache__/*
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.env
+braillix.db
+.pytest_cache/
+.coverage
+htmlcov/
+.DS_Store

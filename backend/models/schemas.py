@@ -96,3 +96,42 @@ class CamAnglesResponse(BaseModel):
     dot_patterns: list[int] = Field(description="Input dot patterns.")
     angles_degrees: list[float] = Field(description="Corresponding cam angles in degrees.")
     cell_count: int = Field(description="Number of cells (length of both lists).")
+
+
+# ---------------------------------------------------------------------------
+# Phase 2 — math image OCR (L4 Input Processor)
+# ---------------------------------------------------------------------------
+
+class OCRImageResponse(BaseModel):
+    """Raw OCR result for POST /ocr/image."""
+
+    filename: str = Field(description="Original uploaded filename.")
+    latex: str | None = Field(description="Extracted LaTeX, or null if OCR failed.")
+    confidence: float = Field(description="Heuristic confidence in [0.0, 1.0].")
+    preprocessing_applied: bool = Field(description="Whether image preprocessing ran.")
+    inference_time_ms: float = Field(description="pix2tex inference time in milliseconds.")
+    success: bool = Field(description="True if usable LaTeX was extracted.")
+    error: str | None = Field(default=None, description="Human-readable error if success is false.")
+
+
+class PipelineStages(BaseModel):
+    """Per-stage timing for the image → Braille pipeline (milliseconds)."""
+
+    preprocessing_ms: float = Field(description="Image preprocessing time.")
+    ocr_ms: float = Field(description="pix2tex inference time.")
+    translation_ms: float = Field(description="LaTeX → Nemeth translation time.")
+
+
+class ImageToBrailleResponse(BaseModel):
+    """Full image → Nemeth Braille result for POST /ocr/image-to-braille."""
+
+    filename: str = Field(description="Original uploaded filename.")
+    latex: str | None = Field(description="Raw OCR LaTeX output (for debugging).")
+    braille_unicode: str = Field(description="Nemeth Braille string (empty if pipeline failed).")
+    dot_patterns: list[int] = Field(description="6-bit dot patterns (0–63) per cell.")
+    cell_count: int = Field(description="Number of Braille cells produced.")
+    ocr_confidence: float = Field(description="OCR confidence in [0.0, 1.0].")
+    total_time_ms: float = Field(description="End-to-end wallclock time in milliseconds.")
+    pipeline_stages: PipelineStages = Field(description="Per-stage timing breakdown.")
+    success: bool = Field(description="True if Braille was produced from the image.")
+    error: str | None = Field(default=None, description="Human-readable error if success is false.")

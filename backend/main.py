@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.routers import health, ocr, translate
+from backend.routers import classroom, health, ocr, translate
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +23,12 @@ async def lifespan(app: FastAPI):
             "Run scripts/setup.sh to install."
         )
 
+    from backend.core.db import create_all_tables
+    create_all_tables()
+    logger.info("SQLite tables ready.")
+
     yield
-    # --- Shutdown (nothing to clean up in Phase 0/1) ---
+    # --- Shutdown ---
 
 
 app = FastAPI(
@@ -49,9 +53,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(translate.router)
 app.include_router(ocr.router)
-
-# Phase 3: WebSocket classroom router will be included here.
-# app.include_router(classroom.router)
+app.include_router(classroom.router)   # Phase 3: WebSocket classroom
 
 
 @app.get("/", tags=["root"])
@@ -67,6 +69,10 @@ async def root() -> dict:
             "translate_math": "POST /translate-math",
             "cam_angles": "POST /translate/cam-angles",
             "process_pdf": "POST /ocr/process-pdf",
-            "pdf_info": "GET /ocr/pdf-info",
+            "ocr_image": "POST /ocr/image",
+            "image_to_braille": "POST /ocr/image-to-braille",
+            "create_session": "POST /classroom/sessions",
+            "teacher_ws": "WS /classroom/teacher/{code}",
+            "student_ws": "WS /classroom/student/{code}",
         },
     }
