@@ -50,7 +50,7 @@ jobs:
           # Drop excluded packages and full-line comments, then strip any
           # inline "# ..." comments so pip receives clean specifiers only.
           pip install --break-system-packages \
-            $(grep -vE "^python-louis|^#|^pix2tex|^torch|^timm|^einops" requirements.txt \
+            $(grep -vE "^python-louis|^#|^pix2tex|^torch|^timm|^einops|^matplotlib" requirements.txt \
               | sed 's/#.*//' | tr '\n' ' ')
 
       - name: Verify liblouis + Nemeth

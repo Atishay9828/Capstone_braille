@@ -1,3 +1,89 @@
+# Braillix Autonomous Session Log — 2026-05-31 (Phase 3: Adaptive Assessment)
+
+**Branch:** `backend/phase0-pr` (fast-forwarded onto `team/main` after PRs #1–3 merged)
+**Final test count:** 494 passed / 0 failed / 0 skipped
+**Test progression:** 400 (Phase 2) → 402 (OCR benchmark) → 483 (assessment) → 494 (PDF pipeline)
+
+---
+
+## What was built
+
+| Task | File(s) | Key decision |
+|------|---------|--------------|
+| 0 Git hygiene | `.github/workflows/ci.yml` | Branch was already merged to team/main via PRs #1–3 → fast-forward (no rebase needed); bumped checkout/upload-artifact v4→v5 (Node 20 EOL) |
+| 1 OCR benchmark | `scripts/ocr_benchmark.py`, `scripts/generate_benchmark_images.py`, `docs/ocr-benchmark-results.md` | Ran REAL pix2tex on 20 ground-truth renders; tuned confidence with measured "exotic command" flag |
+| 2 PDF pipeline | `backend/services/pdf_processor.py`, `backend/routers/ocr.py` | `extract_pages()` routes each page text/OCR/none; per-page schema, backward-compatible combined fields |
+| 3 Assessment | `backend/services/{knowledge_tracer,mcq_generator}.py`, `backend/routers/assessment.py` | **The novel ML contribution.** Pure-Python online BKT + rule-based error-pattern distractors; SQLite-backed; choices Braille-encoded |
+| 4 API contract | `docs/api-contract.md` | Complete request/response/error spec + WS protocol for Harshita |
+| 5 Demo | `scripts/demo_full.py`, `docs/demo-script.md` | 3-scene in-process runner (`--mock-ocr`/`--simulator`), fresh student id per run, spoken narrative |
+| 6 Regression | `requirements.txt`, `docs/session-log.md` | BKT/MCQ added **no new runtime deps** (pure stdlib); matplotlib is script-only, CI-excluded |
+
+---
+
+## Research findings (web + measured)
+
+- **OCR benchmark (measured, not estimated):** pix2tex scores **20% strict / 85%
+  lenient** exact match on 20 clean renders, mean similarity 0.80, ~1.7 s/img CPU.
+  Errors are mostly cosmetic (`x`→`X`, redundant braces); **radicals hallucinate**
+  worst. Confidence heuristic now flags out-of-distribution commands (`\cal`,
+  `\lambda`...) that signal plausible-but-wrong reads. → `docs/ocr-benchmark-results.md`.
+- **BKT:** standard 4-parameter model (L0/T/G/S); best practice G<0.3, S<0.1 (our
+  defaults comply). Chose a **from-scratch online implementation** over pyBKT —
+  pyBKT is for *offline parameter fitting* from log data, which we don't do; we use
+  fixed research params + online posterior updates. BKT formula verified numerically
+  in a unit test (linear, 1 correct → p_knows 0.30→0.689, hand-checked).
+- **MCQ distractors:** literature (arxiv 2404.02124, 2406.19356) confirms rule-based
+  distractors that encode *specific misconceptions* are valid and error-consistent for
+  templated school math, and that LLMs are weaker at anticipating real student errors.
+  Our distractors map to named errors (sign_error, dropped_term, add_across, one_root…).
+
+---
+
+## Smoke test output — `python scripts/demo_full.py --all --mock-ocr`
+
+```
+SCENE 1: Live Text/Math Translation
+  Input LaTeX: x^2 + 3x + 2 = 0
+  Nemeth Braille: ⠭⠼⠃  ⠼⠉⠭  ⠼⠃  ⠼⠚   (16 cells)
+  Cam angles: [253.1deg, 337.5deg, 16.9deg, 0.0deg, 0.0deg, ...]
+
+SCENE 2: Photo Upload -> OCR -> Braille
+  OCR extracted:  x^2 + 3x + 2 = 0 (confidence 0.84)
+  Pipeline: preprocess=74ms | ocr=12ms | translate=2ms | total=120ms
+
+SCENE 3: Adaptive Assessment
+  Question: What are the roots of x^2 + 3x + 2 = 0?  [skill=quadratic, difficulty=0.6]
+    A) x = -2 and x = -1   B) x = -1 and x = 0   C) x = -1   D) x = 1 and x = 2
+  Student selects: A (correct)
+  Knowledge update: p_knows(quadratic): 0.10 -> 0.37
+  Recommendation: Building quadratic skills — keep going.
+```
+
+---
+
+## Shaurya's next actions
+
+1. **Validate real OCR on a real photo:** `python scripts/demo_full.py --all`
+   (real pix2tex) and point `scripts/ocr_benchmark.py` at an actual NCERT textbook
+   scan — synthetic renders are an upper bound; real fonts will differ.
+2. **Send `docs/api-contract.md` to Harshita** — she can start the frontend now.
+3. **Show `knowledge_tracer.py` + the BKT unit test to Dr. Sumit Sharma** — this is
+   the defensible ML angle (explainable, no black box).
+4. **Tune BKT params / MCQ difficulty** once you have a little real student data.
+5. **Schedule a session with a VI student/teacher** (Patiala/Chandigarh blind school)
+   — user testing is irreplaceable.
+
+## Phase 4 backlog
+
+- Frontend (Harshita): upload portal, teacher console, assessment UI.
+- CamMotorHAL (Aniket): real GPIO behind the same HAL contract.
+- Stretch (not built this session): wire assessment into the WebSocket classroom so a
+  broadcast auto-generates a class question; `/assessment/session/{code}` dashboard.
+- Report: architecture, ML section (BKT), OCR limitations, user-testing results.
+
+---
+---
+
 # Braillix Autonomous Session Log — 2026-05-31 (Phase 2: Image OCR)
 
 **Branch:** `backend/phase0-pr`
