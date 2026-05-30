@@ -29,6 +29,19 @@ pdfplumber==0.11.0       # PDF text extraction
 PyMuPDF==1.24.3          # PDF image extraction (fitz)
 
 # ------------------------------------------------------------
-# Phase 2 dependencies — uncomment when starting Phase 2 work.
+# Phase 2 — math image OCR (L4 Input Processor)
 # ------------------------------------------------------------
-# pix2tex==0.1.2          # math image → LaTeX OCR
+# pix2tex converts images of equations → LaTeX (ViT encoder + GPT-2 decoder).
+# Used via pix2tex.cli.LatexOCR. Downloads a ~1.5 GB model on first inference.
+# It pulls torch/timm/einops automatically; we pin them for reproducibility.
+#
+# NOTE for CI: the OCR test suite mocks pix2tex entirely (CPU inference is
+# 5–30s/image), and backend/services/ocr_service.py guards the import with
+# try/except ImportError. So the full suite stays green even when this heavy
+# ML stack is NOT installed — CI skips it for speed (see .github/workflows/ci.yml).
+pix2tex==0.1.4            # math image → LaTeX OCR (pix2tex.cli.LatexOCR)
+torch==2.6.0             # pulled by pix2tex; pinned for reproducibility
+timm==0.5.4              # ViT backbone used by pix2tex
+einops==0.8.2            # tensor ops used by pix2tex
+# Pillow (already implied by the stack) — image decode/preprocess (image_preprocessor.py)
+Pillow==11.1.0

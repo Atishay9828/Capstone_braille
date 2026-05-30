@@ -1,3 +1,101 @@
+# Braillix Autonomous Session Log — 2026-05-31 (Phase 2: Image OCR)
+
+**Branch:** `backend/phase0-pr`
+**Final test count:** 400 passed / 0 failed / 0 skipped (Windows, real liblouis shim)
+**Test progression:** 326 (Phase 1) → 351 (preprocessor) → 400 (OCR service + endpoints)
+
+---
+
+## Tasks Completed
+
+| Task | File(s) | Key decision |
+|------|---------|--------------|
+| Env audit + research | `docs/env-audit-phase2.md` | pix2tex 0.1.4, torch 2.6.0, CPU mode; no opencv (PIL only) |
+| Test images | `scripts/generate_test_images.py`, `datasets/test_images/` | 7 synthetic equations, incl. 72-DPI low-quality case |
+| Image preprocessor | `backend/services/image_preprocessor.py` (+27 tests) | RGB (not grayscale), 1.5× contrast, light sharpen; no Otsu — pix2tex uses raw pixels |
+| OCR service | `backend/services/ocr_service.py` (+36 tests) | Lazy model load, never raises, heuristic confidence (no native score) |
+| OCR endpoints | `backend/routers/ocr.py`, `backend/models/schemas.py` (+13 tests) | `POST /ocr/image`, `POST /ocr/image-to-braille`; unreadable input → 200 success=false |
+| Smoke test | `scripts/smoke_test_phase2.py` | In-process TestClient; mock mode default, `--real` for actual pix2tex |
+| Requirements + CI | `requirements.txt`, `.github/workflows/ci.yml` | Heavy ML stack pinned but excluded from CI (tests mock OCR) |
+
+---
+
+## Research Findings (web + local verification)
+
+- **pix2tex 0.1.4** is current and actively maintained; `pix2tex.cli.LatexOCR`
+  returns a raw LaTeX **string with no confidence score** → we estimate confidence
+  via heuristics (length, brace balance, garbage markers, command density).
+- **Preprocessing:** pix2tex has an internal resolution-optimizing NN, so we do NOT
+  aggressively upscale. Keep **RGB** (grayscale hurts the ViT encoder), enhance
+  contrast 1.5×, sharpen once. **No Otsu/binary threshold** — it strips anti-aliasing
+  the encoder relies on.
+- **CPU inference** is 5–30s/image — acceptable for the teacher-scan demo flow, but
+  unacceptable in tests, so **every OCR test mocks the model**. The model (~1.5 GB)
+  is downloaded only on first real inference; it is never downloaded in CI.
+- **Failure mode:** pix2tex returns `""` (not an exception) on failure → the service
+  treats empty/garbage output as `success=False` rather than crashing.
+
+---
+
+## Smoke Test Output (mock mode)
+
+```
+[1] POST /ocr/image
+  LaTeX:      x + 2 = 5
+  Confidence: 0.85
+  OCR time:   12.0ms
+  Status:     OK success
+
+[2] POST /ocr/image-to-braille
+  LaTeX:      x + 2 = 5
+  Braille:    ⠭⠀⠀⠼⠃⠀⠀⠼⠑
+  Dot patterns: [45, 0, 0, 60, 3, 0, 0, 60, 17]
+  Pipeline:   preprocess=1.8ms | ocr=12.0ms | translate=0.2ms | total=15.2ms
+  Status:     OK success
+```
+
+---
+
+## Key Technical Decisions (this session)
+
+**Layer boundaries:** OCR (L4) lives in `services/ocr_service.py`; preprocessing (L4)
+in `services/image_preprocessor.py`; translation (L3) in `services/translator.py`.
+The `image-to-braille` route (L5) only *orchestrates* these services and times each
+stage — no algorithms in the handler.
+
+**Graceful degradation:** Both new endpoints return **HTTP 200 with `success=false`**
+for unreadable images / failed OCR — an unreadable photo is a quality issue, not a
+server error. Only malformed requests (empty/non-image → 400, >10 MB → 413) are 4xx.
+
+**CI stays fast + green:** `requirements.txt` pins the real Phase 2 stack
+(pix2tex/torch/timm/einops) for local reproducibility, but CI *excludes* it. Tests
+mock pix2tex and `ocr_service.py` guards the import (`try/except ImportError`), so the
+suite is green with or without the ML stack installed. Also fixed a latent CI bug: the
+pip-install step now strips inline `# comments` from requirements before passing to pip
+(pip errors on a bare `#` token).
+
+---
+
+## Immediate Next Actions for Shaurya
+
+1. **Validate real OCR accuracy:** run `python scripts/smoke_test_phase2.py --real`
+   (first run downloads ~1.5 GB) and, better, point it at a **real textbook photo** —
+   synthetic fixtures don't reflect pix2tex's true accuracy on printed math.
+2. **Tune the confidence heuristic** once you've seen real outputs — current thresholds
+   in `ocr_service._estimate_confidence` are conservative guesses, not data-driven.
+3. **Decide preprocessing defaults** after real-image testing (contrast factor, sharpen).
+
+---
+
+## Phase 3 Backlog
+
+- Wire PDF image extraction (PyMuPDF) → OCR service for image-only/math pages.
+- `POST /ocr/benchmark` — batch images → accuracy/timing report for demo prep.
+- Pix2Text evaluation as a pix2tex upgrade (mixed text+math pages).
+
+---
+---
+
 # Braillix Autonomous Session Log — 2026-05-30
 
 **Branch:** `backend/phase0-pr`  

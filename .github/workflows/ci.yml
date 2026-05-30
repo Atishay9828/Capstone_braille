@@ -36,11 +36,19 @@ jobs:
             echo "nemeth.ctb already present"
           fi
 
-      # Install all pip deps except python-louis (handled by apt above).
-      - name: Install Python dependencies
+      # Install pip deps EXCEPT:
+      #   - python-louis (installed via apt above)
+      #   - the heavy Phase 2 ML stack (pix2tex/torch/timm/einops) — the OCR
+      #     tests mock pix2tex and ocr_service.py guards its import, so the
+      #     suite stays green without it. Skipping saves ~750 MB + several
+      #     minutes per run and avoids torch-wheel flakiness.
+      - name: Install Python dependencies (excludes heavy OCR stack)
         run: |
+          # Drop excluded packages and full-line comments, then strip any
+          # inline "# ..." comments so pip receives clean specifiers only.
           pip install --break-system-packages \
-            $(grep -v "^python-louis\|^#" requirements.txt | tr '\n' ' ')
+            $(grep -vE "^python-louis|^#|^pix2tex|^torch|^timm|^einops" requirements.txt \
+              | sed 's/#.*//' | tr '\n' ' ')
 
       - name: Verify liblouis + Nemeth
         run: |
