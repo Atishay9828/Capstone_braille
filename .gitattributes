@@ -1,0 +1,6 @@
+# Shell scripts and the systemd unit MUST use LF line endings — CRLF breaks
+# bash on the Raspberry Pi ("\r: command not found"). Force LF regardless of
+# the committer's platform.
+*.sh            text eol=lf
+*.service       text eol=lf
+scripts/nemeth.ctb text eol=lf
