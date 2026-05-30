@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       # python-louis is NOT on PyPI for Linux — install via apt alongside liblouis.
       # This installs liblouis C library + Python bindings in one step.
@@ -79,7 +79,7 @@ jobs:
 
       - name: Upload test results on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: pytest-output
           path: pytest-output.txt
