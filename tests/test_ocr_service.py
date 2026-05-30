@@ -260,6 +260,16 @@ class TestConfidenceHeuristic:
         long_simple = "x + " * 100
         assert _estimate_confidence(long_simple) <= 0.5
 
+    def test_exotic_commands_penalized(self):
+        # Benchmark hallucination: plausible LaTeX but out-of-distribution for
+        # school math (\cal, \lambda) → should be flagged low confidence.
+        assert _estimate_confidence(r"{\cal X}^2 - \lambda = 0") <= 0.3
+
+    def test_school_math_commands_not_penalized_as_exotic(self):
+        # \frac, \sqrt, \sin, \cos, \tan, \theta are legitimate school math.
+        assert _estimate_confidence(r"\sin\theta + \cos\theta = 1") >= 0.6
+        assert _estimate_confidence(r"\frac{3}{4} + \frac{1}{2}") >= 0.6
+
     def test_confidence_in_valid_range(self):
         for s in ["", "x", "x+1", r"\sqrt{x}", "x ??? y", "{unmatched"]:
             c = _estimate_confidence(s)
