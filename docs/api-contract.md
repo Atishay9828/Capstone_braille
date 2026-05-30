@@ -208,8 +208,65 @@ On bad input: `{ "error": "send {text:...} or {latex:...}" }` (connection stays 
 ### WS /classroom/student/{code}  (WebSocket)
 Receive-only. Closes with 4004 if the session doesn't exist.
 - On connect (late-join sync): `{ "event": "sync", "dot_patterns": [ ... ] }`
-  (only if a pattern has been broadcast already).
+  (only if a pattern has been broadcast already), **and** the current MCQ if one is
+  active: `{ "type": "assessment_question", ... }` (see below).
 - On each teacher broadcast: `{ "event": "pattern", "dot_patterns": [ ... ] }`.
+
+> **Message discrimination.** Braille messages use the `"event"` key
+> (`pattern`/`sync`); assessment messages use the `"type"` key
+> (`assessment_question`/`class_performance`). A client switches on whichever key
+> is present. (The keys differ for backward compatibility with the Phase 3 protocol.)
+
+### Phase 4 — connected classroom + live assessment
+
+#### POST /classroom/sessions/{code}/broadcast-math
+Translate `latex` → Nemeth, broadcast it as Braille to all students, and
+(optionally) generate + broadcast one MCQ about it.
+
+**Request** `{ "latex": "x^2 + 3x + 2 = 0", "generate_assessment": true }`
+
+**Response 200**
+```json
+{ "braille_broadcast": true, "assessment_generated": true,
+  "question_id": "uuid-or-null", "student_count": 2 }
+```
+**Errors:** 404 unknown session · 503 liblouis unavailable · 422 bad LaTeX.
+
+Students receive two messages: the Braille `{"event":"pattern",...}` and, if
+`generate_assessment`, the MCQ:
+```json
+{ "type": "assessment_question", "question_id": "uuid",
+  "question_text": "What are the roots of x^2 + 3x + 2 = 0?",
+  "expression_braille": "⠭⠘⠆...",
+  "choices": [ {"index":0,"text":"x = -2 and x = -1","braille":"..."}, "...3 more..." ],
+  "skill": "quadratic" }
+```
+
+#### POST /classroom/sessions/{code}/submit-answer
+A student answers the session's current MCQ. Updates that student's BKT and the
+live class aggregates, and pushes a `class_performance` update to the teacher channel.
+
+**Request** `{ "student_id": "alice", "question_id": "uuid", "selected_index": 0 }`
+**Response 200:** identical to `POST /assessment/submit` (`AssessmentSubmitResponse`).
+**Errors:** 404 unknown session / question / question not in this session ·
+409 student already answered this question · 422 `selected_index` out of 0–3.
+
+The teacher's WebSocket receives:
+```json
+{ "type": "class_performance", "question_id": "uuid", "skill": "quadratic",
+  "total_responses": 2, "correct_responses": 1, "pct_correct": 50.0,
+  "mean_p_knows": 0.22 }
+```
+
+#### GET /classroom/sessions/{code}/performance
+Poll target for the teacher dashboard (~every 5s).
+```json
+{ "question_id": "uuid", "skill": "quadratic", "total_responses": 2,
+  "correct_responses": 1, "pct_correct": 50.0, "mean_p_knows": 0.22,
+  "student_breakdown": [ {"student_id":"alice","correct":true,"p_knows":0.37},
+                         {"student_id":"bob","correct":false,"p_knows":0.07} ] }
+```
+**Errors:** 404 unknown session.
 
 ---
 

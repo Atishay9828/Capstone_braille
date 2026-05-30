@@ -160,15 +160,64 @@ def scene3(client: TestClient) -> None:
     print(f"  Recommendation: {res['recommendation']}")
 
 
+class _MockStudentWS:
+    """Stand-in for a student device WebSocket — records what it receives."""
+
+    def __init__(self, name): self.name = name; self.received = []
+    async def send_json(self, data): self.received.append(data)
+    async def close(self, code=1000): pass
+
+
+def scene4(client: TestClient) -> None:
+    import time as _time
+
+    from backend.services.session_manager import manager
+
+    print("\nSCENE 4: Connected Classroom + Live Assessment")
+    print(RULE)
+    code = client.post("/classroom/sessions").json()["code"]
+    print(f"Teacher opened session: {code}")
+
+    # Two students join (simulated WebSocket clients) + a teacher channel.
+    s1, s2 = _MockStudentWS("student-1"), _MockStudentWS("student-2")
+    manager.sessions[code].student_ws_list.extend([s1, s2])
+    manager.sessions[code].teacher_ws = _MockStudentWS("teacher")
+    print("Two students joined.")
+
+    t0 = _time.perf_counter()
+    b = client.post(f"/classroom/sessions/{code}/broadcast-math",
+                    json={"latex": DEMO_LATEX, "generate_assessment": True})
+    if b.status_code != 200:
+        print(f"  -> broadcast failed (HTTP {b.status_code}: {b.text[:80]})")
+        return
+    qid = b.json()["question_id"]
+    got1 = any(m.get("type") == "assessment_question" for m in s1.received)
+    got2 = any(m.get("type") == "assessment_question" for m in s2.received)
+    print(f"Teacher broadcast: {DEMO_LATEX}")
+    print(f"  Both students received Braille + MCQ: {got1 and got2}")
+
+    correct_idx = generate_mcq(DEMO_LATEX).correct_index
+    client.post(f"/classroom/sessions/{code}/submit-answer",
+                json={"student_id": "alice", "question_id": qid, "selected_index": correct_idx})
+    client.post(f"/classroom/sessions/{code}/submit-answer",
+                json={"student_id": "bob", "question_id": qid, "selected_index": (correct_idx + 1) % 4})
+    perf = client.get(f"/classroom/sessions/{code}/performance").json()
+    elapsed = (_time.perf_counter() - t0) * 1000
+    print("Student 1 answered correctly, Student 2 incorrectly.")
+    print(f"Teacher dashboard: pct_correct={perf['pct_correct']} | "
+          f"mean_p_knows={perf['mean_p_knows']} | responses={perf['total_responses']}")
+    print(f"  End-to-end loop latency: {elapsed:.0f}ms  ({'OK <800ms' if elapsed < 800 else 'slow'})")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--scene", type=int, choices=[1, 2, 3])
+    ap.add_argument("--scene", type=int, choices=[1, 2, 3, 4])
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--mock-ocr", action="store_true")
     ap.add_argument("--simulator", action="store_true")
     args = ap.parse_args()
 
-    scenes = [args.scene] if args.scene else [1, 2, 3]
+    scenes = [args.scene] if args.scene else [1, 2, 3, 4]
 
     print("[DEMO: Braillix — Accessible Math Education]")
     print("=" * 44)
@@ -180,6 +229,8 @@ def main() -> int:
             scene2(client, args.simulator, args.mock_ocr)
         if 3 in scenes:
             scene3(client)
+        if 4 in scenes:
+            scene4(client)
 
     print("\n" + "=" * 44)
     print("[DEMO COMPLETE]")

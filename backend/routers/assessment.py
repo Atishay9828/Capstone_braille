@@ -131,16 +131,20 @@ def _recommendation(skill: str, p_after: float) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# Reusable core (shared with the classroom router so logic isn't duplicated)
 # ---------------------------------------------------------------------------
 
-@router.post("/generate", response_model=AssessmentGenerateResponse)
-async def generate(
-    req: AssessmentGenerateRequest,
-    session: Session = Depends(get_session),
+def build_question(
+    session: Session,
+    latex: str,
+    student_id: str,
+    session_id: str | None = None,
 ) -> AssessmentGenerateResponse:
-    """Generate an MCQ for a math expression and persist it for grading."""
-    mcq = generate_mcq(req.latex)
+    """Generate an MCQ, Braille-encode it, persist it, and return the payload.
+
+    Shared by POST /assessment/generate and the classroom broadcast endpoint.
+    """
+    mcq = generate_mcq(latex)
 
     choices_out: list[MCQChoiceOut] = []
     choices_store: list[dict] = []
@@ -149,9 +153,9 @@ async def generate(
         choices_store.append({"value": ch.value, "distractor_type": ch.distractor_type})
 
     row = AssessmentQuestion(
-        student_id=req.student_id,
-        session_id=req.session_id,
-        latex=req.latex,
+        student_id=student_id,
+        session_id=session_id,
+        latex=latex,
         question_type=mcq.question_type,
         skill=mcq.skill,
         difficulty=mcq.difficulty,
@@ -166,13 +170,66 @@ async def generate(
         question_id=row.id,
         question_text=mcq.question_text,
         question_braille=_braille_text(mcq.question_text),
-        expression=req.latex,
-        expression_braille=_braille_math(req.latex),
+        expression=latex,
+        expression_braille=_braille_math(latex),
         choices=choices_out,
         difficulty=mcq.difficulty,
         question_type=mcq.question_type,
         skill=mcq.skill,
     )
+
+
+def grade_core(
+    session: Session,
+    row: AssessmentQuestion,
+    student_id: str,
+    selected_index: int,
+) -> AssessmentSubmitResponse:
+    """Grade one answer against a stored question and update that student's BKT.
+
+    Does NOT touch row.answered — the caller owns idempotency (solo /submit
+    marks the row; classroom dedupes per-student in the session aggregates,
+    since one classroom question is answered by many students). Raises 422 on
+    an out-of-range selection.
+    """
+    choices = row.choices
+    if not (0 <= selected_index < len(choices)):
+        raise HTTPException(status_code=422, detail="selected_index out of range")
+
+    correct = selected_index == row.correct_index
+    skill = row.skill
+
+    tracer = _load_tracer(session, student_id)
+    p_before = tracer.get_p_knows(skill)
+    state = tracer.update(skill, correct)
+    p_after = state.p_knows
+    _persist_skill(session, student_id, state)
+
+    correct_text = choices[row.correct_index]["value"]
+    return AssessmentSubmitResponse(
+        correct=correct,
+        correct_index=row.correct_index,
+        correct_answer_text=correct_text,
+        explanation=_explanation(correct, choices[selected_index], correct_text),
+        p_knows_before=round(p_before, 4),
+        p_knows_after=round(p_after, 4),
+        skill=skill,
+        next_recommended_difficulty=tracer.recommend_difficulty(skill),
+        recommendation=_recommendation(skill, p_after),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Endpoints
+# ---------------------------------------------------------------------------
+
+@router.post("/generate", response_model=AssessmentGenerateResponse)
+async def generate(
+    req: AssessmentGenerateRequest,
+    session: Session = Depends(get_session),
+) -> AssessmentGenerateResponse:
+    """Generate an MCQ for a math expression and persist it for grading."""
+    return build_question(session, req.latex, req.student_id, req.session_id)
 
 
 @router.post("/submit", response_model=AssessmentSubmitResponse)
@@ -187,40 +244,18 @@ async def submit(
     if row.answered:
         raise HTTPException(status_code=409, detail="question already answered")
 
-    choices = row.choices
-    if not (0 <= req.selected_index < len(choices)):
-        raise HTTPException(status_code=422, detail="selected_index out of range")
-
-    correct = req.selected_index == row.correct_index
-    skill = row.skill
-
-    tracer = _load_tracer(session, req.student_id)
-    p_before = tracer.get_p_knows(skill)
-    state = tracer.update(skill, correct)
-    p_after = state.p_knows
-    _persist_skill(session, req.student_id, state)
+    resp = grade_core(session, row, req.student_id, req.selected_index)
 
     # Mark the question answered (idempotency guard for the 409 above).
     row.answered = True
     row.selected_index = req.selected_index
-    row.correct = correct
-    row.p_knows_before = p_before
-    row.p_knows_after = p_after
+    row.correct = resp.correct
+    row.p_knows_before = resp.p_knows_before
+    row.p_knows_after = resp.p_knows_after
     session.add(row)
     session.commit()
 
-    correct_text = choices[row.correct_index]["value"]
-    return AssessmentSubmitResponse(
-        correct=correct,
-        correct_index=row.correct_index,
-        correct_answer_text=correct_text,
-        explanation=_explanation(correct, choices[req.selected_index], correct_text),
-        p_knows_before=round(p_before, 4),
-        p_knows_after=round(p_after, 4),
-        skill=skill,
-        next_recommended_difficulty=tracer.recommend_difficulty(skill),
-        recommendation=_recommendation(skill, p_after),
-    )
+    return resp
 
 
 @router.get("/student/{student_id}", response_model=StudentProfileResponse)
