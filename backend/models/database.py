@@ -14,7 +14,9 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from typing import Optional
+from uuid import uuid4
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import Field, SQLModel
 
 
@@ -61,3 +63,50 @@ class ClassroomSession(SQLModel, table=True):
     ended_at: Optional[datetime] = Field(default=None)
     teacher_ip: Optional[str] = Field(default=None)
     student_count_peak: int = Field(default=0)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — adaptive assessment
+# ---------------------------------------------------------------------------
+
+class AssessmentQuestion(SQLModel, table=True):
+    """A generated MCQ and its answered state. One row per /assessment/generate."""
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    student_id: str = Field(index=True)
+    session_id: Optional[str] = Field(default=None)
+    latex: str
+    question_type: str
+    skill: str
+    difficulty: float
+    correct_index: int
+    choices_json: str = Field(default="[]")  # JSON list of {value, distractor_type}
+    answered: bool = Field(default=False)
+    selected_index: Optional[int] = Field(default=None)
+    correct: Optional[bool] = Field(default=None)
+    p_knows_before: Optional[float] = Field(default=None)
+    p_knows_after: Optional[float] = Field(default=None)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    @property
+    def choices(self) -> list[dict]:
+        return json.loads(self.choices_json)
+
+    @choices.setter
+    def choices(self, value: list[dict]) -> None:
+        self.choices_json = json.dumps(value)
+
+
+class StudentKnowledge(SQLModel, table=True):
+    """Per-(student, skill) BKT mastery state. One row per skill a student tries."""
+
+    __table_args__ = (UniqueConstraint("student_id", "skill", name="uq_student_skill"),)
+
+    id: str = Field(default_factory=lambda: str(uuid4()), primary_key=True)
+    student_id: str = Field(index=True)
+    skill: str
+    p_knows: float
+    attempts: int = Field(default=0)
+    correct: int = Field(default=0)
+    state_json: str = Field(default="{}")  # serialized StudentSkillState
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
