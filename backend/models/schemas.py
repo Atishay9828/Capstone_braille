@@ -138,6 +138,41 @@ class ImageToBrailleResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Phase 3 — PDF pipeline (per-page text/OCR routing)
+# ---------------------------------------------------------------------------
+
+class PDFPageResult(BaseModel):
+    page_number: int = Field(description="1-based page number.")
+    extraction_method: str = Field(description="'text', 'ocr', or 'none'.")
+    raw_text: str | None = Field(default=None, description="Extracted text (text pages).")
+    latex_expressions: list[str] = Field(default_factory=list,
+                                          description="OCR'd LaTeX, one per image (ocr pages).")
+    braille_unicode: str = Field(description="Braille for this page (empty if none).")
+    dot_patterns: list[int] = Field(description="6-bit dot patterns for this page.")
+    confidence: float | None = Field(default=None, description="Mean OCR confidence (ocr pages).")
+
+
+class PDFProcessResponse(BaseModel):
+    """Per-page PDF → Braille result. Superset of the original schema:
+    the original fields (braille_unicode, dot_patterns, cell_count) are retained
+    as the combined output for backward compatibility."""
+
+    filename: str
+    page_count: int
+    pages: list[PDFPageResult] = Field(description="Per-page breakdown.")
+    # Combined output — original field names kept for backward compatibility.
+    braille_unicode: str = Field(description="All pages' Braille, concatenated.")
+    dot_patterns: list[int] = Field(description="All pages' dot patterns, concatenated.")
+    cell_count: int = Field(description="Total Braille cells across all pages.")
+    combined_braille: str = Field(description="Alias of braille_unicode.")
+    combined_dot_patterns: list[int] = Field(description="Alias of dot_patterns.")
+    processing_time_ms: float = Field(description="End-to-end processing time.")
+    text_pages: int = Field(description="Pages handled via the text layer.")
+    ocr_pages: int = Field(description="Pages handled via image OCR.")
+    empty_pages: int = Field(description="Pages with no readable content.")
+
+
+# ---------------------------------------------------------------------------
 # Phase 3 — adaptive assessment
 # ---------------------------------------------------------------------------
 
