@@ -1,3 +1,62 @@
+# Braillix Autonomous Session Log — 2026-05-31 (Phase 4: Final — backend complete)
+
+**Branch:** `backend/phase0-pr`
+**Final test score:** 511 passed / 0 failed / 0 skipped · CI green on Ubuntu
+**Project arc:** Phase 0 baseline → Phase 4 final: **511 tests**, full software stack done.
+
+---
+
+## What was built
+
+| Task | File(s) | Key decision |
+|------|---------|--------------|
+| 1 Classroom × assessment | `services/session_manager.py`, `routers/classroom.py`, `routers/assessment.py`, demo Scene 4 | Teacher broadcasts → students get Braille **and** an MCQ; live teacher dashboard. In-memory aggregates (no Redis). Typed `"type"` messages distinct from Braille `"event"` messages. Shared grading via extracted `build_question`/`grade_core`. |
+| 2 Pi deployment | `requirements_pi.txt`, `scripts/setup_pi.sh`, `scripts/braillix.service`, `scripts/health_check.sh`, `docs/demo-day-runbook.md` | Pi runs backend only — **never torch/pix2tex**. `set -euo pipefail`, idempotent setup; health_check verified live (exit 0/1). `.gitattributes` forces LF so bash works on the Pi. |
+| 3 Report artifacts | `docs/report/architecture.md`, `docs/report/ml-methodology.md`, `scripts/generate_report_tables.py` | Academic tone; BKT cites Corbett & Anderson (1995); generator emits 5 live tables from the running system. |
+| 4 Final polish | `CLAUDE.md`, session log, PR | Fresh-clone smoke sequence verified; merge gate is Aniket. |
+
+---
+
+## Key decisions & a bug worth noting
+
+- **Message discrimination:** Braille uses `{"event":"pattern"|"sync"}` (unchanged,
+  exact-equality tested); assessment uses `{"type":"assessment_question"|"class_performance"}`.
+  Clients switch on whichever key is present.
+- **One question, many students:** the per-student `AssessmentQuestion.answered` guard
+  doesn't fit a class. Extracted `grade_core` (no answered-flag) is reused by both the solo
+  `/assessment/submit` (which marks the row) and classroom `/submit-answer` (which dedupes
+  per-student via the session aggregates).
+- **Bug fixed:** `Depends(get_session)` in `classroom.py` was silently calling the
+  `GET /sessions/{code}` route handler (also named `get_session`) and injecting a *dict*
+  instead of a DB session. Aliased the import to `get_db_session`.
+
+## Smoke output — `demo_full.py --all --mock-ocr` (Scene 4)
+
+```
+SCENE 4: Connected Classroom + Live Assessment
+  Teacher opened session; two students joined.
+  Teacher broadcast: x^2 + 3x + 2 = 0
+  Both students received Braille + MCQ: True
+  Student 1 correct, Student 2 incorrect.
+  Teacher dashboard: pct_correct=50.0 | mean_p_knows=0.41 | responses=2
+  End-to-end loop latency: 47ms  (OK <800ms)
+```
+Phase 0-1 smoke PASSED · Phase 2 smoke PASSED · Phase 3-4 demo all scenes OK.
+
+## Shaurya's final checklist before demo day
+
+- [ ] `python scripts/demo_full.py --all` with **real** pix2tex (not mock)
+- [ ] Test Scene 4 with two browser tabs as real student WebSocket clients
+- [ ] Run `bash scripts/setup_pi.sh` on the actual Pi with Aniket present
+- [ ] `bash scripts/health_check.sh` on the Pi — confirm all `[OK]`
+- [ ] Send `docs/api-contract.md` to Harshita (frontend can start)
+- [ ] Email Dr. Sumit Sharma the `docs/report/ml-methodology.md` draft
+- [ ] Schedule one user-test session with a VI student/teacher (Patiala/Chandigarh) —
+      even 30 minutes changes how you talk about this project
+
+---
+
+
 # Braillix Autonomous Session Log — 2026-05-31 (Phase 3: Adaptive Assessment)
 
 **Branch:** `backend/phase0-pr` (fast-forwarded onto `team/main` after PRs #1–3 merged)
