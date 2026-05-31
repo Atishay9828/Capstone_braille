@@ -1,0 +1,122 @@
+[
+  {
+    "file": "linear_2x3_300.png",
+    "ground_truth": "2x + 3 = 7",
+    "category": "linear",
+    "dpi": 300
+  },
+  {
+    "file": "linear_axbc_300.png",
+    "ground_truth": "ax + b = c",
+    "category": "linear",
+    "dpi": 300
+  },
+  {
+    "file": "linear_xhalf_300.png",
+    "ground_truth": "\\frac{x}{2} = 4",
+    "category": "linear",
+    "dpi": 300
+  },
+  {
+    "file": "linear_3x5_150.png",
+    "ground_truth": "3x - 5 = 10",
+    "category": "linear",
+    "dpi": 150
+  },
+  {
+    "file": "linear_2x3_72.png",
+    "ground_truth": "2x + 3 = 7",
+    "category": "linear",
+    "dpi": 72
+  },
+  {
+    "file": "quad_x2_3x2_300.png",
+    "ground_truth": "x^2 + 3x + 2 = 0",
+    "category": "quadratic",
+    "dpi": 300
+  },
+  {
+    "file": "quad_abc_300.png",
+    "ground_truth": "ax^2 + bx + c = 0",
+    "category": "quadratic",
+    "dpi": 300
+  },
+  {
+    "file": "quad_x2m4_300.png",
+    "ground_truth": "x^2 - 4 = 0",
+    "category": "quadratic",
+    "dpi": 300
+  },
+  {
+    "file": "quad_2x2_150.png",
+    "ground_truth": "2x^2 + 5x - 3 = 0",
+    "category": "quadratic",
+    "dpi": 150
+  },
+  {
+    "file": "quad_x2_3x2_72.png",
+    "ground_truth": "x^2 + 3x + 2 = 0",
+    "category": "quadratic",
+    "dpi": 72
+  },
+  {
+    "file": "frac_abcd_300.png",
+    "ground_truth": "\\frac{a}{b} = \\frac{c}{d}",
+    "category": "fraction",
+    "dpi": 300
+  },
+  {
+    "file": "frac_3412_300.png",
+    "ground_truth": "\\frac{3}{4} + \\frac{1}{2}",
+    "category": "fraction",
+    "dpi": 300
+  },
+  {
+    "file": "frac_x2_300.png",
+    "ground_truth": "\\frac{x}{2} = \\frac{6}{4}",
+    "category": "fraction",
+    "dpi": 300
+  },
+  {
+    "file": "frac_3412_72.png",
+    "ground_truth": "\\frac{3}{4} + \\frac{1}{2}",
+    "category": "fraction",
+    "dpi": 72
+  },
+  {
+    "file": "rad_sqrt_300.png",
+    "ground_truth": "\\sqrt{x + 1} = 3",
+    "category": "radical",
+    "dpi": 300
+  },
+  {
+    "file": "rad_circle_300.png",
+    "ground_truth": "x^2 + y^2 = r^2",
+    "category": "radical",
+    "dpi": 300
+  },
+  {
+    "file": "rad_sqrt2_150.png",
+    "ground_truth": "\\sqrt{2x} = 4",
+    "category": "radical",
+    "dpi": 150
+  },
+  {
+    "file": "trig_sincos_300.png",
+    "ground_truth": "\\sin\\theta + \\cos\\theta = 1",
+    "category": "trig",
+    "dpi": 300
+  },
+  {
+    "file": "trig_tan_300.png",
+    "ground_truth": "\\tan\\theta = \\frac{1}{2}",
+    "category": "trig",
+    "dpi": 300
+  },
+  {
+    "file": "trig_sin2_150.png",
+    "ground_truth": "\\sin 2x = 0",
+    "category": "trig",
+    "dpi": 150
+  }
+]

@@ -184,21 +184,48 @@ louis.translate(["en-us-g1.ctb"], "hello", typeform=None)
 
 ---
 
-## Current Phase: Phase 0 + Phase 1
+## Project Status: Phase 0–4 COMPLETE (backend done)
 
-**Active tasks (this session):**
-1. `backend/services/translator.py` — liblouis wrapper, Grade 1 + Nemeth
-2. `backend/services/cam_angles.py` — 6-bit pattern → cam angle degrees
-3. `backend/routers/translate.py` — POST /translate endpoint
-4. `backend/main.py` — FastAPI app
-5. `hal/__init__.py` — BrailleHAL stub (for Aniket to fill in)
-6. `tests/` — full test coverage for above
-7. End-to-end smoke test: "hi" → liblouis → cam_angles → SimulatorHAL prints
+**Tests:** 511 passing / 0 failed / 0 skipped · CI green on Ubuntu.
+**Run the whole demo:** `python scripts/demo_full.py --all` (add `--mock-ocr` to skip slow OCR).
 
-**Phase 2 tasks (next week, don't build now):**
-- pix2tex OCR pipeline
-- PDF processing
-- WebSocket server
+### Endpoints (all live)
+```
+GET  /                              service info + endpoint index
+GET  /health                        liblouis status + table availability
+POST /translate                     text → Grade 1/2 Braille
+POST /translate-math                LaTeX → Nemeth Braille
+POST /translate/cam-angles          dot patterns → motor angles
+POST /ocr/image                     math image → LaTeX (pix2tex)
+POST /ocr/image-to-braille          image → Nemeth Braille (demo endpoint)
+POST /ocr/process-pdf               PDF → Braille, per-page text/OCR routing
+POST /classroom/sessions            create classroom session
+GET/DELETE /classroom/sessions/{code}
+WS   /classroom/teacher/{code}      teacher broadcast channel
+WS   /classroom/student/{code}      student receive channel
+POST /classroom/sessions/{code}/broadcast-math   broadcast Braille + MCQ
+POST /classroom/sessions/{code}/submit-answer    student answers; updates BKT
+GET  /classroom/sessions/{code}/performance      live class dashboard
+POST /assessment/generate           LaTeX → MCQ (Braille-encoded, BKT-tracked)
+POST /assessment/submit             grade + update Bayesian Knowledge Tracing
+GET  /assessment/student/{id}       per-student mastery profile
+```
+Full contract: `docs/api-contract.md`.
+
+### What's done (Shaurya — L3/L4/L5)
+- L3 translation (liblouis Grade 1/2 + Nemeth), cam-angle math
+- L4 OCR (pix2tex, benchmarked) + image preprocessing + PDF per-page routing
+- L5 FastAPI app, WebSocket classroom, adaptive assessment (BKT + rule-based MCQs)
+- SQLite persistence, GitHub Actions CI, Raspberry Pi deploy package, demo + report docs
+
+### Remaining (other owners)
+- **Harshita (L6):** frontend — build against `docs/api-contract.md`
+- **Aniket (L2/L1):** implement `CamMotorHAL` behind the frozen `BrailleHAL` contract; GPIO
+- **Shaurya (validation):** real-photo OCR test, one VI-student user-test session
+
+### Demo day
+Pi setup: `bash scripts/setup_pi.sh` → `bash scripts/health_check.sh` (must be all OK).
+Runbook for hardware team: `docs/demo-day-runbook.md`.
 
 ---
 
@@ -253,9 +280,15 @@ python3 -c "import louis; print('nemeth.ctb' in louis.listTables())"
 
 ## Notes for Future Claude Code Sessions
 
-- The SimulatorHAL in `hal/__init__.py` is a STUB — Aniket will implement it
-- Phase 2 adds pix2tex — don't install it now, it's heavy
-- The WebSocket server goes in `backend/routers/classroom.py` in Phase 3
-- SQLite DB models go in `backend/models/database.py` when we need persistence
-- Do NOT add authentication in Phase 0/1 — keep it simple
-- The senior team's repo (NikhilSharma-30/Vision-Maths) has useful OpenCV preprocessing — can reference but do NOT copy wholesale; adapt and attribute
+- The SimulatorHAL in `hal/__init__.py` is a STUB — Aniket implements the real `CamMotorHAL`.
+- pix2tex is heavy (torch). It is pinned in `requirements.txt` but **excluded from CI**
+  (tests mock it; `ocr_service.py` guards the import). The Pi never runs it — see
+  `requirements_pi.txt`. OCR runs on the laptop only.
+- WebSocket classroom lives in `backend/routers/classroom.py`; live assessment over the
+  same channel is wired there too (Phase 4). SessionManager state is in-memory (no Redis).
+- SQLite models are in `backend/models/database.py` (Book, TranslationJob, ClassroomSession,
+  AssessmentQuestion, StudentKnowledge). Tests override `get_session` with in-memory SQLite.
+- No authentication yet — a token plan is documented in `docs/api-contract.md` for Phase 4+.
+- `.sh`/`.service` files are forced to LF via `.gitattributes` (CRLF breaks bash on the Pi).
+- Backend is feature-complete. New work is integration (frontend/hardware) and validation,
+  not new backend features. Keep all 511 tests green; the merge gate is Aniket.

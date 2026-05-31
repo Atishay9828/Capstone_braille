@@ -50,3 +50,17 @@ timm==0.5.4              # ViT backbone used by pix2tex
 einops==0.8.2            # tensor ops used by pix2tex
 # Pillow (already implied by the stack) — image decode/preprocess (image_preprocessor.py)
 Pillow==11.1.0
+
+# ------------------------------------------------------------
+# Phase 3 — adaptive assessment (L5)
+# ------------------------------------------------------------
+# No new runtime dependencies: knowledge_tracer.py (Bayesian Knowledge Tracing)
+# and mcq_generator.py are pure standard library (dataclasses/fractions/math/re).
+# SQLite assessment tables reuse the existing sqlmodel/SQLAlchemy stack.
+
+# ------------------------------------------------------------
+# Benchmark / fixture tooling — used only by scripts/, NOT by the app, tests, or CI.
+# The generated images are committed, so CI never runs these scripts (excluded
+# from the CI pip install in .github/workflows/ci.yml).
+# ------------------------------------------------------------
+matplotlib==3.10.1       # renders ground-truth equation images for the OCR benchmark

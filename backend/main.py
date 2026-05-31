@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.routers import classroom, health, ocr, translate
+from backend.routers import assessment, classroom, health, ocr, translate
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +54,7 @@ app.include_router(health.router)
 app.include_router(translate.router)
 app.include_router(ocr.router)
 app.include_router(classroom.router)   # Phase 3: WebSocket classroom
+app.include_router(assessment.router)  # Phase 3: adaptive assessment
 
 
 @app.get("/", tags=["root"])
@@ -74,5 +75,8 @@ async def root() -> dict:
             "create_session": "POST /classroom/sessions",
             "teacher_ws": "WS /classroom/teacher/{code}",
             "student_ws": "WS /classroom/student/{code}",
+            "assessment_generate": "POST /assessment/generate",
+            "assessment_submit": "POST /assessment/submit",
+            "student_profile": "GET /assessment/student/{student_id}",
         },
     }

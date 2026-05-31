@@ -135,3 +135,100 @@ class ImageToBrailleResponse(BaseModel):
     pipeline_stages: PipelineStages = Field(description="Per-stage timing breakdown.")
     success: bool = Field(description="True if Braille was produced from the image.")
     error: str | None = Field(default=None, description="Human-readable error if success is false.")
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — PDF pipeline (per-page text/OCR routing)
+# ---------------------------------------------------------------------------
+
+class PDFPageResult(BaseModel):
+    page_number: int = Field(description="1-based page number.")
+    extraction_method: str = Field(description="'text', 'ocr', or 'none'.")
+    raw_text: str | None = Field(default=None, description="Extracted text (text pages).")
+    latex_expressions: list[str] = Field(default_factory=list,
+                                          description="OCR'd LaTeX, one per image (ocr pages).")
+    braille_unicode: str = Field(description="Braille for this page (empty if none).")
+    dot_patterns: list[int] = Field(description="6-bit dot patterns for this page.")
+    confidence: float | None = Field(default=None, description="Mean OCR confidence (ocr pages).")
+
+
+class PDFProcessResponse(BaseModel):
+    """Per-page PDF → Braille result. Superset of the original schema:
+    the original fields (braille_unicode, dot_patterns, cell_count) are retained
+    as the combined output for backward compatibility."""
+
+    filename: str
+    page_count: int
+    pages: list[PDFPageResult] = Field(description="Per-page breakdown.")
+    # Combined output — original field names kept for backward compatibility.
+    braille_unicode: str = Field(description="All pages' Braille, concatenated.")
+    dot_patterns: list[int] = Field(description="All pages' dot patterns, concatenated.")
+    cell_count: int = Field(description="Total Braille cells across all pages.")
+    combined_braille: str = Field(description="Alias of braille_unicode.")
+    combined_dot_patterns: list[int] = Field(description="Alias of dot_patterns.")
+    processing_time_ms: float = Field(description="End-to-end processing time.")
+    text_pages: int = Field(description="Pages handled via the text layer.")
+    ocr_pages: int = Field(description="Pages handled via image OCR.")
+    empty_pages: int = Field(description="Pages with no readable content.")
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — adaptive assessment
+# ---------------------------------------------------------------------------
+
+class AssessmentGenerateRequest(BaseModel):
+    latex: str = Field(..., min_length=1, max_length=5000,
+                       description="Math expression to quiz on.", examples=["x^2 + 3x + 2 = 0"])
+    student_id: str = Field(..., min_length=1, max_length=128,
+                            description="Stable identifier for the student.", examples=["demo_student"])
+    session_id: str | None = Field(default=None, description="Classroom session code, if any.")
+
+
+class MCQChoiceOut(BaseModel):
+    index: int = Field(description="Choice index (0–3).")
+    text: str = Field(description="Plain-text answer (Braille-friendly ASCII).")
+    braille: str = Field(description="Unicode Braille of the choice text.")
+
+
+class AssessmentGenerateResponse(BaseModel):
+    question_id: str = Field(description="UUID — pass to /assessment/submit.")
+    question_text: str = Field(description="Plain-English question prompt.")
+    question_braille: str = Field(description="Braille of the question prompt.")
+    expression: str = Field(description="Original LaTeX expression.")
+    expression_braille: str = Field(description="Nemeth Braille of the expression.")
+    choices: list[MCQChoiceOut] = Field(description="Exactly 4 choices with Braille.")
+    difficulty: float = Field(description="Estimated difficulty 0.0–1.0.")
+    question_type: str = Field(description="solve_for_x | simplify | identify_type.")
+    skill: str = Field(description="Skill key used by the knowledge tracer.")
+
+
+class AssessmentSubmitRequest(BaseModel):
+    question_id: str = Field(..., description="The question_id returned by /generate.")
+    student_id: str = Field(..., min_length=1, max_length=128)
+    selected_index: int = Field(..., ge=0, le=3, description="Chosen choice index (0–3).")
+
+
+class AssessmentSubmitResponse(BaseModel):
+    correct: bool
+    correct_index: int
+    correct_answer_text: str
+    explanation: str = Field(description="Plain-English feedback on the answer/error.")
+    p_knows_before: float = Field(description="BKT mastery before this answer.")
+    p_knows_after: float = Field(description="BKT mastery after this answer.")
+    skill: str
+    next_recommended_difficulty: float
+    recommendation: str
+
+
+class SkillSummary(BaseModel):
+    p_knows: float
+    attempts: int
+    correct: int
+
+
+class StudentProfileResponse(BaseModel):
+    student_id: str
+    skills: dict[str, SkillSummary]
+    overall_mastery: float = Field(description="Mean p_knows across attempted skills.")
+    total_questions: int
+    total_correct: int

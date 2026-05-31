@@ -5,15 +5,20 @@ The _HELLO_PDF fixture is a minimal valid PDF with the text "hello world"
 constructed directly as raw bytes — no PDF library required to run tests.
 """
 
+import io
+
 import pytest
 
 from backend.services.pdf_processor import (
     _PDFPLUMBER_AVAILABLE,
     _PYMUPDF_AVAILABLE,
     extract_images_from_pdf,
+    extract_pages,
     extract_text_from_pdf,
+    is_meaningful_text,
     page_count,
 )
+from backend.services.ocr_service import OCRResult
 
 # ---------------------------------------------------------------------------
 # Minimal single-page PDF containing the text "hello world".
@@ -188,3 +193,152 @@ class TestProcessPdfEndpoint:
             files={"file": ("test.txt", b"hello world", "text/plain")},
         )
         assert resp.status_code in (400, 422)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 — per-page routing (extract_pages)
+# ---------------------------------------------------------------------------
+
+def _png_bytes(text_dummy: bool = False) -> bytes:
+    from PIL import Image, ImageDraw
+    img = Image.new("RGB", (300, 120), "white")
+    ImageDraw.Draw(img).text((10, 40), "eq", fill="black")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _text_pdf(text: str) -> bytes:
+    import fitz
+    doc = fitz.open()
+    doc.new_page().insert_text((72, 72), text)
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
+def _image_pdf() -> bytes:
+    import fitz
+    doc = fitz.open()
+    page = doc.new_page()
+    page.insert_image(fitz.Rect(50, 50, 400, 200), stream=_png_bytes())
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
+def _mixed_pdf() -> bytes:
+    import fitz
+    doc = fitz.open()
+    doc.new_page().insert_text((72, 72), "This page has a meaningful sentence of words")
+    img_page = doc.new_page()
+    img_page.insert_image(fitz.Rect(50, 50, 400, 200), stream=_png_bytes())
+    doc.new_page()  # blank
+    data = doc.tobytes()
+    doc.close()
+    return data
+
+
+class _FakeOCR:
+    """Records calls; returns a fixed usable OCRResult."""
+
+    def __init__(self, latex: str = "x^2 + 1 = 0", usable: bool = True):
+        self.calls = 0
+        self._latex = latex
+        self._usable = usable
+
+    def extract_latex_from_bytes(self, data, filename=""):
+        self.calls += 1
+        if self._usable:
+            return OCRResult(True, self._latex, 0.8, True, 5.0)
+        return OCRResult(False, None, 0.0, True, 5.0, error="unreadable")
+
+
+class TestIsMeaningfulText:
+    def test_words_are_meaningful(self):
+        assert is_meaningful_text("hello world") is True
+
+    def test_page_number_is_not_meaningful(self):
+        assert is_meaningful_text("12") is False
+
+    def test_whitespace_is_not_meaningful(self):
+        assert is_meaningful_text("   \n ") is False
+
+
+@pytest.mark.skipif(not _PYMUPDF_AVAILABLE, reason="PyMuPDF not installed")
+class TestExtractPages:
+    def test_corrupt_returns_empty_list(self):
+        assert extract_pages(_GARBAGE) == []
+        assert extract_pages(_EMPTY) == []
+
+    def test_text_page_uses_text_pipeline(self):
+        ocr = _FakeOCR()
+        pages = extract_pages(_text_pdf("Solve the following equations carefully"), ocr=ocr)
+        assert len(pages) == 1
+        assert pages[0].extraction_method == "text"
+        assert ocr.calls == 0  # OCR must NOT run for a text page
+
+    def test_image_page_falls_to_ocr(self):
+        ocr = _FakeOCR(latex="x^2 + 1 = 0")
+        pages = extract_pages(_image_pdf(), ocr=ocr)
+        assert len(pages) == 1
+        assert pages[0].extraction_method == "ocr"
+        assert pages[0].latex_expressions == ["x^2 + 1 = 0"]
+        assert ocr.calls == 1
+
+    def test_image_page_unreadable_marked_none(self):
+        ocr = _FakeOCR(usable=False)
+        pages = extract_pages(_image_pdf(), ocr=ocr)
+        assert pages[0].extraction_method == "none"
+
+    def test_mixed_pdf_handles_both(self):
+        ocr = _FakeOCR()
+        pages = extract_pages(_mixed_pdf(), ocr=ocr)
+        methods = [p.extraction_method for p in pages]
+        assert methods == ["text", "ocr", "none"]
+        assert ocr.calls == 1  # only the image page
+
+    def test_page_numbers_are_sequential(self):
+        ocr = _FakeOCR()
+        pages = extract_pages(_mixed_pdf(), ocr=ocr)
+        assert [p.page_number for p in pages] == [1, 2, 3]
+
+
+@pytest.mark.skipif(not _PYMUPDF_AVAILABLE or not _PDFPLUMBER_AVAILABLE,
+                    reason="PDF libs not installed")
+@pytest.mark.asyncio
+class TestProcessPdfPerPage:
+    async def test_response_has_per_page_breakdown(self, test_client):
+        resp = await test_client.post(
+            "/ocr/process-pdf",
+            files={"file": ("doc.pdf", _text_pdf("A meaningful sentence here"), "application/pdf")},
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            assert "pages" in data and len(data["pages"]) == 1
+            assert data["pages"][0]["extraction_method"] == "text"
+            assert data["text_pages"] == 1
+            assert "processing_time_ms" in data
+            # backward-compatible combined fields
+            assert data["combined_braille"] == data["braille_unicode"]
+            assert data["combined_dot_patterns"] == data["dot_patterns"]
+
+    async def test_combined_braille_concatenates_all_pages(self, test_client):
+        # Two text pages -> combined dot patterns should be the sum of both pages.
+        import fitz
+        doc = fitz.open()
+        doc.new_page().insert_text((72, 72), "First page meaningful words")
+        doc.new_page().insert_text((72, 72), "Second page meaningful words")
+        data_pdf = doc.tobytes()
+        doc.close()
+
+        resp = await test_client.post(
+            "/ocr/process-pdf",
+            files={"file": ("two.pdf", data_pdf, "application/pdf")},
+        )
+        if resp.status_code == 200:
+            data = resp.json()
+            assert len(data["pages"]) == 2
+            per_page_total = sum(len(p["dot_patterns"]) for p in data["pages"])
+            assert len(data["combined_dot_patterns"]) == per_page_total
+            assert data["cell_count"] == per_page_total

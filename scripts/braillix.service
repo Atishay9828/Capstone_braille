@@ -1,0 +1,35 @@
+# Braillix backend — systemd service unit.
+#
+# Starts the FastAPI backend on boot and restarts it if it crashes mid-demo.
+#
+# INSTALL (run once on the Pi, from the repo root):
+#   sudo cp scripts/braillix.service /etc/systemd/system/braillix.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable braillix      # start automatically on every boot
+#   sudo systemctl start braillix       # start now
+#
+# CHECK / CONTROL:
+#   systemctl status braillix           # is it running?
+#   journalctl -u braillix -f           # live logs
+#   sudo systemctl restart braillix     # restart (e.g. after a code update)
+#   sudo systemctl stop braillix        # stop
+#
+# Assumes the repo is cloned at /home/pi/Capstone_braille and setup_pi.sh has
+# created the venv there. Adjust User/paths if your username or path differ.
+
+[Unit]
+Description=Braillix Backend API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Capstone_braille
+Environment=PYTHONPATH=/home/pi/Capstone_braille
+ExecStart=/home/pi/Capstone_braille/venv/bin/uvicorn backend.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

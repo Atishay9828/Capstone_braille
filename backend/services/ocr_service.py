@@ -249,12 +249,23 @@ _SIMPLE_MATH_CHARS = re.compile(r"^[a-zA-Z0-9\s\+\-\=\<\>\^\*\/\(\)\[\]\{\}\.\,\
 _GARBAGE_MARKERS = re.compile(r"\?\?\?|\\\\\\\\|<pad>|<unk>")
 _LATEX_COMMANDS = re.compile(r"\\[a-zA-Z]+")
 
+# Commands that essentially never appear in NCERT Class 6-12 math but DID show up
+# in pix2tex's hallucinated outputs during the OCR benchmark (docs/ocr-benchmark-
+# results.md): e.g. rad_sqrt -> runaway \stackrel/\phantom garble; quad_x2m4 ->
+# plausible-but-wrong "{\cal X}^2-\lambda=0". Their presence is a strong signal of
+# a low-confidence / hallucinated read for our target (school-level) curriculum.
+_EXOTIC_COMMANDS = re.compile(
+    r"\\(cal|mathcal|partial|lambda|stackrel|phantom|prod|longrightarrow|"
+    r"leftrightarrow|overset|infty|rightarrow|aleph|wp|Im|Re)\b"
+)
+
 
 def _estimate_confidence(latex: str) -> float:
     """Estimate pix2tex output confidence via heuristics.
 
-    Since pix2tex returns no confidence score, we approximate from output
-    characteristics. This is intentionally conservative.
+    pix2tex returns no confidence score, so we approximate from output
+    characteristics. Thresholds are tuned against the measured OCR benchmark
+    (docs/ocr-benchmark-results.md), not guessed. Intentionally conservative.
 
     Returns value in [0.0, 1.0].
     """
@@ -286,6 +297,11 @@ def _estimate_confidence(latex: str) -> float:
     # Very long output often indicates hallucination
     if length > 200:
         return 0.4
+
+    # Commands out-of-distribution for school math → likely hallucinated read.
+    # Caught the benchmark's plausible-but-wrong "{\cal X}^2-\lambda=0" case.
+    if _EXOTIC_COMMANDS.search(latex):
+        return 0.3
 
     # Output contains valid LaTeX commands → moderately confident
     if _LATEX_COMMANDS.search(latex):

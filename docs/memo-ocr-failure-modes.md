@@ -1,7 +1,7 @@
 # Memo: Math OCR Failure Modes — pix2tex in the Braillix Pipeline
 
 **Author:** Shaurya Verma (L4 Input Processor)  
-**Date:** 2026-05-30  
+**Date:** 2026-05-30 (measured update: 2026-05-31)  
 **Audience:** Braillix backend + demo team
 
 ---
@@ -15,7 +15,45 @@ accuracy, known failure modes, and what to show in the demo.
 
 ---
 
-## Accuracy Expectations
+## MEASURED Results (2026-05-31) — supersedes the estimates below
+
+We ran `scripts/ocr_benchmark.py` over 20 ground-truth equation renders
+(matplotlib mathtext, categories linear/quadratic/fraction/radical/trig at
+72/150/300 DPI). Full table: `docs/ocr-benchmark-results.md`.
+
+| Metric | Result |
+|--------|--------|
+| **Strict exact match** (byte-identical) | **20%** (4/20) |
+| **Lenient exact match** (same equation, case/braces normalized) | **85%** (17/20) |
+| Mean character similarity (difflib) | **0.80** |
+| Mean CPU inference time | **~1.7 s / image** |
+
+**The key finding:** on clean renders, pix2tex's errors are overwhelmingly
+*cosmetic*, not semantic — it uppercases italic variables (`x` → `X`) and wraps
+subexpressions in redundant braces (`x^2` → `X^{2}`). After normalizing those,
+85% of outputs are the correct equation. So the 20% "strict" figure understates
+usable accuracy; the 85% "lenient" figure is the honest one for *math content*.
+
+**Category findings (measured):**
+- **Fractions and trig: best** — often exact (`\frac{3}{4}+\frac{1}{2}`,
+  `\sin\theta+\cos\theta=1` came back verbatim).
+- **Radicals: worst** — `\sqrt{x+1}=3` produced a runaway hallucination
+  (similarity 0.06); the confidence heuristic flags this via length + exotic
+  commands.
+- **Plausible-but-wrong** is the dangerous case: `x^2-4=0` →
+  `{\cal X}^2-\lambda=0` is syntactically valid LaTeX but semantically wrong.
+  No heuristic catches all of these → **a human/teacher must verify low-stakes,
+  and the system must fail loudly** (we surface confidence + raw LaTeX so a
+  teacher can intervene).
+
+**Caveat:** matplotlib's italic serif glyphs likely inflate the `x`→`X` error
+versus real textbook fonts, so strict accuracy on real NCERT scans may differ.
+These synthetic numbers are an *upper bound* and a reproducible regression
+baseline — validate on real textbook photos before relying on absolute figures.
+
+---
+
+## Accuracy Expectations (pre-measurement estimates — kept for reference)
 
 | Input Type | Expected Accuracy | Notes |
 |-----------|-----------------|-------|
@@ -26,7 +64,9 @@ accuracy, known failure modes, and what to show in the demo.
 | Mixed text + equations (inline) | 30–50% | pix2tex crops full images; struggles with inline |
 | Multi-line stacked equations | 45–65% | Alignment matters; line breaks confuse decoder |
 
-*Source: LaTeX-OCR GitHub benchmarks; entropy analysis paper (arxiv 2412.01221)*
+*Source: LaTeX-OCR GitHub benchmarks; entropy analysis paper (arxiv 2412.01221).
+Our measured lenient match (85%) on clean renders is consistent with the
+"clean printed math" row.*
 
 ---
 
