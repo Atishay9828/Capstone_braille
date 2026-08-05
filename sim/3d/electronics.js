@@ -260,13 +260,17 @@ function barrelJack() {
 function pogoPins(count = 4) {
   const m = mats(), g = new THREE.Group();
   const pitch = 2.54, span = (count - 1) * pitch;
+  // axis along X (toward the cell). Setting rotation.x AND rotation.y compounded
+  // into a quarter-turn that squashed each pin into a flat disc.
+  const alongX = o => { o.rotation.set(0, 0, Math.PI / 2); return o; };
   for (let i = 0; i < count; i++) {
     const y = -span / 2 + i * pitch;
-    g.add(cyl(1.6, 4.5, m.tin, [0, y, 0], null, 12, Math.PI / 2));       // barrel
-    const p = cyl(0.9, 3.2, m.gold, [3.2, y, 0], null, 10, Math.PI / 2); // plunger
-    p.rotation.z = Math.PI / 2; g.add(p);
+    g.add(alongX(cyl(1.9, 4.5, m.tin, [-1.2, y, 0], null, 14)));      // body
+    g.add(alongX(cyl(1.0, 3.6, m.gold, [2.0, y, 0], null, 12)));      // plunger
+    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), m.gold);
+    tip.position.set(3.8, y, 0);
+    g.add(tip);
   }
-  g.children.forEach(c => { c.rotation.y = Math.PI / 2; });
   return g;
 }
 function pogoPads(count = 4) {
@@ -318,14 +322,20 @@ function podHarness() {
   const cols = [W.red, W.black, W.blue, W.yellow];
   const hdrY = POD.hdr.pitch / 2;                       // +Y header row
   const hdrZ = POD.boardUnderZ - 2.5;                   // just under the pins
+  // Hug the floor, then climb the +X/+Y corner. Sparse control points made
+  // Catmull-Rom bow up through the middle of the cavity like a skipping rope.
+  const pinX = POD.length / 2 - POD.pogo.recess - 2.5;
   for (let i = 0; i < 4; i++) {
     const x0 = POD.devkit.xOffset + 8 + i * 2.54;
+    const o = (i - 1.5) * 1.1;
     g.add(wire([
       [x0, hdrY, hdrZ],
-      [x0 + 2, hdrY + 5, hdrZ + 5],
-      [12, 20, 22],                                     // up the inside of the wall
-      [24, 10, 30],
-      [POD.length / 2 - POD.wall - 1, pogoY(i), POD.pogo.z],
+      [x0 + 3, hdrY + 3 + o, POD.floor + 2],
+      [10, 18 + o, POD.floor + 1.5],                    // along the floor
+      [20, 19 + o, POD.floor + 3],
+      [26, 16 + o, 14],                                 // up the corner
+      [27.5, 9 + o, 24],
+      [pinX, pogoY(i), POD.pogo.z],
     ], cols[i], 0.85));
   }
   return g;
@@ -371,14 +381,14 @@ function cellHarness() {
   const socket = [15, -15, 10.3];
   const CAN = [MOTOR.xOffset, 0], R = MOTOR.dia / 2;
   for (let i = 0; i < 5; i++) {
-    const o = (i - 2) * 1.25;
+    const o = (i - 2) * 1.2;
     g.add(wire([
       [socket[0] - 5 + i * 2.54, socket[1], socket[2] + 4],
-      [24, -20 + o, 13],
-      [29, -12 + o, 19],                                 // +X notch through the plate
-      [28, -2 + o, 27],
-      [16, 8 + o, 33],
-      [CAN[0] + R * 0.72, 10 + o, 34],                   // onto the can's side
+      [socket[0] + 6, socket[1] - 3 + o, 14],
+      [27, -17 + o, 18.5],                               // +X notch through the plate
+      [24, -14 + o, 24],                                 // hug the plate, then straight
+      [12, -13 + o, 28],
+      [CAN[0] + R * 0.62, -11 + o, 29],                  // onto the can's near side
     ], [W.blue, W.purple, W.yellow, W.orange, W.red][i], 0.8));
   }
 

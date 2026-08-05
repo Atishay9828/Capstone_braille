@@ -502,6 +502,11 @@ async function main() {
   // only way to test the real scene rather than just the readout.
   window.__braillix = {
     scene: () => scene,
+    look: (px, py, pz, tx, ty, tz) => {          // debug: park the camera precisely
+      camera.position.set(px, py, pz);
+      controls.target.set(tx, ty, tz);
+      controls.update();
+    },
     lift: (d, deg = camDeg) => linkageLift(d, deg),
     linkZ: () => linkages.map(o => +o.position.z.toFixed(4)),
     camDeg: () => camDeg,
