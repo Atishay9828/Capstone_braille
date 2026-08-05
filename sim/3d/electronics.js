@@ -20,7 +20,7 @@ export const POD = {
   boardUnderZ: 10.5,                                   // :81 pod_floor+hdr_strip_h-channel
   usb: { w: 14, h: 9, z: 9.5 },                        // :78-82
   jack: { dia: 11.5, x: -20, y: 18 },                  // :66-71
-  pogo: { w: 10, h: 8, z: 31 },                        // :87-90
+  pogo: { w: 10, h: 8, z: 31, recess: 1 },              // :87-90
   mag: { dia: 8.4, ys: [-14, 14], z: 29 },             // :96-99
 };
 const CELL = { length: 68, width: 68, height: 58 };
@@ -279,39 +279,90 @@ function wire(pts, mat, dia = 0.9) {
   o.castShadow = true;
   return o;
 }
-const dupontEnd = (m, pos) => box(2.5, 2.5, 6.5, m.blackPlas, pos);
+// NOTHING crosses the dock gap. That is the entire point of the pogo interface:
+// four spring pins meet four flat pads and carry 5V, GND, SDA, SCL
+// (docs/DEMO_VS_PRODUCT.md:130). Each cell drives its own motor locally, so the
+// coil lines never leave the cell they belong to. An earlier version ran jumpers
+// straight through the pod wall into the cell, which would have made the pogo
+// pins decorative.
+const POGO_NET = ['5V', 'GND', 'SDA', 'SCL'];
+const pogoY = i => -3.81 + i * 2.54;
 
-// The 13-wire loom from docs/ELECTRONICS_BOM.md, drawn where it actually runs:
-// four coil lines and power from the pod to the driver, driver to motor, and the
-// hall sensor back to the ESP32.
-function harness() {
-  const m = mats(), g = new THREE.Group();
-  g.name = 'wiring';
-  const W = m.wire;
-  const podOut = [-68 + 34 - 4, 0, POD.pogo.z];      // pod dock face, world coords
-
-  // pod -> cell, through the pogo interface
-  const sig = [W.blue, W.green, W.yellow, W.orange];
-  sig.forEach((c, i) => {
-    const y = -3.8 + i * 2.54;
-    g.add(wire([[podOut[0] - 6, y, POD.pogo.z], [podOut[0] + 2, y, POD.pogo.z + 1],
-                [-34 + 6, y * 0.7, 26], [-14, y * 0.5, 12], [-6, -4 + i * 1.6, 8]], c));
-  });
-  g.add(wire([[podOut[0] - 6, -9, 28], [-34, -9, 24], [-18, -12, 10], [-8, -13, 6]], W.red));
-  g.add(wire([[podOut[0] - 6, 9, 28], [-34, 9, 24], [-18, 12, 10], [-8, 12, 6]], W.black));
-
-  // driver -> motor: the five-core ribbon on its white plug
-  const mot = [MOTOR.xOffset + MOTOR.dia / 2 + 6, 0, MOTOR.faceZ - MOTOR.height / 2];
-  for (let i = 0; i < 5; i++) {
-    const y = -5 + i * 2.5;
-    g.add(wire([[9 - 5 + i * 2.5, -9, 12], [12, -6 + i * 1.5, 16],
-                [mot[0] + 2, y * 0.5, 24], [mot[0], y * 0.4, mot[2]]],
-      [W.blue, W.pink || W.purple, W.yellow, W.orange, W.red][i], 0.8));
+// Inside the pod: DevKit header -> the four pogo pins on the dock wall.
+function podHarness() {
+  const m = mats(), g = new THREE.Group(), W = m.wire;
+  g.name = 'pod_wiring';
+  const cols = [W.red, W.black, W.blue, W.yellow];
+  const hdrY = POD.hdr.pitch / 2;                       // +Y header row
+  const hdrZ = POD.boardUnderZ - 2.5;                   // just under the pins
+  for (let i = 0; i < 4; i++) {
+    const x0 = POD.devkit.xOffset + 8 + i * 2.54;
+    g.add(wire([
+      [x0, hdrY, hdrZ],
+      [x0 + 2, hdrY + 5, hdrZ + 5],
+      [12, 20, 22],                                     // up the inside of the wall
+      [24, 10, 30],
+      [POD.length / 2 - POD.wall - 1, pogoY(i), POD.pogo.z],
+    ], cols[i], 0.85));
   }
-  // hall sensor -> ESP32
+  return g;
+}
+
+// Inside the cell: pogo pads -> driver, driver -> motor, hall -> the pocket.
+// Every control point is kept inside the shell; the runs between the pocket and
+// the motor use the wire notches in the mid plate rather than passing through it.
+function cellHarness() {
+  const m = mats(), g = new THREE.Group(), W = m.wire;
+  g.name = 'cell_wiring';
+  const cols = [W.red, W.black, W.blue, W.yellow];
+  const FACE = -CELL.length / 2;                        // -34, the dock face
+
+  // pads -> down the wall into the 14mm electronics pocket
+  const drvPwr = [-8.5, 0, 9.3];                        // ULN2003 power header
+  for (let i = 0; i < 4; i++) {
+    const y = pogoY(i);
+    g.add(wire([
+      [FACE + 4, y, POD.pogo.z],           // the pad's inner face, not inside the wall
+      [FACE + 6, y * 1.6, 26],
+      [FACE + 8, y * 2.2, 16],
+      [-18, y * 1.6, 11],
+      [drvPwr[0] - 1, y < 0 ? -14 : y * 1.4, i < 2 ? drvPwr[2] : 10.5],
+    ], cols[i], 0.85));
+  }
+
+  // driver IN1..IN4, a short bundle looping back to the same pocket wall
+  for (let i = 0; i < 4; i++)
+    g.add(wire([
+      [-8.5, -18.8 + i * 2.54, 9.3],
+      [-14, -20 + i * 1.6, 12],
+      [-22, -16 + i * 1.4, 13.5],
+      [-27, -8 + i * 1.2, 12],
+    ], [W.green, W.orange, W.purple, W.white][i], 0.8));
+
+  // driver's white plug -> the motor, out through the -X mid-plate wire notch
+  const socket = [15, -15, 10.3];
+  for (let i = 0; i < 5; i++) {
+    const o = (i - 2) * 1.3;
+    g.add(wire([
+      [socket[0] - 5 + i * 2.54, socket[1], socket[2] + 4],
+      [22, -22 + o, 14],
+      [28, -12 + o, 18],                                 // +X notch, above the pocket
+      [24, 4 + o, 26],
+      [6, 12 + o, 30],
+      [MOTOR.xOffset + 12, 6 + o, 31],                   // the can's connector side
+    ], [W.blue, W.purple, W.yellow, W.orange, W.red][i], 0.8));
+  }
+
+  // hall sensor -> back down to the pocket (its signal reaches the pod over SDA)
   for (const [c, dy] of [[W.red, -1.27], [W.black, 0], [W.white, 1.27]])
-    g.add(wire([[dy, 17.35, MOTOR.faceZ + 1], [dy * 2, 22, 34],
-                [-20, 24, 30], [-40, 14, 22], [-56, 6, 14]], c, 0.8));
+    // stays under the base plate the whole way — it used to arc up through it
+    g.add(wire([
+      [dy, 17.35, MOTOR.faceZ - 1],
+      [dy + 3, 22, 36],
+      [-16, 24, 28],
+      [-26, 18, 19],
+      [-27, 6, 13],
+    ], c, 0.8));
   return g;
 }
 
@@ -351,10 +402,13 @@ export function buildBrainPod(printed) {
   jack.position.set(POD.jack.x, POD.jack.y, H - wall);
   pod.add(jack);
 
+  // pins sit in the 1mm recess on the dock face, not back at the inner wall
   const pins = pogoPins();
   pins.name = 'pogo_pins';
-  pins.position.set(L / 2 - wall, 0, POD.pogo.z);
+  pins.position.set(L / 2 - POD.pogo.recess - 2.5, 0, POD.pogo.z);
   pod.add(pins);
+
+  pod.add(podHarness());
 
   // Dock magnets. esp32_pod_shell.scad:52 cuts the pocket from the OUTER dock face
   // inward, so the disc sits FLUSH with x = +L/2 with its axis along X — not buried
@@ -368,7 +422,10 @@ export function buildBrainPod(printed) {
 }
 
 // ======================================== electronics inside the cell
-export function buildCellElectronics() {
+// `realMotor` is motor.glb — the downloaded 28BYJ-48 with its five fake straight
+// leads stripped and the output shaft landed on the origin. Falls back to the
+// procedural can if it is missing.
+export function buildCellElectronics(realMotor) {
   const m = mats(), g = new THREE.Group();
   g.name = 'cell_electronics';
 
@@ -377,9 +434,10 @@ export function buildCellElectronics() {
   drv.position.set(6, -6, 5.0);              // in the 14mm electronics pocket
   g.add(drv);
 
-  const mot = stepper28byj();
+  const mot = realMotor || stepper28byj();
   mot.name = 'stepper';
-  mot.position.set(MOTOR.xOffset, 0, MOTOR.faceZ - MOTOR.height);
+  // the GLB already carries the 8mm body offset, the procedural one does not
+  mot.position.set(realMotor ? 0 : MOTOR.xOffset, 0, MOTOR.faceZ - MOTOR.height);
   g.add(mot);
 
   const hall = hallSensor();
@@ -400,7 +458,7 @@ export function buildCellElectronics() {
     g.add(mag);
   }
 
-  g.add(harness());
+  g.add(cellHarness());
   return g;
 }
 
@@ -412,11 +470,11 @@ export const PART_INFO = [
    'The controller. 51.5x28mm, dropped onto two female header strips so it lifts out with no soldering. Runs the text-to-braille encoding and drives the motor.'],
   ['dc_jack', 'DC BARREL JACK 5.5/2.1',
    'Power in, on the lid. Sits away from the board so the barrel hangs over open floor. Polarity verified: centre positive.'],
-  ['pogo_pins', 'POGO PINS',
-   'Spring-loaded contacts on the dock face. They press onto flat pads on the next cell, so cells chain together with no wiring loom and no connector to align.'],
+  ['pogo_pins', 'POGO PINS - 5V / GND / SDA / SCL',
+   'Four spring contacts on the dock face, pressing onto flat pads. Only power and the I2C bus cross here - never the motor coils. Each cell drives its own motor locally, which is why adding a cell needs no extra wiring at all.'],
   ['pod_shell', 'POD SHELL (PETG)',
    'The real printed part, straight from esp32_pod_shell.scad - 4mm walls, the USB service opening, the pogo recess, the magnet pockets and the slotted grille that keeps the WiFi antenna out of solid plastic.'],
-  ['stepper', '28BYJ-48 STEPPER',
+  ['stepper', '28BYJ-48 STEPPER  (model: NandouTech, CC-BY)',
    'The only moving actuator. 28mm can, 19mm tall, 4096 steps per turn. Note the output shaft is offset 8mm from the body centre - that offset drives the whole in-box layout.'],
   ['uln2003', 'ULN2003 DRIVER BOARD',
    'Darlington array. The ESP32 cannot supply the motor coils directly, so four GPIO lines switch this instead. The four LEDs show the coil sequence as it steps.'],

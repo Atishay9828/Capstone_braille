@@ -216,21 +216,24 @@ function applyMaterials(obj) {
 // so its centre sits a full brick away. The GLB's plain-cylinder motor is retired
 // in favour of the real 28BYJ-48 shape (offset shaft, gearbox boss, connector).
 async function buildElectronics(glbScene) {
-  let printed = null;
-  try {
-    const g = await new GLTFLoader().loadAsync('./pod.glb');
-    applyMaterials(g.scene);
-    printed = g.scene;
-  } catch (e) {
-    console.warn('pod.glb missing — falling back to slab geometry.', e);
-  }
+  const loadOptional = async (file, what) => {
+    try {
+      return (await new GLTFLoader().loadAsync(file)).scene;
+    } catch (e) {
+      console.warn(`${file} missing — falling back to the built-in ${what}.`);
+      return null;
+    }
+  };
+  const printed = await loadOptional('./pod.glb', 'slab shell');
+  if (printed) applyMaterials(printed);
+  const realMotor = await loadOptional('./motor.glb', 'motor');
 
   pod = buildBrainPod(printed);
   pod.position.set(-68, 0, 0);
   podShells = ['pod_shell', 'pod_lid'].map(n => pod.getObjectByName(n)).filter(Boolean);
   scene.add(pod);
 
-  cellElec = buildCellElectronics();
+  cellElec = buildCellElectronics(realMotor);
   scene.add(cellElec);
 
   for (const n of ['motor_body', 'motor_shaft', 'motor_ear_l', 'motor_ear_r']) {

@@ -4,7 +4,21 @@ Downloaded 2026-08-04. **Nothing here is our work.** Attribution and licences be
 
 ```
 kicad/          KiCad packages3D — CC-BY-SA 4.0
+                28byj-48__5v_stepper_motor.glb — see below
 ```
+
+## 28BYJ-48 stepper — **CC-BY, credit required**
+
+**"28BYJ-48 5V Stepper Motor" by NandouTech**, from Sketchfab, licensed
+**CC Attribution**. Downloaded manually by Mridul (Sketchfab requires an account).
+
+Converted to `sim/3d/motor.glb` by `renders/export_motor_glb.py`, which strips a stray
+`Cube` primitive and the eighteen mesh pieces making up five straight 2×2×20 fake leads,
+then re-lands the model with the output shaft on the origin and the can bottom at z=0.
+2,968 triangles.
+
+> **This attribution must ship with the simulator.** CC-BY is otherwise a very easy
+> licence to satisfy — no share-alike, commercial use fine.
 
 ## What is here and why
 
