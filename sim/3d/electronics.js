@@ -49,7 +49,25 @@ function mats() {
   M.bluePlas  = pbr(0x2f6fd0, 0.05, 0.50);
   M.copper    = pbr(0xb5651d, 0.80, 0.35);
   M.ledRed    = pbr(0xff3b3b, 0.10, 0.35, { emissive: 0x330000 });
+  M.ledGreen  = pbr(0x3bff7a, 0.10, 0.35, { emissive: 0x003311 });
   M.motorCan  = pbr(0x9ba3aa, 0.85, 0.30);
+  M.resistor  = pbr(0x2b2b30, 0.10, 0.45);   // SMD chip resistor, black body
+  M.resistTHT = pbr(0xd8c89a, 0.05, 0.55);   // through-hole, beige
+  M.capCer    = pbr(0xc9a06a, 0.05, 0.60);   // ceramic, tan
+  M.capElec   = pbr(0x23252c, 0.35, 0.35);   // electrolytic can
+  M.solder    = pbr(0xb9bcc2, 0.95, 0.25);
+  M.crystal   = pbr(0xd9dde3, 0.92, 0.20);
+  M.magnet    = pbr(0xb8bcc4, 0.95, 0.22);
+  M.wire = {
+    red:    pbr(0xd93b3b, 0.02, 0.42), black: pbr(0x1b1c20, 0.02, 0.45),
+    yellow: pbr(0xe0bf34, 0.02, 0.42), green: pbr(0x3aa757, 0.02, 0.42),
+    blue:   pbr(0x3a72c4, 0.02, 0.42), white: pbr(0xdfe2e6, 0.02, 0.42),
+    orange: pbr(0xe07b2c, 0.02, 0.42), purple: pbr(0x8a54c4, 0.02, 0.42),
+  };
+  // The scene supplies a PMREM environment, so metals have something to reflect.
+  // Without bumping this the tiny parts read as flat grey chips.
+  Object.values(M).forEach(m => { if (m.isMaterial) m.envMapIntensity = 1.35; });
+  Object.values(M.wire).forEach(m => { m.envMapIntensity = 0.9; });
   return M;
 }
 
@@ -81,6 +99,37 @@ function hollowShell(L, W, H, wall, floor, mat, skipPlusX) {
   return g;
 }
 
+// ---- discrete components ---------------------------------------------
+// Real package sizes. 0805 is 2.0x1.25x0.5mm, SOT-23 is 2.9x1.3x1.1, and a DIP-16
+// on 7.62mm rows is 19.7 long. At this scale they are specks, but a board with no
+// specks on it reads as a toy.
+const smd0805 = (m, pos, mat) => {
+  const g = new THREE.Group();
+  g.add(box(2.0, 1.25, 0.5, mat, [0, 0, 0.25]));
+  for (const s of [-1, 1]) g.add(box(0.4, 1.25, 0.52, m.solder, [s * 0.8, 0, 0.26]));
+  g.position.set(...pos);
+  return g;
+};
+const dip = (m, pins, pos, name) => {
+  const g = new THREE.Group();
+  const L = pins / 2 * 2.54, W = 7.0;
+  g.add(box(L, W, 3.4, m.blackPlas, [0, 0, 1.7]));
+  g.add(cyl(2.2, 0.4, m.pcbBlue, [-L / 2 + 2, 0, 3.4], null, 12));    // pin-1 dimple
+  for (let i = 0; i < pins / 2; i++)
+    for (const s of [-1, 1])
+      g.add(box(0.5, 0.9, 3.2, m.solder,
+        [-L / 2 + 1.27 + i * 2.54, s * (W / 2 + 0.3), -1.0]));
+  g.position.set(...pos); if (name) g.name = name;
+  return g;
+};
+const electrolytic = (m, dia, h, pos) => {
+  const g = new THREE.Group();
+  g.add(cyl(dia, h, m.capElec, [0, 0, h / 2], null, 16));
+  g.add(cyl(dia * 0.85, 0.3, m.solder, [0, 0, h - 0.15], null, 16));
+  g.position.set(...pos);
+  return g;
+};
+
 // ---------------------------------------------------------------- ESP32
 function esp32Devkit() {
   const m = mats(), g = new THREE.Group();
@@ -97,24 +146,67 @@ function esp32Devkit() {
     for (let i = 0; i < 15; i++)
       g.add(box(0.6, 0.6, 6, m.gold, [2 - 17.8 + i * 2.54, s * POD.hdr.pitch / 2, -t / 2 - 3.6]));
   }
-  // regulator, two buttons, two LEDs — enough to read as a real board
-  g.add(box(4, 4, 1.6, m.blackPlas, [l / 2 - 16, 9, t / 2 + 0.8]));
-  for (const x of [l / 2 - 5, l / 2 - 12])
-    g.add(box(4.5, 3.5, 2.2, m.blackPlas, [x, -10, t / 2 + 1.1]));
-  g.add(box(1.6, 0.8, 0.6, m.ledRed, [l / 2 - 20, -4, t / 2 + 0.3]));
+  const top = t / 2;
+  // AMS1117-3.3 regulator in SOT-223 — the big tab is how you spot it
+  g.add(box(6.5, 3.5, 1.6, m.blackPlas, [l / 2 - 15, 9.5, top + 0.8], 'ams1117'));
+  g.add(box(3.2, 2.0, 0.3, m.solder, [l / 2 - 15, 11.6, top + 0.15]));
+  // CH340C USB-serial, SOP-16
+  g.add(box(10.0, 4.0, 1.5, m.blackPlas, [l / 2 - 27, -9.5, top + 0.75], 'ch340'));
+  // BOOT and EN tactile buttons
+  for (const [x, lbl] of [[l / 2 - 5, 'btn_en'], [l / 2 - 13, 'btn_boot']]) {
+    g.add(box(6, 6, 2.5, m.blackPlas, [x, -10.5, top + 1.25], lbl));
+    g.add(cyl(3.4, 1.0, m.whitePlas, [x, -10.5, top + 3.0], null, 12));
+  }
+  // power + user LEDs
+  g.add(smd0805(m, [l / 2 - 21, -3.5, top], m.ledRed));
+  g.add(smd0805(m, [l / 2 - 21, -0.5, top], m.ledGreen));
+  // electrolytic bulk cap, and the crystal for the USB bridge
+  g.add(electrolytic(m, 5.0, 5.5, [l / 2 - 8, 9.5, top]));
+  g.add(box(3.2, 2.5, 0.9, m.crystal, [l / 2 - 27, -4.0, top + 0.45], 'xtal'));
+  // decoupling caps and resistors scattered where the real board carries them
+  const bits = [
+    [-6, 5.5, 'r'], [-6, 8.0, 'r'], [-1, 10.5, 'c'], [4, 10.5, 'c'],
+    [9, 5.0, 'r'], [14, 9.0, 'c'], [-11, -6.0, 'r'], [-2, -6.5, 'c'],
+    [6, -10.5, 'r'], [12, -6.0, 'c'], [18, 4.0, 'r'], [-14, 9.5, 'c'],
+  ];
+  for (const [x, y, kind] of bits)
+    g.add(smd0805(m, [x, y, top], kind === 'r' ? m.resistor : m.capCer));
   return g;
 }
 
 // ------------------------------------------------------------ ULN2003
 function uln2003() {
   const m = mats(), g = new THREE.Group();
+  const top = 0.8;
   g.add(box(35, 32, 1.6, m.pcbBlue, [0, 0, 0], 'pcb'));
-  g.add(box(20, 7, 3.5, m.blackPlas, [-4, 6, 2.55], 'ic'));             // the ULN2003 chip
-  g.add(box(15, 8, 9, m.whitePlas, [8, -8, 5.3], 'socket'));            // 5-pin motor socket
-  for (let i = 0; i < 4; i++)                                           // IN1..IN4 header
-    g.add(box(2.5, 2.5, 8, m.blackPlas, [-14, -12 + i * 2.6, 4.8]));
-  for (let i = 0; i < 4; i++)                                           // the four LEDs
-    g.add(box(2, 1.2, 0.9, m.ledRed, [-12 + i * 5, 13, 1.25]));
+
+  g.add(dip(m, 16, [-4, 5, top], 'uln_ic'));            // the ULN2003 itself, DIP-16
+
+  // white 5-pin JST the motor plugs into
+  g.add(box(13, 8, 9, m.whitePlas, [9, -9, top + 4.5], 'motor_socket'));
+  for (let i = 0; i < 5; i++)
+    g.add(box(0.7, 0.7, 6, m.solder, [9 - 5.1 + i * 2.54, -9, top + 3]));
+
+  // IN1..IN4 male header
+  g.add(box(2.5, 10.5, 2.5, m.blackPlas, [-14.5, -9, top + 1.25]));
+  for (let i = 0; i < 4; i++)
+    g.add(box(0.64, 0.64, 11, m.gold, [-14.5, -12.8 + i * 2.54, top + 3.5]));
+  // power header (5V / GND)
+  g.add(box(2.5, 5.4, 2.5, m.blackPlas, [-14.5, 6, top + 1.25]));
+  for (let i = 0; i < 2; i++)
+    g.add(box(0.64, 0.64, 11, m.gold, [-14.5, 4.7 + i * 2.54, top + 3.5]));
+
+  // the four coil LEDs — these are what let you SEE the step sequence
+  for (let i = 0; i < 4; i++) {
+    const led = smd0805(m, [-11 + i * 5, 13, top], m.ledRed);
+    led.name = 'coil_led_' + (i + 1);
+    g.add(led);
+    g.add(smd0805(m, [-11 + i * 5, 10.2, top], m.resistor));   // its series resistor
+  }
+  // jumper link and a decoupling cap
+  g.add(box(5, 2.5, 2.5, m.bluePlas, [13, 10, top + 1.25], 'jumper'));
+  g.add(smd0805(m, [2, -13, top], m.capCer));
+  g.add(electrolytic(m, 4.0, 4.5, [-9, -13, top]));
   return g;
 }
 
@@ -178,6 +270,51 @@ function pogoPads(count = 4) {
   return g;
 }
 
+// ---------------------------------------------------------------- wires
+// Dupont jumpers drawn as swept tubes through a Catmull-Rom curve. Real jumpers
+// sag and bulge; dead-straight lines look like a schematic, not a build.
+function wire(pts, mat, dia = 0.9) {
+  const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
+  const o = new THREE.Mesh(new THREE.TubeGeometry(curve, 18, dia / 2, 6, false), mat);
+  o.castShadow = true;
+  return o;
+}
+const dupontEnd = (m, pos) => box(2.5, 2.5, 6.5, m.blackPlas, pos);
+
+// The 13-wire loom from docs/ELECTRONICS_BOM.md, drawn where it actually runs:
+// four coil lines and power from the pod to the driver, driver to motor, and the
+// hall sensor back to the ESP32.
+function harness() {
+  const m = mats(), g = new THREE.Group();
+  g.name = 'wiring';
+  const W = m.wire;
+  const podOut = [-68 + 34 - 4, 0, POD.pogo.z];      // pod dock face, world coords
+
+  // pod -> cell, through the pogo interface
+  const sig = [W.blue, W.green, W.yellow, W.orange];
+  sig.forEach((c, i) => {
+    const y = -3.8 + i * 2.54;
+    g.add(wire([[podOut[0] - 6, y, POD.pogo.z], [podOut[0] + 2, y, POD.pogo.z + 1],
+                [-34 + 6, y * 0.7, 26], [-14, y * 0.5, 12], [-6, -4 + i * 1.6, 8]], c));
+  });
+  g.add(wire([[podOut[0] - 6, -9, 28], [-34, -9, 24], [-18, -12, 10], [-8, -13, 6]], W.red));
+  g.add(wire([[podOut[0] - 6, 9, 28], [-34, 9, 24], [-18, 12, 10], [-8, 12, 6]], W.black));
+
+  // driver -> motor: the five-core ribbon on its white plug
+  const mot = [MOTOR.xOffset + MOTOR.dia / 2 + 6, 0, MOTOR.faceZ - MOTOR.height / 2];
+  for (let i = 0; i < 5; i++) {
+    const y = -5 + i * 2.5;
+    g.add(wire([[9 - 5 + i * 2.5, -9, 12], [12, -6 + i * 1.5, 16],
+                [mot[0] + 2, y * 0.5, 24], [mot[0], y * 0.4, mot[2]]],
+      [W.blue, W.pink || W.purple, W.yellow, W.orange, W.red][i], 0.8));
+  }
+  // hall sensor -> ESP32
+  for (const [c, dy] of [[W.red, -1.27], [W.black, 0], [W.white, 1.27]])
+    g.add(wire([[dy, 17.35, MOTOR.faceZ + 1], [dy * 2, 22, 34],
+                [-20, 24, 30], [-40, 14, 22], [-56, 6, 14]], c, 0.8));
+  return g;
+}
+
 // ================================================== the assembled pod
 // `printed` is the real shell+lid loaded from pod.glb, which OpenSCAD generated from
 // esp32_pod_shell.scad. Passing it in beats redrawing the box here: the USB opening,
@@ -219,10 +356,14 @@ export function buildBrainPod(printed) {
   pins.position.set(L / 2 - wall, 0, POD.pogo.z);
   pod.add(pins);
 
-  // dock magnets
-  for (const y of POD.mag.ys)
-    pod.add(cyl(8.4, 1.2, m.tin, [L / 2 - wall / 2, y, POD.mag.z], null, 16, 0));
-
+  // Dock magnets. esp32_pod_shell.scad:52 cuts the pocket from the OUTER dock face
+  // inward, so the disc sits FLUSH with x = +L/2 with its axis along X — not buried
+  // mid-wall, and not lying on its side.
+  for (const y of POD.mag.ys) {
+    const mag = cyl(POD.mag.dia, 1.2, m.magnet, [L / 2 - 0.6, y, POD.mag.z], null, 20);
+    mag.rotation.set(0, 0, Math.PI / 2);   // cylinder's Y axis -> X, facing the cell
+    pod.add(mag);
+  }
   return pod;
 }
 
@@ -251,6 +392,15 @@ export function buildCellElectronics() {
   pads.position.set(-CELL.length / 2, 0, POD.pogo.z);
   g.add(pads);
 
+  // the cell's mating magnets, flush with its -X face and polarised to attract
+  for (const y of POD.mag.ys) {
+    const mag = cyl(POD.mag.dia, 1.2, m.magnet,
+      [-CELL.length / 2 + 0.6, y, POD.mag.z], null, 20);
+    mag.rotation.set(0, 0, Math.PI / 2);
+    g.add(mag);
+  }
+
+  g.add(harness());
   return g;
 }
 
@@ -274,4 +424,8 @@ export const PART_INFO = [
    'Finds home. On power-up the cam turns until the magnet passes it - the only way the firmware learns which of the 64 positions it is sitting on. Shown as the bare TO-92 because the module it ships on is too big for the pocket, so the sensor gets desoldered off its blue carrier board.'],
   ['pogo_pads', 'POGO PADS',
    'The flat gold targets the pins press onto. Flat-to-sprung means no alignment tolerance problem and nothing to snap off.'],
+  ['magnets', 'DOCK MAGNETS 8x1mm',
+   'Two per face, flush with the dock wall at y +/-14. Poles are reversed between pod and cell so they only latch the right way round - you physically cannot dock a cell backwards.'],
+  ['wiring', 'THE 13-WIRE LOOM',
+   'Dupont jumpers, no soldering. Four coil lines and power reach the driver, five cores go on to the motor, and three run back from the hall sensor. Colour coding matches the build guide.'],
 ];
