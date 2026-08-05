@@ -84,7 +84,7 @@ const cellToPos = cell => cell.reduce((v, d) => v | (1 << D2B[d]), 0);
 // ---------------------------------------------------------------- scene
 const XRAY_PARTS = ['outer_box', 'top_plate', 'dot_insert'];
 let renderer, scene, camera, controls, parts = {}, linkages = [];
-let pod = null, cellElec = null, glbMotor = [];
+let pod = null, cellElec = null, glbMotor = [], podShells = [];
 let running = true, xray = false, elec = false, speed = 1;
 let word = 'Braille 101', idx = 0, camDeg = 0, targetDeg = 0, dwell = 0;
 let homeCam = null, homeTarget = null;
@@ -215,9 +215,19 @@ function applyMaterials(obj) {
 // The pod docks on the cell's -X face: the pod's +X wall meets the cell's -X wall,
 // so its centre sits a full brick away. The GLB's plain-cylinder motor is retired
 // in favour of the real 28BYJ-48 shape (offset shaft, gearbox boss, connector).
-function buildElectronics(glbScene) {
-  pod = buildBrainPod();
+async function buildElectronics(glbScene) {
+  let printed = null;
+  try {
+    const g = await new GLTFLoader().loadAsync('./pod.glb');
+    applyMaterials(g.scene);
+    printed = g.scene;
+  } catch (e) {
+    console.warn('pod.glb missing — falling back to slab geometry.', e);
+  }
+
+  pod = buildBrainPod(printed);
   pod.position.set(-68, 0, 0);
+  podShells = ['pod_shell', 'pod_lid'].map(n => pod.getObjectByName(n)).filter(Boolean);
   scene.add(pod);
 
   cellElec = buildCellElectronics();
@@ -244,8 +254,10 @@ function setElectronics(on) {
 
 function setXray(on) {
   xray = on;
-  XRAY_PARTS.forEach(n => {
-    const o = parts[n];
+  // the pod's own walls have to go glass too, or turning on X-ray leaves the
+  // controller sealed inside an opaque box while the cell beside it opens up
+  const targets = XRAY_PARTS.map(n => parts[n]).concat(podShells);
+  targets.forEach(o => {
     if (!o) return;
     o.traverse(c => {
       if (!c.isMesh) return;
@@ -472,7 +484,7 @@ async function main() {
   parts.cam = gltf.scene.getObjectByName('cam');
   XRAY_PARTS.forEach(n => parts[n] = gltf.scene.getObjectByName(n));
 
-  buildElectronics(gltf.scene);
+  await buildElectronics(gltf.scene);
 
   wireUI();
   syncRun();

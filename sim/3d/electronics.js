@@ -179,19 +179,25 @@ function pogoPads(count = 4) {
 }
 
 // ================================================== the assembled pod
-export function buildBrainPod() {
+// `printed` is the real shell+lid loaded from pod.glb, which OpenSCAD generated from
+// esp32_pod_shell.scad. Passing it in beats redrawing the box here: the USB opening,
+// pogo recess, antenna grille, magnet pockets and screw bosses are the features people
+// actually want to look at, and slabs have none of them.
+export function buildBrainPod(printed) {
   const m = mats(), pod = new THREE.Group();
   pod.name = 'brain_pod';
   const { length: L, width: W, height: H, wall, floor } = POD;
 
-  // shell, open at +X so you can see into the dock face
-  const shell = hollowShell(L, W, H, wall, floor, m.shellPETG.clone(), false);
-  shell.name = 'pod_shell';
-  pod.add(shell);
-
-  const lid = box(L, W, wall, m.shellPETG.clone(), [0, 0, H - wall / 2]);
-  lid.name = 'pod_lid';
-  pod.add(lid);
+  if (printed) {
+    pod.add(printed);
+  } else {                                  // fallback if pod.glb is missing
+    const shell = hollowShell(L, W, H, wall, floor, m.shellPETG.clone(), false);
+    shell.name = 'pod_shell';
+    pod.add(shell);
+    const lid = box(L, W, wall, m.shellPETG.clone(), [0, 0, H - wall / 2]);
+    lid.name = 'pod_lid';
+    pod.add(lid);
+  }
 
   // header strips, then the DevKit sitting on them
   for (const s of [-1, 1])
@@ -259,7 +265,7 @@ export const PART_INFO = [
   ['pogo_pins', 'POGO PINS',
    'Spring-loaded contacts on the dock face. They press onto flat pads on the next cell, so cells chain together with no wiring loom and no connector to align.'],
   ['pod_shell', 'POD SHELL (PETG)',
-   'Printed wall. 4mm thick, with a slotted grille near the dock so the WiFi antenna is not sitting inside a solid plastic box.'],
+   'The real printed part, straight from esp32_pod_shell.scad - 4mm walls, the USB service opening, the pogo recess, the magnet pockets and the slotted grille that keeps the WiFi antenna out of solid plastic.'],
   ['stepper', '28BYJ-48 STEPPER',
    'The only moving actuator. 28mm can, 19mm tall, 4096 steps per turn. Note the output shaft is offset 8mm from the body centre - that offset drives the whole in-box layout.'],
   ['uln2003', 'ULN2003 DRIVER BOARD',
