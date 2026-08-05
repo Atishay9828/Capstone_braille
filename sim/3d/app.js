@@ -16,6 +16,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { buildBrainPod, buildCellElectronics, PART_INFO } from './electronics.js';
 
 // ---------------------------------------------------------------- braille
 // Grade 1, mirrors firmware/braille_mapping.py
@@ -83,7 +84,8 @@ const cellToPos = cell => cell.reduce((v, d) => v | (1 << D2B[d]), 0);
 // ---------------------------------------------------------------- scene
 const XRAY_PARTS = ['outer_box', 'top_plate', 'dot_insert'];
 let renderer, scene, camera, controls, parts = {}, linkages = [];
-let running = true, xray = false, speed = 1;
+let pod = null, cellElec = null, glbMotor = [];
+let running = true, xray = false, elec = false, speed = 1;
 let word = 'Braille 101', idx = 0, camDeg = 0, targetDeg = 0, dwell = 0;
 let homeCam = null, homeTarget = null;
 
@@ -208,6 +210,36 @@ function applyMaterials(obj) {
     }
     m.needsUpdate = true;
   });
+}
+
+// The pod docks on the cell's -X face: the pod's +X wall meets the cell's -X wall,
+// so its centre sits a full brick away. The GLB's plain-cylinder motor is retired
+// in favour of the real 28BYJ-48 shape (offset shaft, gearbox boss, connector).
+function buildElectronics(glbScene) {
+  pod = buildBrainPod();
+  pod.position.set(-68, 0, 0);
+  scene.add(pod);
+
+  cellElec = buildCellElectronics();
+  scene.add(cellElec);
+
+  for (const n of ['motor_body', 'motor_shaft', 'motor_ear_l', 'motor_ear_r']) {
+    const o = glbScene.getObjectByName(n);
+    if (o) { o.visible = false; glbMotor.push(o); }
+  }
+
+  pod.visible = cellElec.visible = false;   // off until asked for
+  $('parts').innerHTML = PART_INFO.map(([, title, body]) =>
+    `<div class="pi"><b>${title}</b><span>${body}</span></div>`).join('');
+}
+
+function setElectronics(on) {
+  elec = on;
+  pod.visible = cellElec.visible = on;
+  glbMotor.forEach(o => o.visible = false);       // never show the placeholder again
+  $('parts').classList.toggle('on', on);
+  $('btnElec').classList.toggle('on', on);
+  if (on && !xray) setXray(true);                 // pointless to hide them behind walls
 }
 
 function setXray(on) {
@@ -336,6 +368,7 @@ function wireUI() {
     idx = 0; gotoIndex(0);
   });
   $('btnXray').addEventListener('click', () => setXray(!xray));
+  $('btnElec').addEventListener('click', () => setElectronics(!elec));
   $('btnStep').addEventListener('click', () => { running = false; syncRun(); gotoIndex(idx + 1); });
   $('btnView').addEventListener('click', () => {
     camera.position.copy(homeCam); controls.target.copy(homeTarget); controls.update();
@@ -439,6 +472,8 @@ async function main() {
   parts.cam = gltf.scene.getObjectByName('cam');
   XRAY_PARTS.forEach(n => parts[n] = gltf.scene.getObjectByName(n));
 
+  buildElectronics(gltf.scene);
+
   wireUI();
   syncRun();
   gotoIndex(0);
@@ -451,6 +486,7 @@ async function main() {
   // (which is how a lost mid-dwell offset shows up). Cheap to keep, and it is the
   // only way to test the real scene rather than just the readout.
   window.__braillix = {
+    scene: () => scene,
     lift: (d, deg = camDeg) => linkageLift(d, deg),
     linkZ: () => linkages.map(o => +o.position.z.toFixed(4)),
     camDeg: () => camDeg,

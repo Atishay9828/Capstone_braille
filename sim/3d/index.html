@@ -91,6 +91,17 @@
   /* ---- bottom-right: the encoding, the actual clever bit ---- */
   #decode{position:fixed;bottom:16px;right:16px;padding:13px 15px;z-index:10;
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;width:290px}
+  /* ---- component descriptions (Electronics button) ---- */
+  #parts{position:fixed;top:16px;right:16px;margin-top:128px;padding:12px 14px;
+    z-index:9;width:262px;max-height:calc(100vh - 176px);overflow-y:auto;
+    display:none;font-size:11px}
+  #parts.on{display:block}
+  .pi{padding:7px 0;border-bottom:1px solid var(--line)}
+  .pi:last-child{border-bottom:none}
+  .pi b{display:block;font-size:9.5px;letter-spacing:.1em;color:var(--blue);
+    font-weight:600;margin-bottom:3px}
+  .pi span{color:var(--dim);line-height:1.55;font-size:10.5px}
+
   #decode h2{font-size:10px;letter-spacing:.12em;color:var(--dim);
     text-transform:uppercase;margin-bottom:9px;font-family:inherit}
   .dl{display:flex;justify-content:space-between;padding:3px 0;gap:10px}
@@ -153,6 +164,7 @@
   <input id="word" type="text" value="Braille 101" autocomplete="off" spellcheck="false">
   <div class="btns">
     <button id="btnXray">X-Ray Vision</button>
+    <button id="btnElec">Electronics</button>
     <button id="btnRun" class="ok">Simulate</button>
     <button id="btnStep">Step ▸</button>
     <button id="btnView">Reset View</button>
@@ -163,6 +175,9 @@
     <span id="speedv">1.0×</span>
   </div>
 </div>
+
+<!-- component descriptions, revealed by the Electronics button -->
+<div id="parts" class="card"></div>
 
 <div id="decode" class="card">
   <h2>How this letter is encoded</h2>
