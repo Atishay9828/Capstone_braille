@@ -231,10 +231,14 @@ function stepper28byj() {
 }
 
 // --------------------------------------------------------- A3144 hall
+// base_plate.scad:98-106 — the pocket is 4.1 wide x 3.1 deep x 1.6 HIGH, buried in
+// the plate with 0.4mm of material left between it and the cam pocket floor. It was
+// previously drawn 3.1mm tall standing up at z=45, which put it inside the cam disc.
 function hallSensor() {
   const m = mats(), g = new THREE.Group();
-  g.add(box(4.1, 1.5, 3.1, m.blackPlas, [0, 0, 1.55], 'to92'));
-  for (let i = -1; i <= 1; i++) g.add(box(0.45, 0.45, 6, m.tin, [i * 1.27, 0, -3]));
+  g.add(box(4.1, 3.1, 1.6, m.blackPlas, [0, 0, 0], 'to92'));
+  for (let i = -1; i <= 1; i++)
+    g.add(box(0.45, 0.45, 5, m.tin, [i * 1.27, 0, -3.3]));   // legs hang below
   return g;
 }
 
@@ -243,7 +247,10 @@ function barrelJack() {
   const m = mats(), g = new THREE.Group();
   g.add(cyl(11.5, 3, m.blackPlas, [0, 0, 1.5], 'flange', 20));
   g.add(cyl(8.0, 11, m.blackPlas, [0, 0, -5.5], 'body', 20));
-  g.add(cyl(2.1, 9, m.tin, [0, 0, 4.5], 'pin', 12));
+  g.add(cyl(7.4, 6.5, m.blackPlas, [0, 0, 6.25], 'barrel', 20));
+  // the centre pin lives INSIDE the barrel; it used to spear 6mm out past the rim
+  // and read as a second motor shaft sticking out of the lid
+  g.add(cyl(2.1, 5.0, m.tin, [0, 0, 5.5], 'pin', 12));
   return g;
 }
 
@@ -288,6 +295,22 @@ function wire(pts, mat, dia = 0.9) {
 const POGO_NET = ['5V', 'GND', 'SDA', 'SCL'];
 const pogoY = i => -3.81 + i * 2.54;
 
+// Where the per-cell I/O expander goes in the multi-cell product. It does not exist
+// yet, and pretending otherwise is why several wires used to stop in mid-air: SDA,
+// SCL and the four IN lines have nothing on a ULN2003 to land on. They terminate
+// here instead, on a real footprint, which is the honest picture.
+const EXPANDER = [-20, -4, 5.2];
+function expanderSlot() {
+  const m = mats(), g = new THREE.Group();
+  g.name = 'expander_slot';
+  g.add(box(24, 20, 0.4, m.pcbBlue, [0, 0, 0]));
+  for (const s of [-1, 1])
+    for (let i = 0; i < 8; i++)
+      g.add(box(1.4, 1.4, 0.5, m.gold, [-8.9 + i * 2.54, s * 6.5, 0.35]));
+  g.position.set(...EXPANDER);
+  return g;
+}
+
 // Inside the pod: DevKit header -> the four pogo pins on the dock wall.
 function podHarness() {
   const m = mats(), g = new THREE.Group(), W = m.wire;
@@ -317,51 +340,58 @@ function cellHarness() {
   const cols = [W.red, W.black, W.blue, W.yellow];
   const FACE = -CELL.length / 2;                        // -34, the dock face
 
-  // pads -> down the wall into the 14mm electronics pocket
-  const drvPwr = [-8.5, 0, 9.3];                        // ULN2003 power header
+  // 5V and GND land on the driver's own power header; SDA and SCL have nothing on a
+  // ULN2003 to connect to, so they run to the expander footprint.
+  const pwrPin = i => [-8.5, -1.3 + i * 2.54, 9.3];
+  const exPin = i => [EXPANDER[0] - 8.9 + i * 2.54, EXPANDER[1] + 6.5, EXPANDER[2] + 0.6];
   for (let i = 0; i < 4; i++) {
     const y = pogoY(i);
+    const end = i < 2 ? pwrPin(i) : exPin(i + 2);
     g.add(wire([
       [FACE + 4, y, POD.pogo.z],           // the pad's inner face, not inside the wall
       [FACE + 6, y * 1.6, 26],
-      [FACE + 8, y * 2.2, 16],
-      [-18, y * 1.6, 11],
-      [drvPwr[0] - 1, y < 0 ? -14 : y * 1.4, i < 2 ? drvPwr[2] : 10.5],
+      [FACE + 9, y * 2.0, 15],
+      [end[0] - 8, end[1] + (i < 2 ? -3 : 4), end[2] + 4],
+      end,
     ], cols[i], 0.85));
   }
 
-  // driver IN1..IN4, a short bundle looping back to the same pocket wall
+  // driver IN1..IN4 -> the expander that will drive them
   for (let i = 0; i < 4; i++)
     g.add(wire([
       [-8.5, -18.8 + i * 2.54, 9.3],
-      [-14, -20 + i * 1.6, 12],
-      [-22, -16 + i * 1.4, 13.5],
-      [-27, -8 + i * 1.2, 12],
+      [-12, -17 + i * 1.4, 12],
+      [-17, -13 + i * 1.0, 11],
+      exPin(i),
     ], [W.green, W.orange, W.purple, W.white][i], 0.8));
 
-  // driver's white plug -> the motor, out through the -X mid-plate wire notch
+  // Driver's white plug -> the motor. Up through the +X mid-plate wire notch, then
+  // round to the can. Held below z=40 so it never enters the base plate (41..46) or
+  // the cam pocket, which is what the old route cut straight through.
   const socket = [15, -15, 10.3];
+  const CAN = [MOTOR.xOffset, 0], R = MOTOR.dia / 2;
   for (let i = 0; i < 5; i++) {
-    const o = (i - 2) * 1.3;
+    const o = (i - 2) * 1.25;
     g.add(wire([
       [socket[0] - 5 + i * 2.54, socket[1], socket[2] + 4],
-      [22, -22 + o, 14],
-      [28, -12 + o, 18],                                 // +X notch, above the pocket
-      [24, 4 + o, 26],
-      [6, 12 + o, 30],
-      [MOTOR.xOffset + 12, 6 + o, 31],                   // the can's connector side
+      [24, -20 + o, 13],
+      [29, -12 + o, 19],                                 // +X notch through the plate
+      [28, -2 + o, 27],
+      [16, 8 + o, 33],
+      [CAN[0] + R * 0.72, 10 + o, 34],                   // onto the can's side
     ], [W.blue, W.purple, W.yellow, W.orange, W.red][i], 0.8));
   }
 
-  // hall sensor -> back down to the pocket (its signal reaches the pod over SDA)
-  for (const [c, dy] of [[W.red, -1.27], [W.black, 0], [W.white, 1.27]])
-    // stays under the base plate the whole way — it used to arc up through it
+  // hall legs -> the expander, hugging the underside of the base plate and staying
+  // outside the can's 14mm radius the whole way
+  for (const [c, dy, i] of [[W.red, -1.27, 5], [W.black, 0, 6], [W.white, 1.27, 7]])
     g.add(wire([
-      [dy, 17.35, MOTOR.faceZ - 1],
-      [dy + 3, 22, 36],
-      [-16, 24, 28],
-      [-26, 18, 19],
-      [-27, 6, 13],
+      [dy, 17.35, 38.5],
+      [dy - 4, 21, 35],
+      [-24, 22, 28],
+      [-30, 14, 21],                                     // -X notch
+      [-29, 2, 13],
+      exPin(i),
     ], c, 0.8));
   return g;
 }
@@ -440,9 +470,11 @@ export function buildCellElectronics(realMotor) {
   mot.position.set(realMotor ? 0 : MOTOR.xOffset, 0, MOTOR.faceZ - MOTOR.height);
   g.add(mot);
 
+  // base plate spans 41..46; the cam pocket floor is at 43 and the hall pocket sits
+  // 0.4mm under it, so the sensor body occupies 41.0..42.6 — well clear of the cam.
   const hall = hallSensor();
   hall.name = 'hall';
-  hall.position.set(0, 17.35, MOTOR.faceZ + 4);   // base_plate.scad pocket
+  hall.position.set(0, 17.35, 41.8);
   g.add(hall);
 
   const pads = pogoPads();
@@ -458,6 +490,7 @@ export function buildCellElectronics(realMotor) {
     g.add(mag);
   }
 
+  g.add(expanderSlot());
   g.add(cellHarness());
   return g;
 }
@@ -475,7 +508,9 @@ export const PART_INFO = [
   ['pod_shell', 'POD SHELL (PETG)',
    'The real printed part, straight from esp32_pod_shell.scad - 4mm walls, the USB service opening, the pogo recess, the magnet pockets and the slotted grille that keeps the WiFi antenna out of solid plastic.'],
   ['stepper', '28BYJ-48 STEPPER  (model: NandouTech, CC-BY)',
-   'The only moving actuator. 28mm can, 19mm tall, 4096 steps per turn. Note the output shaft is offset 8mm from the body centre - that offset drives the whole in-box layout.'],
+   'The only moving actuator. 28mm can, 19mm tall, 4096 steps per turn. Its output shaft is offset 8mm from the body centre, and that offset drives the whole in-box layout. WARNING: the shaft is 10mm long but only 4.8mm of it fits inside the cam hub, so 5.2mm currently stands proud of the base plate and into the linkage space. That is a real unresolved clash, not a drawing error.'],
+  ['expander_slot', 'I/O EXPANDER FOOTPRINT (empty)',
+   'Where the per-cell MCP23017 goes in the multi-cell product. Nothing is fitted yet, which is why SDA, SCL and the four IN lines terminate here rather than on the driver - a ULN2003 has no pins for them.'],
   ['uln2003', 'ULN2003 DRIVER BOARD',
    'Darlington array. The ESP32 cannot supply the motor coils directly, so four GPIO lines switch this instead. The four LEDs show the coil sequence as it steps.'],
   ['hall', 'HALL SENSOR (BARE TO-92)',
