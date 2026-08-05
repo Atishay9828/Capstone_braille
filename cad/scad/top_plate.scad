@@ -60,21 +60,21 @@ include <mech_layout.scad>   // dot positions, arm geometry, spring seat positio
 // This plate only carries the pocket that tile glues into.
 
 // Plate body — v6.2: now an OVER-CAP covering the full box footprint (was an inset plate).
-// Underside at z=0, top at z=4. X flush with box outer (no overhang on ±X dock faces);
-// Y 1mm overhang each side with a downward skirt (front/back only).
-plate_length    = 68.0;   // X — flush with box outer (±34), NO overhang (dock faces)
-plate_width     = 70.0;   // Y — 1mm overhang each side (±35) front/back
+// Underside at z=0, top at z=4.
+//
+// v8.1: FLUSH ON ALL FOUR SIDES (was 68 x 70 with a 1mm ±Y overhang + skirt).
+// ±X had to stay flush because cells dock there on the pogo pins, so the lip only
+// ever ran front/back — and its skirt stopped at x=±30, leaving a bare 1mm lip with
+// a hard step at each corner. The skirt's only job was locating the cap, which the
+// four M2.5 screws already do, so it was redundant as well as ugly. Square it off.
+plate_length    = 68.0;   // X — flush with box outer (±34)
+plate_width     = 68.0;   // Y — flush with box outer (±34)
 plate_thickness = 4.0;    // Z — cap thickness (3mm spring pocket + 1mm floor)
 corner_radius   = 3.0;    // matches box outer fillet
 // finger_pad_depth comes from mech_layout.scad (the linkage height depends on it)
 
-// Over-cap skirt — ±Y faces only (front/back); hangs from z=0 down to z=-4.
-// Outer flush with cap edge (y=±35); inner face y=±34.4 → 0.4mm clearance off the
-// box wall outer (±34). MUST NOT appear on the ±X dock faces.
-skirt_depth      = 4.0;
-skirt_y_outer    = 35.0;
-skirt_y_inner    = 34.4;
-skirt_x_half     = 30.0;  // skirt spans x within ±30 (stays clear of the rounded corners)
+// v8.1: the ±Y over-cap skirt and its four parameters are gone. See the note on
+// plate_width. The cap now sits flush on the box rim on all four sides.
 
 // Mounting — 4 corner holes at ±26,±21 matching base_plate standoffs
 standoff_x       = 26.0;
@@ -93,18 +93,6 @@ module rounded_rect(lx, ly, r, h) {
         translate([ lx/2 - r, -ly/2 + r, 0]) cylinder(r=r, h=h);
         translate([-lx/2 + r,  ly/2 - r, 0]) cylinder(r=r, h=h);
         translate([ lx/2 - r,  ly/2 - r, 0]) cylinder(r=r, h=h);
-    }
-}
-
-// Downward skirt on the ±Y (front/back) faces only — locates the cap over the box
-// wall. Two cuboid lips, outer flush y=±35, inner y=±34.4 (0.4mm clearance), spanning
-// x within ±30 (clear of corners and the ±X dock faces). Hangs z=0 down to z=-4.
-module yy_skirt() {
-    for(sy = [-1, 1]) {
-        // y-span runs from inner (±34.4) to outer (±35) edge
-        y_lo = (sy < 0) ? -skirt_y_outer : skirt_y_inner;
-        translate([-skirt_x_half, y_lo, -skirt_depth])
-            cube([2 * skirt_x_half, skirt_y_outer - skirt_y_inner, skirt_depth]);
     }
 }
 
@@ -144,10 +132,8 @@ module mounting_holes() {
 
 difference() {
     union() {
-        // A. Over-cap body — full box footprint (68×70), underside z=0, top z=4
+        // A. Over-cap body — full box footprint (68×68), underside z=0, top z=4
         rounded_rect(plate_length, plate_width, corner_radius, plate_thickness);
-        // A2. Downward skirt on ±Y faces only
-        yy_skirt();
     }
 
     // B. Finger pad recess (ergonomic boundary on top face)
@@ -192,7 +178,6 @@ module top_plate() {
     difference() {
         union() {
             rounded_rect(plate_length, plate_width, corner_radius, plate_thickness);
-            yy_skirt();
         }
         translate([0, 0, plate_thickness - finger_pad_depth])
             rounded_rect(plate_length - 6, plate_width - 6, corner_radius, finger_pad_depth + 1);

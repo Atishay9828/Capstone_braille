@@ -24,11 +24,11 @@ shell_h = pod_height - lid_h;
 // pod_length=64 / pod_width=68. Lengthening the pod to 68 would have left them
 // silently wrong. They are now derived, so the lid tracks the shell automatically.
 lid_cap_x        = pod_length;            // 68 — flush, no overhang on dock faces
-lid_cap_y        = pod_width + 2;         // 70 — 1mm overhang each side, front/back
-skirt_depth      = 4.0;
-skirt_y_outer    = lid_cap_y / 2;         // 35 — flush with cap edge
-skirt_y_inner    = pod_width / 2 + 0.4;   // 34.4 — 0.4mm off the pod wall outer
-skirt_x_half     = pod_length / 2 - 6;    // 28 — stays clear of the rounded corners
+// v8.1: flush on all four sides (was pod_width + 2 with a ±Y skirt). Same reasoning
+// as top_plate.scad — ±X had to stay flush for the dock face, so the lip only ran
+// front/back and its skirt stopped short of the corners, leaving a stepped 1mm
+// ledge. The two M2 screws locate the lid, so the skirt earned nothing.
+lid_cap_y        = pod_width;             // 68 — flush, no overhang
 
 // --- JACK SUPPORT CRADLE (v6.2) ---
 // PLACEHOLDER — MEASURE REAL JACK. The user's barrel jack is a BARE socket (no nut),
@@ -54,15 +54,7 @@ module lid_cap_body() {
     pod_rounded_box(lid_cap_x, lid_cap_y, lid_h, pod_fillet);
 }
 
-// Downward skirt on ±Y faces only — locates the lid over the pod wall.
-// Outer flush y=±35, inner y=±34.4 (0.4mm off the pod wall outer ±34), x within ±28.
-module yy_skirt() {
-    for(sy = [-1, 1]) {
-        y_lo = (sy < 0) ? -skirt_y_outer : skirt_y_inner;
-        translate([-skirt_x_half, y_lo, -skirt_depth])
-            cube([2 * skirt_x_half, skirt_y_outer - skirt_y_inner, skirt_depth]);
-    }
-}
+// v8.1: yy_skirt() removed — the lid is flush on all four sides now.
 
 // Jack support cradle — open-topped U hanging below the lid underside.
 // Two side walls + a back wall (+X side) + a bottom shelf; front (-X) left open.
@@ -132,8 +124,7 @@ module esp32_pod_lid() {
     union() {
         difference() {
             union() {
-                lid_cap_body();   // over-cap: X flush ±32, Y overhang ±35
-                yy_skirt();        // downward skirt on ±Y faces only
+                lid_cap_body();   // over-cap: flush ±34 on all four sides
             }
             barrel_jack_cutout();
             lid_screw_holes();
