@@ -52,10 +52,29 @@ def esc(t):
     return t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
+# Wire colours written as `RED`, `BLACK` etc. print in that colour. A bench doc
+# that says "connect the red wire" in black ink is the one place ambiguity costs
+# hardware, so the code span carries the colour through to the PDF.
+WIRE_COLOURS = {
+    "RED": "#cc0000", "BLACK": "#000000", "BLUE": "#0044cc",
+    "YELLOW": "#a07800", "ORANGE": "#d2691e", "PINK": "#cc0088",
+    "GREEN": "#0a7d33", "BROWN": "#7a4a1e", "PURPLE": "#6f42c1",
+    "WHITE": "#8a8a8a", "GREY": "#666666", "GRAY": "#666666",
+}
+
+
 def inline(t):
     t = esc(sanitize(t))
     t = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", t)
-    t = re.sub(r"`(.+?)`", r'<font face="Courier">\1</font>', t)
+
+    def code_span(m):
+        s = m.group(1)
+        c = WIRE_COLOURS.get(s.strip().upper())
+        if c:
+            return f'<font face="Courier-Bold" color="{c}">{s}</font>'
+        return f'<font face="Courier">{s}</font>'
+
+    t = re.sub(r"`(.+?)`", code_span, t)
     return t
 
 
