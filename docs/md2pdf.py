@@ -20,6 +20,7 @@ from reportlab.lib.units import mm
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer, Table,
+                                Image as RLImage,
                                 TableStyle, Preformatted, HRFlowable,
                                 ListFlowable, ListItem)
 
@@ -110,6 +111,31 @@ def convert(src, dst):
 
     while i < n:
         ln, s = lines[i], lines[i].strip()
+
+        # ![alt](path) on its own line -> embed the picture.
+        # SVG is what the markdown references (GitHub renders it), but ReportLab
+        # cannot read SVG, so prefer a PNG sitting next to it with the same stem.
+        m_img = re.match(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$", s)
+        if m_img:
+            flush()
+            alt, rel = m_img.group(1), m_img.group(2)
+            base = os.path.join(os.path.dirname(os.path.abspath(src)), rel)
+            png = os.path.splitext(base)[0] + ".png"
+            path = png if os.path.exists(png) else (base if os.path.exists(base) else None)
+            if path and path.lower().endswith(".png"):
+                from reportlab.lib.utils import ImageReader
+                iw, ih = ImageReader(path).getSize()
+                maxw = A4[0] - 40 * mm
+                w = min(maxw, iw)
+                flow.append(RLImage(path, width=w, height=w * ih / iw))
+                if alt:
+                    flow.append(Paragraph(inline("<i>%s</i>" % sanitize(alt)), body))
+                flow.append(Spacer(1, 9))
+            else:
+                flow.append(Paragraph(inline("[figure: %s]" % sanitize(alt or rel)), body))
+                flow.append(Spacer(1, 5))
+            i += 1
+            continue
 
         if s.startswith("```"):                       # fenced code
             flush(); i += 1; buf = []
