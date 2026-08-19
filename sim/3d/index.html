@@ -76,6 +76,7 @@
   /* no text-transform here: case is meaningful, it decides the capital sign */
   input[type=text]:focus{outline:none;border-color:var(--accent)}
   .btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .btns .wide{grid-column:1 / -1}
   button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
     padding:9px 8px;border-radius:8px;font-size:11.5px;cursor:pointer;
     letter-spacing:.03em;transition:.15s;font-weight:500}
@@ -168,6 +169,7 @@
     <button id="btnRun" class="ok">Simulate</button>
     <button id="btnStep">Step ▸</button>
     <button id="btnView">Reset View</button>
+    <button id="btnHw" class="wide">Connect Cell</button>
   </div>
   <div class="rowspeed">
     <label style="margin:0">Speed</label>

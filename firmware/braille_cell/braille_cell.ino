@@ -98,13 +98,30 @@ void releaseCoils() {                 // stop cooking the motor while idle
   digitalWrite(IN3, LOW); digitalWrite(IN4, LOW);
 }
 
-void showChar(char c) {
-  int state = cellToState(c);
-  if (state < 0) { Serial.printf("  skip '%c' (a-z and space only)\n", c); return; }
-
+// Move to one of the 64 cam states. Split out of showChar() so the browser can
+// drive a state directly over Web Serial: the simulator already expands text into
+// cells (including the capital/number indicators this table knows nothing about),
+// so the encoding lives in ONE place and the firmware just follows.
+void showState(int state) {
   long from   = stepper.currentPosition();
   long target = shortestTarget(from, stateToStep(state));
   long delta  = target - from;
+
+  Serial.printf("state %2d  step %4d  move %+5ld (%s)  %.1f deg
+",
+                state, stateToStep(state), delta,
+                delta >= 0 ? "CW " : "CCW", delta * 360.0 / STEPS_PER_REV);
+
+  stepper.moveTo(target);
+  runToTarget();
+  stepper.setCurrentPosition(((target % STEPS_PER_REV) + STEPS_PER_REV) % STEPS_PER_REV);
+  releaseCoils();
+}
+
+void showChar(char c) {
+  int state = cellToState(c);
+  if (state < 0) { Serial.printf("  skip '%c' (a-z and space only)
+", c); return; }
 
   Serial.printf("  '%c'  dots ", c == ' ' ? '_' : c);
   if (c == ' ') Serial.print("(none)  ");
@@ -116,14 +133,7 @@ void showChar(char c) {
     }
     Serial.print("  ");
   }
-  Serial.printf("state %2d  step %4d  move %+5ld (%s)  %.1f deg\n",
-                state, stateToStep(state), delta,
-                delta >= 0 ? "CW " : "CCW", delta * 360.0 / STEPS_PER_REV);
-
-  stepper.moveTo(target);
-  runToTarget();
-  stepper.setCurrentPosition(((target % STEPS_PER_REV) + STEPS_PER_REV) % STEPS_PER_REV);
-  releaseCoils();
+  showState(state);
 }
 
 // Look for the homing magnet. There is no cam disc yet, so this MUST NOT hang.
@@ -155,7 +165,8 @@ void tryHome() {
 void help() {
   Serial.println();
   Serial.println("Type a letter or a word, then Enter.  Examples:  a    hello    cab");
-  Serial.println("Commands:  !home   re-run homing");
+  Serial.println("Commands:  !s N    go to cam state N (0-63) - the web simulator uses this");
+  Serial.println("           !home   re-run homing");
   Serial.println("           !zero   call this position step 0");
   Serial.println("           !hall   print the hall reading");
   Serial.println("           !spin   one full revolution, to eyeball direction");
@@ -205,6 +216,11 @@ void loop() {
       int g;
       if (sscanf(line.c_str(), "!gap %d", &g) == 1 && g >= 0) { gapMs = g; Serial.printf("  gap %d ms\n", gapMs); }
       else Serial.println("  usage: !gap <milliseconds>");
+    }
+    else if (line.startsWith("!s ")) {
+      int st;
+      if (sscanf(line.c_str(), "!s %d", &st) == 1 && st >= 0 && st < 64) showState(st);
+      else Serial.println("  usage: !s <0-63>   (cam state, used by the web simulator)");
     }
     else if (line == "!spin") {
       Serial.println("  one revolution...");

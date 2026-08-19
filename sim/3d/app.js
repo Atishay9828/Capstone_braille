@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { buildBrainPod, buildCellElectronics, PART_INFO } from './electronics.js';
+import { Cell, supported as serialSupported } from './hardware.js';
 
 // ---------------------------------------------------------------- braille
 // Grade 1, mirrors firmware/braille_mapping.py
@@ -86,6 +87,39 @@ const XRAY_PARTS = ['outer_box', 'top_plate', 'dot_insert'];
 let renderer, scene, camera, controls, parts = {}, linkages = [];
 let pod = null, cellElec = null, glbMotor = [], podShells = [];
 let running = true, xray = false, elec = false, speed = 1;
+let cell = null, hwBusy = false;      // the real hardware, over Web Serial
+let move = null;                      // the active trapezoid, or null when parked
+
+// Straight from firmware/braille_cell/braille_cell.ino. The animation used to run
+// at a flat 150 deg/s with no ramp, which is 1.7x the motor's top speed and gets
+// short moves badly wrong: a one-state hop is only 64 steps, so it is ACCELERATION
+// limited and never reaches vmax at all. Keep these in step with the sketch.
+const FW = { vmax: 1000, accel: 2000, gapMs: 250 };   // half-steps/s, /s^2, ms
+const DEG_PER_STEP = 360 / 4096;
+const VMAX_DEG  = FW.vmax  * DEG_PER_STEP;    // 87.9 deg/s
+const ACCEL_DEG = FW.accel * DEG_PER_STEP;    // 175.8 deg/s^2
+
+// AccelStepper's profile in closed form. Integrating it frame by frame instead
+// ran 6-16% fast — worst on ONE-STATE moves, which are the common case — because
+// forward Euler overshoots during the ramp and the stopping threshold clips the
+// final crawl. Solving for position at time t has no such drift.
+function planMove(from, to) {
+  const d = Math.abs(to - from), dir = Math.sign(to - from);
+  const dAcc = (VMAX_DEG * VMAX_DEG) / (2 * ACCEL_DEG);
+  let tAcc, tCruise;
+  if (d <= 2 * dAcc) { tAcc = Math.sqrt(d / ACCEL_DEG); tCruise = 0; }   // triangular
+  else { tAcc = VMAX_DEG / ACCEL_DEG; tCruise = (d - 2 * dAcc) / VMAX_DEG; }
+  return { from, dir, d, tAcc, tCruise, T: 2 * tAcc + tCruise, t: 0 };
+}
+
+function moveAt(m) {
+  const { d, tAcc, tCruise, T, t } = m;
+  if (t >= T) return d;
+  if (t <= tAcc) return 0.5 * ACCEL_DEG * t * t;
+  if (t <= tAcc + tCruise) return 0.5 * ACCEL_DEG * tAcc * tAcc + VMAX_DEG * (t - tAcc);
+  const r = T - t;
+  return d - 0.5 * ACCEL_DEG * r * r;
+}
 let word = 'Braille 101', idx = 0, camDeg = 0, targetDeg = 0, dwell = 0;
 let homeCam = null, homeTarget = null;
 
@@ -374,7 +408,53 @@ function gotoIndex(i) {
   // the cam turns whichever way is closer. 63 -> 0 is 5.6deg back, not 354.4 forward.
   const want = camAngleForState(pos);
   targetDeg = camDeg + ((((want - camDeg) % 360) + 540) % 360) - 180;
+  move = Math.abs(targetDeg - camDeg) > 1e-6 ? planMove(camDeg, targetDeg) : null;
   updateReadout(item, pos);
+
+  if (cell && cell.connected) {
+    hwBusy = true;
+    cell.goToState(pos).finally(() => { hwBusy = false; });
+  }
+}
+
+
+// ---------------------------------------------------------------- hardware
+// The textbox already drives the animation; this makes it drive the real cell
+// too. gotoIndex() sends the cam STATE and then holds the animation until the
+// firmware answers, so what you watch on screen is what the motor has actually
+// finished doing — not a guess running alongside it.
+function wireHardware() {
+  const btn = $('btnHw');
+  // Serial chatter goes to the browser console, not the page. The Arduino monitor
+  // is already the right place to read it, and a scrolling log on screen is noise
+  // in front of a panel.
+  const line = t => console.log('[cell]', t);
+
+  if (!serialSupported()) {
+    btn.textContent = 'Cell: needs Chrome';
+    btn.disabled = true;
+    btn.title = 'Web Serial is Chrome/Edge only, over https or localhost.';
+    return;
+  }
+
+  btn.addEventListener('click', async () => {
+    if (cell && cell.connected) { await cell.disconnect(); return; }
+    try {
+      // requestPort() must be called straight from the click, not after an await
+      cell = new Cell(line, st => {
+        const on = st === 'connected';
+        btn.textContent = on ? 'Cell: LIVE — disconnect' : 'Connect Cell';
+        btn.classList.toggle('on', on);
+        if (!on) hwBusy = false;
+      });
+      await cell.connect();
+      await cell.setSpeed(FW.vmax, FW.accel);   // make the motor match the screen
+      gotoIndex(idx);                           // park it on the current cell
+    } catch (e) {
+      cell = null;
+      line(e.message);
+    }
+  });
 }
 
 function wireUI() {
@@ -384,6 +464,7 @@ function wireUI() {
   });
   $('btnXray').addEventListener('click', () => setXray(!xray));
   $('btnElec').addEventListener('click', () => setElectronics(!elec));
+  wireHardware();
   $('btnStep').addEventListener('click', () => { running = false; syncRun(); gotoIndex(idx + 1); });
   $('btnView').addEventListener('click', () => {
     camera.position.copy(homeCam); controls.target.copy(homeTarget); controls.update();
@@ -392,6 +473,11 @@ function wireUI() {
   $('speed').addEventListener('input', e => {
     speed = parseFloat(e.target.value);
     $('speedv').textContent = speed.toFixed(1) + '×';
+    // The slider scales simulated TIME by k. Replaying a fixed distance k times
+    // faster means velocity k and acceleration k^2, so push those to the motor or
+    // the screen and the cam stop agreeing the moment the slider moves.
+    if (cell && cell.connected)
+      cell.setSpeed(Math.round(FW.vmax * speed), Math.round(FW.accel * speed * speed));
   });
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
@@ -427,16 +513,21 @@ function tick(now) {
 
   // the cam always drives toward targetDeg, running or not — otherwise Step sets a
   // new target and nothing turns. Only the auto-advance is gated on `running`.
-  const diff = targetDeg - camDeg;
-  if (Math.abs(diff) > 0.05) {
-    camDeg += Math.sign(diff) * Math.min(Math.abs(diff), 150 * speed * dt);
-    dwell = 0;
+  // `speed` scales simulated TIME, so the profile shape stays identical to the
+  // real motor's — at 1.0x the screen and the cam take the same milliseconds.
+  const sdt = dt * speed;
+  if (move) {
+    move.t += sdt;
+    camDeg = move.from + move.dir * moveAt(move);
+    if (move.t >= move.T) { camDeg = targetDeg; move = null; dwell = 0; }
   } else {
     camDeg = targetDeg;
-    if (running) {
-      dwell += dt;
-      if (dwell > 0.85 / speed) { dwell = 0; gotoIndex(idx + 1); }
-    } else dwell = 0;
+    // A real cell sets the pace: showState() blocks while the motor runs, so we
+    // hold until it reports back rather than racing ahead of it.
+    if (running && !hwBusy) {
+      dwell += sdt;
+      if (dwell > FW.gapMs / 1000) { dwell = 0; gotoIndex(idx + 1); }
+    } else if (!running) dwell = 0;
   }
 
   updateMechanism(camDeg);
