@@ -16,11 +16,11 @@
 > | §6a | ESP32 overruns the pod by 1.75mm | ✅ `pod_length` 64 → 68 |
 > | §6c | USB cutout ~2mm too high | ✅ arithmetic bug fixed (ignored `hdr_channel_depth`) |
 > | §6d | USB cutout too small for a real plug | ✅ 10×7 → 13×9 |
-> | §7a | Jack cradle overruns the cavity | ✅ fixed, plus an assert so it can't recur silently |
+> | §7 | Guessed panel-jack hole/cradle | ✅ removed; current lid uses an outside inline pigtail, cable-only slot, and internal tie post |
 >
 > **Still open after the completed measurements** (see `MEASUREMENTS_NEEDED.md`):
 > §4c motor/cam vertical-stack re-derivation · §2b physical Hall-pocket dry-fit ·
-> §7b selecting the actual threaded panel-mount jack.
+> §7 selecting the smallest safe inline-pigtail cable slot with the printed coupon.
 
 > ## 2026-07-31 measurement-research update
 >
@@ -30,9 +30,9 @@
 > - M11b is measured at 1.6mm. The recess is also 1.6mm, so geometry passes but a printed
 >   dry-fit is still required because there is no manufacturing margin.
 > - M18 is a 30-pin USB-C ESP32 and M21 is measured at 25.6mm. The live socket channels now use it.
-> - The owned power part is photo-identified as an inline female DC pigtail jack with red/black
->   wires. It has no thread/nut; keep it for testing and select a nut-mounted 5.5×2.1mm jack for
->   the final pod.
+> - The owned power part is an inline female DC pigtail. For the current pod its body stays outside;
+>   only the cable pair crosses the lid and an internal tie post carries pull load. Select the
+>   smallest 5x3 / 6x4 / 7x5 slot with `pigtail_slot_coupon.gcode`.
 >
 **Date:** 2026-07-29
 **Scope:** physical fit of purchased/owned components inside the v7.2 printed parts.
@@ -75,8 +75,8 @@ Several owned-part dimensions have since been measured; use `MEASUREMENT_RESEARC
 | **USB cutout alignment** | cutout z 12.5 .. 19.5; board top sits at z=10.5 (8.5 strip − 1.0 channel recess) | port body ~10.5 .. 13.0 | **FAILS** | Hole sits ~2 mm too high; only ~0.5 mm overlaps the port |
 | **USB cutout size** | 10 x 7 mm | micro-USB overmould commonly ~12 x 8 [SPEC-ish] | **UNVERIFIED** | Plug may not enter |
 | **Headroom under pod lid** | board top z≈10.5, cavity top z=54 | a few mm | **FITS** | 43 mm spare — grossly over-tall, but no clash |
-| **Barrel jack hole** | Ø11.5 at (-22, +18) on the lid | 5.5/2.1 panel jack, ~Ø11 thread [SPEC] | **UNVERIFIED** | Owned part is an inline pigtail, not the modelled panel jack |
-| **Barrel jack cradle** | inner 12 x 9.5 x 11, walls 1.5 → outer reaches **x = -29.5** | must fit inside cavity x ≥ -28 | **FAILS** | 1.5 mm interference — the lid will not close. And all three dims are PLACEHOLDERS |
+| **Power cable slot (current source)** | rounded 6 x 4 at (-20, +18) through the 4 mm lid | two insulated pigtail leads only; connector body stays outside | **COUPON REQUIRED** | Test 5x3 / 6x4 / 7x5 and select the smallest damage-free fit |
+| **Pigtail strain relief (current source)** | connector body outside; leads tied to existing internal shell post | plug force must not reach ESP32/lid | **DESIGN FIXED / PHYSICAL TEST NEEDED** | Pull-test after selecting the slot and tying the real cable |
 | **Docking magnets** | Ø8.4 x 1.2 pockets, 2 per face at y=±14, 4 mm wall | 8 x 1 mm NdFeB discs — **measured, in hand** | **FITS** | Only re-confirm the newly bought batch is the same 8x1 |
 | **Nav buttons — cap stem** | Ø3.8 stem projects **4.5 mm behind** the flange through a Ø4.2 hole | must cross a 4 mm wall | **FITS (nominal)** | Stem reaches 0.5 mm inside; 0.4 mm diametral clearance allows resin-in-PETG sliding |
 | **Nav buttons — switch reach** | The 6 mm switch body is stopped by the pod's inner front wall; cage back wall takes press load | plunger must meet the stem | **FITS (nominal)** | The front wall is the forward datum; bench-test the actual switch's plunger before final resin batch |
@@ -404,37 +404,34 @@ printing 58 mm of PETG.
 
 ---
 
-## 7. BARREL JACK — UNVERIFIED, and the placeholder cradle already collides
+## 7. INLINE POWER PIGTAIL — CURRENT SOURCE CORRECTED; SLOT FIT STILL PHYSICAL
 
-**[SCAD]** `esp32_pod_lid.scad`:
+The old Ø11.5 panel-jack hole and unsupported 9.5 x 12 x 11 mm cradle were removed. They described
+hardware AJ does not own and the cradle extended below the printable lid.
+
+**[CURRENT SCAD]** `esp32_pod_params.scad` / `esp32_pod_lid.scad` now use:
 
 ```
-jack_body_w = 9.5;   // PLACEHOLDER
-jack_body_l = 12;    // PLACEHOLDER
-jack_body_h = 11;    // PLACEHOLDER
-cradle_t    = 1.5;
-barrel_jack_dia = 11.5;  at (x=-22, y=+18)
+power_cable_slot_w = 6.0;
+power_cable_slot_h = 4.0;
+power_cable_x      = -20;
+power_cable_y      = 18;
+lid_h              = 4.0;
 ```
 
-The author has flagged these as placeholders. Two things to know:
+The owned inline female barrel socket remains outside the pod. Only its two loose insulated leads
+pass through the rounded slot, then tie to the existing internal shell post before soldering. This
+makes the tie post carry plug insertion/removal force instead of the ESP32 or lid. No panel-mount
+jack is required for this revision.
 
-**7a. Even the placeholder cradle does not fit the pod.**
-Cradle outer extent in X = `barrel_jack_x − jack_body_l/2 − cradle_t` = −22 − 6 − 1.5 = **−29.5**.
-The pod cavity ends at **x = −28**. **1.5 mm of interference — the lid physically cannot close.**
-Since a real screw-terminal jack is almost certainly *bigger* than the 12 mm placeholder, this gets
-worse, not better. Either move `barrel_jack_x` inboard (to about −20) or shrink the cradle.
+The cable pair was not measured accurately enough to certify 6 x 4 mm from the photo. Print
+`pigtail_slot_coupon.gcode`; it reproduces the real 4 mm lid and provides 5x3, 6x4, and 7x5 mm
+rounded openings. Try them from smallest to largest and use the first that passes both leads without
+scraping, pinching, whitening, or cutting insulation. The connector body must never be forced
+through a slot.
 
-**7b. The modelled jack is the wrong type.**
-Ø11.5 is sized for a **threaded panel-mount 5.5/2.1 jack with a nut** [SPEC]. The owned part is now
-photo-identified as an **inline female DC pigtail socket** with red/black wires and no panel thread.
-A round hole gives it nothing to clamp to. Keep it for testing and choose a real nut-mounted jack
-for the final pod rather than building a bulky cable-body cradle.
-
-Also still open from the 2026-06-03 breadboard review: **the jack's polarity has never been proven.**
-Check it with a multimeter before applying adapter power.
-
-**Before finalizing this feature:** select the exact threaded panel-mount jack and use its drawing
-or measured thread/body dimensions. Do not dimension the final lid around the testing pigtail.
+The owned pigtail polarity was measured on 2026-08-01: red is centre-positive. The circuit has no
+reverse-polarity protection, so re-test if either the pigtail or adapter is replaced.
 
 ---
 
@@ -523,16 +520,13 @@ or a product listing. The right-hand column is the CAD symbol it feeds.
 | 12 | Header height above the PCB (or below, if it must lie flat) | `hall_pocket_h` = 3 |
 | 13 | If desoldering: bare TO-92 body width x depth x height, and lead pitch | `hall_pocket_w/d/h`, `hall_wire_w/d` |
 
-### Barrel jack (blocks esp32_pod_lid)
+### Inline pigtail cable exit (blocks final esp32_pod_lid release)
 
-| # | Measure | Feeds |
+| # | Check | Feeds |
 |---|---|---|
-| 14 | Jack body X length (along the pod's X axis) | `jack_body_l` = 12 (PLACEHOLDER) |
-| 15 | Jack body Y width | `jack_body_w` = 9.5 (PLACEHOLDER) |
-| 16 | Jack body Z height below the lid, including screw terminals | `jack_body_h` = 11 (PLACEHOLDER) |
-| 17 | Barrel outer diameter at the face (the part that goes through the lid) | `barrel_jack_dia` = 11.5 |
-| 18 | Does it have a panel thread + nut? Thread Ø and nut AF if so | decides hole vs cradle strategy |
-| 19 | **Polarity** (multimeter: which terminal is centre-pin positive) | wiring, not CAD — but do it before power-on |
+| 14 | Smallest 5x3 / 6x4 / 7x5 coupon opening that passes both insulated leads without damage | `power_cable_slot_w/h` |
+| 15 | Tie-post pull test after the cable is secured | strain-relief acceptance; no geometry change unless the post fails |
+| 16 | Polarity | already measured 2026-08-01: red is centre-positive; re-test only after connector/adapter replacement |
 
 ### ESP32 DevKit (blocks esp32_pod_shell, esp32_pod_params)
 

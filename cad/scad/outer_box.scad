@@ -241,13 +241,13 @@ union() {
         translate([0, shell_width/2, floor_thickness + 3])
             cube([15, wall_thickness + 2, 6], center=true);
 
-        // Pogo slots — ±X walls at z=31
-        translate([-shell_length/2, 0, 31]) cube([6, 10, 8], center=true);
-        translate([ shell_length/2, 0, 31]) cube([6, 10, 8], center=true);
+        // Pogo service windows — symmetric cuts fully through both ±X walls
+        translate([-shell_length/2, 0, 31]) cube([wall_thickness * 2 + 2, 10, 8], center=true);
+        translate([ shell_length/2, 0, 31]) cube([wall_thickness * 2 + 2, 10, 8], center=true);
 
-        // Pogo carrier pockets behind each window
-        pogo_carrier_pocket(-internal_length/2);
-        pogo_carrier_pocket( internal_length/2);
+        // Carrier retention intentionally omitted until the actual pogo module is measured.
+        // pogo_carrier_pocket(-internal_length/2);
+        // pogo_carrier_pocket( internal_length/2);
 
         // Magnet pockets — -X face N/S, +X face S/N (teardrop tops, v6.1)
         for(my = mag_y_pos) {

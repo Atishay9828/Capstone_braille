@@ -54,20 +54,15 @@ hdr_channel_depth = 1.0;   // Floor recess to locate strips
 //   board spans x = -2 +/- 25.75 = -27.75 .. +23.75, inside a +/-30 cavity.
 devkit_x_offset  = -2;
 
-// --- BARREL JACK (on the LID) ---
-// v6.1b FIX: was centered at x=-30 — the Ø11.5 hole overflowed the lid edge (±32)
-// and printed as an open NOTCH (confirmed on the fit-test print). A panel-mount
-// jack can't clamp in a notch. Moved fully onto the lid, offset in Y away from
-// the DevKit so the jack body hangs over open floor.
-barrel_jack_dia  = 11.5;   // PLACEHOLDER (M15/M16) — CAD assumes panel mount; owned adapter is inline
-// v7.5: -22 -> -20. The support cradle under this hole reached
-// x = barrel_jack_x - jack_body_l/2 - cradle_t = -29.5 against a cavity that ended
-// at -28, so the lid could not close. Lengthening the pod to 68 moved the cavity
-// wall to -30, and moving the jack to -20 puts the cradle at -27.5: 2.5mm clear,
-// with room left over for a real jack that measures bigger than the placeholder.
-barrel_jack_x    = -20;
-barrel_jack_y    = 18;     // off the DevKit (board spans y±14)
-
+// --- OWNED INLINE POWER PIGTAIL (through the LID) ---
+// The photographed connector is a female inline lead, not a threaded panel jack.
+// Keep its body outside the pod and pass only the red/black cable pair through this
+// rounded slot. Secure the cable to the existing internal tie post before soldering;
+// plug-in force then loads the tie, not the ESP32 or lid.
+power_cable_slot_w = 6.0;  // generous for the pictured two-wire pair
+power_cable_slot_h = 4.0;
+power_cable_x      = -20;
+power_cable_y      = 18;   // clear of the DevKit envelope (board spans y±14)
 // --- USB CUTOUT (-X end wall) ---
 // v7.5: the old usb_z had an arithmetic bug — it ignored hdr_channel_depth. The
 // header strips are RECESSED 1mm into the floor, so the board underside sits at

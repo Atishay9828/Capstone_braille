@@ -1,9 +1,57 @@
 # Active Handoff
-> Last updated by: Claude Code (Mridul)
-> Timestamp: 2026-07-31T21:10:00+05:30
+> Last updated by: Codex (AJ workspace)
+> Timestamp: 2026-08-19T20:10:56+05:30
 
 ---
 
+## 2026-08-19 PRINT RELEASE AUDIT - CURRENT SOURCE OF TRUTH
+
+**Full product remains NO-GO.** Use `docs/PRINT_RELEASE_2026-08-19.md` and
+`docs/MECHANISM_BENCH_TEST.md`.
+
+The checked PETG folder contains exactly eight files:
+
+1. `motor_cam_socket_coupon.gcode`
+2. `base_interface_coupon.gcode`
+3. `pigtail_slot_coupon.gcode`
+4. `pogo_receiver_coupon.gcode`
+5. `top_interface_coupon.gcode`
+6. `hardware_fit_coupon.gcode`
+7. `cam_linkage_test_fixture.gcode`
+8. `mid_plate.gcode`
+
+The final top plate is no longer in the checked folder. Its settings-valid G-code is held at
+`printing/gcode_HOLD_fit_unproven/top_plate_WAIT_FOR_INTERFACE_COUPON.gcode` until the real
+M2.5 screw and resin dot insert pass the top-interface coupon.
+
+Fresh validator result: PASS for 19 authoritative STL assets and the exact eight-file G-code
+manifest. Every checked mesh is closed/manifold, has its expected component count, and matches an
+independent fresh OpenSCAD render. Every checked G-code uses PETG 235/230 C, bed 80 C, 0.16 mm,
+5 walls, 40% infill, 6/6 shells, 8 mm brim, ironing, supports off, no arcs, and the Kobra Neo
+motion envelope.
+
+New stack-independent evidence assets:
+
+- top screw/head plus 0.2/0.4/0.6 mm resin-insert fit coupon;
+- base motor-seat bridge, 2mm M4 pilot, and Ø6x12 standoff-bore coupon;
+- 5x3 / 6x4 / 7x5 mm pigtail cable-slot coupon in the real 4 mm lid thickness;
+- 10.0x8.0 / 10.2x8.2 / 10.4x8.4 pogo receiver coupon in a real 4 mm upright wall;
+- two-piece PETG cam/linkage fixture with the exact 9.0 mm cam-flat-to-insert datum;
+- minimal four-component resin set: real cam, dot-5 linkage, dot-6 linkage, and dot insert.
+
+The pogo cap is TPU 95A only; no TPU G-code exists because the exact spool is not owned/specified.
+Stale PETG-cap and sacrificial-bridge instructions were corrected.
+
+Additional fastener blocker: the old M4x10 motor screw reaches about 3mm into the proposed raised cam. Candidate is M4x5 or M4x6 only after measuring the real ear/point and passing the base coupon.
+
+Critical production blocker remains unchanged: the current cam bore is only 3.5 mm deep and cannot
+install on the measured 7.5 mm shaft. Preferred repair keeps the shaft intact, seats the hub on the
+9x2 mm collar, raises the upper mechanism/enclosures +4 mm, creates a true 7.7 mm blind socket, and
+raises the Hall sensor to retain its 0.4 mm gap. This coordinated cascade still requires explicit
+AJ approval. The current 64-state ramp also remains HOLD until the real dot-5/dot-6 spring and
+torque procedure passes.
+
+---
 ## ⚡ ELECTRONICS TRACK — separate workstream, separate fork
 
 **Electronics work is now tracked separately from CAD.** The electronics fork flags mechanical
@@ -151,7 +199,7 @@ with the Ø9 shaft boss). That one is real and unchanged.
 
 ---
 
-## 🔴 CURRENT BLOCKER: FINAL POWER-JACK CHOICE + VERTICAL-STACK REDESIGN
+## 🔴 CURRENT BLOCKER: VERTICAL-STACK REDESIGN + PHYSICAL FIT EVIDENCE
 
 The fit-critical owned readings are now received:
 
@@ -160,13 +208,13 @@ The fit-critical owned readings are now received:
   because there is zero print margin.
 - M21 ESP32 header-row centre spacing = **25.6mm**. `hdr_row_pitch` now uses the owned reading.
 
-The 2026-07-31 photo identifies the owned power connector as an **inline female DC pigtail jack**
-with red/black wires. It has no threaded neck or nut. It is electrically useful for testing, but
-it cannot mount securely in the pod's round lid hole.
+The 2026-07-31 photo identifies the owned power connector as an **inline female DC pigtail jack**.
+The current design keeps its body outside, passes only the red/black leads through the lid, and ties
+them to the shell's internal strain-relief post. The guessed panel-jack cradle was removed.
 
-**Final connector decision:** buy/select a 5.5×2.1mm female panel-mount DC jack with a retaining
-nut, rated at least 5V/3A, then record its exact link or drawing before finalizing the lid cradle.
-Keep the photographed pigtail for breadboard testing.
+**Current connector decision:** use the owned pigtail. Print `pigtail_slot_coupon.gcode` and select
+the smallest 5x3 / 6x4 / 7x5 opening that passes both insulated leads without damage. A threaded
+panel-mount jack is not required for this revision.
 
 The motor measurements now allow the vertical stack to be re-derived, but it must be repaired in
 one coordinated motor/base/cam/linkage pass. Do not patch individual heights independently. M25
@@ -272,53 +320,33 @@ report OK otherwise. **Never remove that check.**
 ---
 
 ## In Progress
-M5, M11b, and M21 are recorded. The owned power connector is photo-identified as an inline pigtail.
-The v7.9 change updates the ESP32 header-channel geometry and measurement documentation. The pod
-shell STL and PETG G-code have been regenerated and verified; affected PDFs have been regenerated
-and visually reviewed.
+The seven-file stack-independent PETG release is prepared for physical fit evidence. The complete
+product remains NO-GO: the current cam socket cannot install on the measured shaft, the steep cam
+ramps have not passed the real spring/linkage test, and the coordinated +4 mm stack repair is not
+authorized yet.
 
 ## Next Steps
-1. Select/buy the final threaded 5.5×2.1mm panel-mount jack and record its exact link/drawing.
-2. Re-derive the motor/base/cam/linkage vertical stack in one coordinated CAD pass using the
-   measured M2=19.0 mm, M6=9.5 mm, and derived M7b=2.0 mm.
-3. Replace the guessed jack hole/cradle values with the selected panel-mount part dimensions.
-4. Dry-fit the 1.6mm Hall sensor in the printed pocket before gluing.
-5. Print `mid_plate` first to confirm PETG behavior before committing to the box.
+1. Print the fit coupons in `docs/PRINT_RELEASE_2026-08-19.md`, including the pigtail slot coupon.
+2. Record selected motor socket, pigtail slot, M2.5/top-insert, hardware, Hall, magnet, and pogo sizes.
+3. Run the real dot-5/dot-6 cam/linkage/spring test in `docs/MECHANISM_BENCH_TEST.md`.
+4. Obtain AJ's explicit approval for the coordinated no-shaft-cut +4 mm production-stack repair.
+5. Apply that repair in one base/cam/Hall/enclosure pass, regenerate, slice, and re-validate.
 6. Change the exposed WiFi password and verify M25 after final ULN2003 cable dressing.
 
-## Print / slice pipeline (NEW)
-```
-bash printing/orca/slice.sh              # all six PETG parts
-bash printing/orca/slice.sh outer_box    # just one
-```
-| part | time | volume |
-|---|---|---|
-| outer_box | 4h 30m | 55.59 cm³ |
-| esp32_pod_shell | 4h 05m | 52.25 cm³ |
-| esp32_pod_lid | 1h 09m | 12.87 cm³ |
-| top_plate | 1h 01m | 11.47 cm³ |
-| base_plate | 44m | 7.44 cm³ |
-| mid_plate | 38m | 7.76 cm³ |
+## Current print / slice pipeline
 
-Profiles: `printing/orca/numakers_petg_hs.json` (230/80°C — label allows 220–250/70–90, started
-low because stringing scales with temperature) and `braillix_0.20mm_petg.json` (top layers 3→5
-and infill 15→25% for the pillowed top surface, walls 2→3 for the screw bosses, z-hop +
-`reduce_crossing_wall` for stringing, `bridge_speed` 25 for the sagging wire-exit hole,
-`seam_position=back` for the ghost patterns on the walls). **Supports deliberately OFF** — that
-is a print-time decision, not a profile one.
+The historical six-production-part pipeline and 3-wall profile below are retired. Do not use their
+G-code, time estimates, or profile names. Current authority is:
 
-### 2026-08-02 G-code audit — use the checked folder, not `printing/gcode/`
+- `docs/PRINT_RELEASE_2026-08-19.md`
+- `printing/gcode_kobra_neo_checked/` (exactly eight files)
+- `printing/orca/braillix_0.16mm_petg_kobra_neo_release.json`
+- `bash printing/orca/slice_kobra_neo_checked.sh`
+- `python tools/validate_print_assets.py --fresh-dir <independent-render-directory>`
 
-The six legacy files in `printing/gcode/` contain **45,075 `G2`/`G3` arc commands** because
-`enable_arc_fitting` was on. The stock Kobra Neo Marlin source has `ARC_SUPPORT` disabled, so it
-can ignore those moves and corrupt circles/curves. Do **not** print those legacy files.
-
-Use `printing/gcode_kobra_neo_checked/` instead. All six files were re-sliced from the current
-STLs using `printing/orca/braillix_0.20mm_petg_kobra_neo_safe.json`, which sets
-`enable_arc_fitting = 0`; each is PETG, 235/230C nozzle, 80C bed, supports off, has no G2/G3
-commands, and stays inside the 220x220x250mm Kobra Neo volume. Regenerate with
-`bash printing/orca/slice_kobra_neo_checked.sh`.
-
+All current checked G-code is PETG 235/230 C, bed 80 C, 0.16 mm layers, 5 walls, 40% infill,
+6 top/6 bottom shells, 8 mm brim, ironing, supports off, and no G2/G3 arcs. Full production parts
+remain quarantined until their physical and stack gates pass.
 ## Do NOT regress these
 - **`vertical_wire_guides()` is deleted on purpose.** A single blade cannot guide a wire. If pogo
   wiring ever needs managing, copy `cable_hook()` — an L with a 1.5mm overhang that actually

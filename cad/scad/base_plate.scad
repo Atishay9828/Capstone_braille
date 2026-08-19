@@ -1,14 +1,14 @@
 // =========================================================
 // COMPONENT 03: BASE PLATE (28BYJ-48 OPTIMIZED)
-// Revision 2.2 — Motor body offset -8mm (shaft ≠ body centre)
+// Revision 2.3 — Owned motor axes applied (M3=7.5, M8=34.7)
 // Updated 2026-05-06
 //
 // Changes from v2.1:
-//   - CRITICAL FIX (Audit 3.1): 28BYJ-48 shaft is offset ~8mm from
+//   - CRITICAL FIX (Audit 3.1): 28BYJ-48 shaft is offset 7.5mm from
 //     motor body centre. Shaft stays at x=0 (cam centred). Motor body
-//     pocket and ear holes now translated to x=-8mm.
+//     pocket and ear holes now translated to x=-7.5mm.
 //   - base_length widened from 50→56mm to accommodate left ear at
-//     x=-25.5mm (ear centre = -8 - 17.5 = -25.5mm). Plate edge at
+//     x=-24.85mm (ear centre = -7.5 - 34.7/2). Plate edge at
 //     -28mm gives 0.35mm clearance past hole edge.
 //   - Plate fits in new outer_box v4.0 internal_length (60mm):
 //     56mm plate + 2mm clearance each side. ✓
@@ -34,21 +34,26 @@ base_width      = 50;      // Y — unchanged
 base_thickness  = 5;       // Z
 
 // Motor Interface — CORRECTED for actual 28BYJ-48 measurements
-// Previous values were wrong (body 28.3→29, mount hole 3.4→4.3, spacing 31→35)
+// Owned values: can Ø28.1, shaft offset 7.5, ear spacing 34.7; seat Ø29 retains 0.45mm/side
 shaft_clearance      = 10;     // Ø9mm cam hub + 0.5mm clearance each side
 motor_body_diameter  = 29;     // 28mm + 1mm tolerance (was 28.3mm — wrong)
 motor_seat_depth     = 1.5;    // Shallow pocket to locate motor body centrally
-motor_mount_spacing  = 35;     // Hole-to-hole distance (was 31mm — wrong)
+motor_mount_spacing  = 34.7;   // MEASURED M8: owned motor ear spacing
 
 // v7.5: was a 4.3mm CLEARANCE hole, which needs a nut on the far side. There is
-// nowhere to put that nut. The right-hand ear is at x = -8 + 35/2 = +9.5, which is
+// nowhere to put that nut. The right-hand ear is at x = -7.5 + 34.7/2 = +9.85, which is
 // inside the cam pocket (r=23), so a nut or bolt head there sits directly under the
 // spinning cam disc. Changed to a thread-forming PILOT: the M4 screw goes UP from
 // below, through the motor's own ear, and forms its own thread in the plate. No nut,
 // nothing protruding above the plate at all.
-// Thread depth available: left ear (x=-25.5) is outside the cam pocket -> full 5mm.
-//                         right ear (x=+9.5) is inside it -> 2mm (plate below pocket).
+// Thread depth available: left ear (x=-24.85) is outside the cam pocket -> full 5mm.
+//                         right ear (x=+9.85) is inside it -> 2mm (plate below pocket).
 // 2mm of formed M4 thread in PETG holds far more than a 35g motor needs.
+// FASTENER GATE: never use the previously documented M4x10. Under Option A the
+// raised cam underside is z=47; with the ~0.8mm ear, M4x5 or M4x6 is the safe
+// candidate range. Measure the real ear and screw point, then use the shortest
+// coupon-proven screw that fully engages this 2mm pilot and stays >=0.5mm below
+// the cam. The current production stack remains HOLD.
 motor_mount_pilot    = 3.3;    // M4 thread-forming pilot (drill to 3.4 if it binds)
 
 // Cam Interface (unchanged — matches braille_cam.scad)
@@ -126,20 +131,20 @@ module main_body() {
 }
 
 // Motor body offset: shaft is NOT at body centre on the 28BYJ-48
-// Shaft stays at x=0 (cam must be centred). Body centre at x=-8mm.
-motor_body_x_offset = -8;
+// Shaft stays at x=0 (cam must be centred). Body centre at measured x=-7.5mm.
+motor_body_x_offset = -7.5;   // MEASURED M3: shaft-to-can centre offset
 
 module motor_features() {
     // 1. Shaft clearance through-hole — STAYS at x=0 (cam disc centred here)
     cylinder(d=shaft_clearance, h=20, center=true);
 
-    // 2. Motor body seating pocket — OFFSET -8mm (body centre ≠ shaft centre)
+    // 2. Motor body seating pocket — measured offset -7.5mm (body centre ≠ shaft centre)
     translate([motor_body_x_offset, 0, -0.1])
         cylinder(d=motor_body_diameter, h=motor_seat_depth + 0.1);
 
-    // 3. Motor mounting ear pilots — SAME -8mm offset (ears fixed to body)
-    //    Left ear:  x = -8 - 17.5 = -25.5mm  (outside cam pocket → 5mm of thread)
-    //    Right ear: x = -8 + 17.5 = +9.5mm   (inside cam pocket  → 2mm of thread)
+    // 3. Motor mounting ear pilots — same measured offset (ears fixed to body)
+    //    Left ear:  x = -7.5 - 34.7/2 = -24.85mm  (outside cam pocket → 5mm of thread)
+    //    Right ear: x = -7.5 + 34.7/2 = +9.85mm   (inside cam pocket  → 2mm of thread)
     // Blind from BELOW so nothing breaks the cam-pocket floor at the left ear and
     // nothing protrudes above the plate at the right ear. The right pilot does open
     // into the cam pocket (only 2mm of material there) — harmless, because the

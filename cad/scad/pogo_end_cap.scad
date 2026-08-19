@@ -1,98 +1,82 @@
 // =========================================================
-// COMPONENT: POGO END CAP — Short-Circuit Prevention Cover
-// Revision 1.0
-// Created 2026-05-06
+// BRAILLIX POGO END CAP — functional TPU snap plug
+// Revision 2.0 — 2026-08-19
 //
-// Snap-fit cover for the LAST cell in the daisy chain.
-// Covers the exposed right-side spring pogo pins to prevent
-// accidental short-circuits from metal objects (rings, keys, coins).
-// (Audit 6.2)
-//
-// Print in TPU (flexible, soft — won't scratch, easy snap-on/off).
-// Snaps into the right-wall pogo slot of the outer_box.
+// The old part used a 12x10 insertion body for a 10x8 slot and its
+// "snap lips" were buried inside that same envelope, so no snap existed.
+// This revision separates the exposed flange from a clearance tongue and
+// places real flexible barbs just beyond the 4mm enclosure wall.
 // =========================================================
 
-// --- 1. PARAMETERS ---
+pogo_slot_w    = 10.0;
+pogo_slot_h    = 8.0;
+wall_thickness = 4.0;
 
-// Must match outer_box.scad pogo slot dimensions
-pogo_slot_w      = 10;     // Width of pogo slot in outer_box wall
-pogo_slot_h      = 8;      // Height of pogo slot
-wall_thickness   = 4;      // outer_box wall thickness
+face_w = 12.0;
+face_h = 10.0;
+face_t = 1.8;
+face_r = 1.2;
 
-// Cap body
-cap_w            = pogo_slot_w + 2;  // 12mm — slightly wider for grip
-cap_h            = pogo_slot_h + 2;  // 10mm — slightly taller for grip
-cap_depth        = 8;                // How deep the cap inserts into slot
-cap_wall         = 1.5;             // Cap shell thickness
+tongue_w     = 9.4;   // 0.3mm clearance per slot side
+tongue_h     = 7.4;
+tongue_depth = 6.0;   // 2mm beyond the inner wall
+shell_t      = 1.2;   // hollow tongue flexes during insertion
 
-// Snap lip — catches on inner edge of pogo slot
-// v6.1: 0.5→1.0mm — 0.5 was below FDM layer resolution and gave no real snap (TPU flexes)
-snap_lip_h       = 1.0;   // Overhang height
-snap_lip_depth   = 1.0;   // How far the lip extends inward
-
-// Rounded edges for comfort
-cap_fillet       = 1.0;
+barb_out     = 0.45;  // TPU interference beyond tongue envelope
+barb_depth   = 0.9;
+barb_z       = face_t + wall_thickness + 0.35;
 
 $fn = 40;
 
-// --- 2. MODULES ---
+module rounded_prism(w, h, r, z) {
+    hull()
+        for (sx=[-1,1], sy=[-1,1])
+            translate([sx*(w/2-r), sy*(h/2-r), 0]) cylinder(r=r, h=z);
+}
 
-module cap_outer() {
-    // Main body — rounded rectangle
-    hull() {
-        for(sx = [-1, 1]) for(sy = [-1, 1]) {
-            translate([sx * (cap_w/2 - cap_fillet),
-                       sy * (cap_h/2 - cap_fillet), 0])
-                cylinder(r=cap_fillet, h=cap_depth);
-        }
+module face_flange() {
+    rounded_prism(face_w, face_h, face_r, face_t);
+}
+
+module flexible_tongue() {
+    difference() {
+        translate([0,0,face_t-0.2])
+            rounded_prism(tongue_w, tongue_h, 0.7, tongue_depth+0.2);
+        // Open at the insertion end; leave the flange as the sealed front face.
+        translate([0,0,face_t+shell_t])
+            rounded_prism(tongue_w-2*shell_t,
+                          tongue_h-2*shell_t,
+                          0.35,
+                          tongue_depth+1);
     }
 }
 
-module cap_inner() {
-    // Hollow out interior (leave cap_wall thickness on all sides)
-    inner_w = cap_w - 2 * cap_wall;
-    inner_h = cap_h - 2 * cap_wall;
-    translate([-inner_w/2, -inner_h/2, cap_wall])
-        cube([inner_w, inner_h, cap_depth]);
-}
-
-module snap_lips() {
-    // Two snap lips on ±Y sides — catch on pogo slot edge
-    for(sy = [-1, 1]) {
-        // Lip is a thin ridge near the insertion end
-        translate([0, sy * (pogo_slot_h/2 + snap_lip_h/2),
-                   cap_depth - snap_lip_depth - 1])
-            cube([pogo_slot_w - 2, snap_lip_h, snap_lip_depth], center=true);
-    }
-}
-
-module end_marker() {
-    // Raised ridge on the EXPOSED (outward, Z=0) face so a blind user feels "end of chain".
-    // v6.1: 2.4→3.2mm wide, 1.2mm proud — anything narrower distorts on FDM/TPU.
-    translate([0, 0, -0.4])
+module snap_barbs() {
+    // Two shallow TPU ramps. Their tips sit behind the 4mm wall when installed.
+    for (sy=[-1,1]) {
+        y0 = sy*(tongue_h/2-0.05);
+        y1 = sy*(tongue_h/2+barb_out);
         hull() {
-            translate([-3, 0, 0]) cylinder(d=3.2, h=1.6, $fn=20);
-            translate([ 3, 0, 0]) cylinder(d=3.2, h=1.6, $fn=20);
+            translate([-tongue_w/2+0.8, y0, barb_z-barb_depth/2])
+                cube([tongue_w-1.6, 0.10, 0.10]);
+            translate([-tongue_w/2+0.8, y1, barb_z+barb_depth/2])
+                cube([tongue_w-1.6, 0.10, 0.10]);
         }
+    }
 }
 
 module pogo_end_cap() {
-    union() {
-        difference() {
-            cap_outer();
-            cap_inner();
+    difference() {
+        union() {
+            face_flange();
+            flexible_tongue();
+            snap_barbs();
         }
-        snap_lips();
-        end_marker();
+        // Recessed tactile end-of-chain bar on the exposed face.
+        translate([-3.5,-0.8,-0.05]) cube([7.0,1.6,0.65]);
     }
 }
 
-// --- 3. GENERATE ---
-
+// Print as exported: flange on bed, tongue upward. TPU 95A, 0.16-0.20mm,
+// 3-4 walls, no supports. The 0.45mm barbs are intentionally TPU-only.
 pogo_end_cap();
-
-// --- 4. NOTES ---
-// Material: TPU (Shore 95A) — flexible for easy snap-on/off
-// Print: flat on build plate (cap_depth along Z)
-// Usage: snap onto right-side pogo slot of last cell in chain
-// Removal: squeeze sides gently, pull outward

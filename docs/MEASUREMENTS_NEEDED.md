@@ -9,8 +9,8 @@ links are in [`MEASUREMENT_RESEARCH.md`](MEASUREMENT_RESEARCH.md). Do not re-mea
 dimensions unless the item is marked **VERIFY** below.
 
 **M5, M11b, and M21 are now measured.** No additional immediate caliper reading is required.
-The remaining hardware decision is selecting the final threaded panel-mount power jack. M25 is
-checked later after the driver wires are installed.
+The remaining power-fit check is selecting the smallest cable-only slot using the pigtail coupon.
+M25 is checked later after the driver wires are installed.
 
 **Motor identification:** `28BYJ-48`, 5 V. The red `2601213328` marking is a production/traceability code, not a different motor model.
 
@@ -201,23 +201,20 @@ You can measure it while it's still soldered on.
 The 2026-07-31 photo shows a **female inline DC barrel pigtail jack**: the black cylindrical socket
 with red and black wires. The adapter's round male plug goes into its front.
 
-This part is electrically usable for testing, but it has **no threaded neck and no retaining nut**.
-That means it cannot lock into the pod's round wall hole; the wires would carry the mechanical load.
-Do not measure its body for final CAD.
+This is the selected connector for the current pod revision. Its body remains outside the enclosure;
+only the red/black cable pair passes through the lid. The cable must be tied to the internal strain-
+relief post before it is soldered, so plug insertion/removal does not load the lid or ESP32.
 
-For the finished pod, buy a **5.5×2.1mm female panel-mount DC jack with a retaining nut**, rated
-for at least 5V/3A. Its threaded neck passes through the lid and the nut tightens from outside.
-The current lid CAD is intended for that type, but its hole/cradle stays provisional until the
-exact purchased jack drawing or link is recorded.
+Print `pigtail_slot_coupon.gcode`, then try the 5x3, 6x4, and 7x5 mm rounded slots in that order.
+Use the smallest slot that passes both insulated leads without scraping, pinching, whitening, or
+cutting them. The clipped corner marks the 5x3 end; the middle 6x4 slot is the current CAD nominal.
+The barrel body itself never passes through the slot.
 
-### 🔴 M17 — POLARITY. Verify before connecting the ESP32.
+### ✅ M17 — POLARITY VERIFIED 2026-08-01
 
-Red is normally positive and black normally ground, but wire colour is not proof on an unidentified
-pigtail. With power disconnected, use continuity mode to identify which wire reaches the centre pin.
-When using a centre-positive adapter:
-
-- centre-pin wire → `+5V` / ESP32 `VIN`
-- outer-sleeve wire → `GND`
+The owned pigtail was measured: **red reaches the centre pin and is positive; black is ground**.
+Mark the red lead physically and do not reverse it. Repeat the continuity test only if this pigtail
+or the adapter is replaced; the circuit has no reverse-polarity protection.
 
 ---
 
@@ -333,10 +330,10 @@ M11c body height                             = 3.1-3.2 mm [SPEC]
 M11d straight-lead pitch                     = 1.27-1.30 mm [VERIFY LEAD FORM]
 
 === POWER SOCKET (photo identified) ===
-M12-M14 owned part                           = inline female DC pigtail [TESTING ONLY]
+M12-M14 owned part                           = inline female DC pigtail [CURRENT POD CHOICE]
 M15 mating barrel                            = likely 5.5 OD / 2.1 centre mm [CONFIRM WITH PLUG]
 M16 panel thread + ring nut                  = NO [PHOTO CONFIRMED]
-M17 polarity                                 = centre pin -> +5V; verify which wire by continuity
+M17 polarity                                 = red -> centre pin / +5V [MEASURED 2026-08-01]
 
 === ESP32 BOARD (USB-C, CH340C-family, 15 pins per row) ===
 M18 pin count                                = 15 per row / 30 total [MEASURED]
@@ -369,7 +366,7 @@ other, so fixing them individually just moves the error somewhere else.
 | Waiting on | Why online data is not enough |
 |---|---|
 | Hall pocket dry-fit | M11b is 1.6mm and the recess is exactly 1.6mm, so real printed tolerance must be checked before gluing. |
-| Final panel-mount jack | Buy/select a threaded 5.5×2.1mm female jack and record its link/drawing before finalizing the lid cradle. The photographed pigtail remains a testing part. |
+| Pigtail cable-slot coupon | Select the smallest 5x3 / 6x4 / 7x5 opening that passes both insulated leads without damage; feed the result into `power_cable_slot_w/h`. |
 | M25 later | Final height depends on how the motor cable and soldered wires are dressed during assembly. |
 
 Everything else is now measured, derived, standardized, safely enveloped, or non-critical.

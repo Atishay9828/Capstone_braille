@@ -1,5 +1,12 @@
 # Braillix - Assembly Bible & Wiring Guide
 
+> [!IMPORTANT]
+> **CURRENT RELEASE GATE - 2026-08-19:** Do not assemble the full printed mechanism from this guide
+> yet. The production cam has an invalid 3.5mm socket for the measured 7.5mm shaft, and the complete
+> stack remains on HOLD. Print only the files in `printing/gcode_kobra_neo_checked` and follow
+> `PRINT_RELEASE_2026-08-19.md` plus `MECHANISM_BENCH_TEST.md`. Resume final assembly only after a
+> later release explicitly removes this gate.
+
 Follow this guide sequentially to build your first single-cell prototype.
 
 ---
@@ -50,37 +57,39 @@ We are wiring the **ESP32**, **ULN2003**, and **Hall Sensor** together.
 
 ---
 
-## SECTION 3: STEP-BY-STEP ASSEMBLY SEQUENCE
+## SECTION 3: CURRENT PRE-ASSEMBLY VALIDATION SEQUENCE
 
-### Phase A: Motor Prep
-1. Take the **28BYJ-48 motor** and mount it to the `base_plate` using two M4x10mm bolts. 
-   *(Note: The CAD assumes a specific shaft length. If the motor doesn't sit flush, we will need caliper measurements to update the CAD).*
-2. Press the resin `braille_cam` disc onto the motor's D-shaft.
-3. Seat the Hall sensor into its pocket on the base plate.
+### Phase A: PETG fit evidence
 
-### Phase B: Electronics Fit
-1. Snip off the female Dupont connectors on one end of your jumper wires. 
-2. Strip 3mm of wire, tin the ends, and solder them **flat** (parallel to the board) onto the ULN2003 header pins. 
-   *(Why? If you plug Dupont connectors in normally, they stand 20mm tall and won't fit in the 16mm printed electronics pocket).*
-3. Lay the ULN2003 flat on the floor of the `outer_box` pocket.
-4. Plug the motor's white JST connector into the ULN2003.
+1. Print `motor_cam_socket_coupon.gcode`; test the unpowered shaft from 3.1 to 3.3mm and record the
+   smallest removable fit. Never hammer, heat, power, glue, or cut the shaft during this test.
+2. Print `base_interface_coupon.gcode`. Inspect the Ø29 motor-seat roof for sag, test the actual M4
+   screw in the 3.3/3.4/3.5mm 2mm-deep pilots, and test the M2.5 bolt in the 2.9/3.0/3.1mm Ø6x12
+   standoffs. Do not force a bore that whitens or splits.
+3. Print the remaining required coupons in `PRINT_RELEASE_2026-08-19.md` and record every selected
+   fit before changing a production dimension.
 
-### Phase C: Mechanism Drop-In
-1. Lower the mid-plate onto the z=20 ledge in the `outer_box`.
-2. Lower the base_plate+motor assembly down into the box.
-3. Take your 6 resin-printed `linkages`. Place the "foot" of each linkage onto its respective cam track.
-4. The linkages should fan out naturally (60 degrees apart) so they don't hit each other.
+### Phase B: electronics bring-up outside the enclosure
 
-### Phase D: Top Plate & Springs
-1. Glue the resin `dot_insert` tile into the PETG `top_plate` pocket using superglue or epoxy. Let it cure.
-2. Thread a 2mm micro compression spring onto the dome of each of the 6 linkages. Give it a slight twist to seat it.
-3. Lower the `top_plate` carefully over the standoffs, guiding the 6 braille dots through the holes in the resin insert.
-4. Secure the top plate with four M2.5x25mm bolts. 
+1. Keep the ESP32 on USB and the motor on the 5V adapter; connect grounds.
+2. Power the bare Hall sensor/module from ESP32 `3V3`, not 5V, and use `AO` for the initial test.
+3. Verify motor direction, homing response, and the already measured red-positive pigtail polarity
+   on the breadboard. Do not install electronics in an unreleased enclosure.
 
-**Verification:** Gently push down on each braille dot with your finger. It should spring back up smoothly without binding.
+### Phase C: cam/linkage/spring bench evidence
 
----
+1. Print `cam_linkage_test_fixture.gcode` in PETG.
+2. Obtain the four-part `cad/stl/cam_linkage_test_resin_set.stl` in resin plus the actual 2mm OD
+   spring. Do not use PETG linkages or a pen spring.
+3. Follow `MECHANISM_BENCH_TEST.md` for dot-5 and dot-6 dry travel, 50-cycle return, dwell, damage,
+   height, and torque tests. The fixture is evidence equipment, not the final enclosure.
 
+### Phase D: final assembly - intentionally blocked
+
+Do not press the current production cam onto the motor, trim the shaft, glue the Hall sensor, glue
+magnets, install heat-set inserts, or glue the resin dot insert yet. Those actions either hide a
+failed fit or are difficult to reverse. A later validated release must provide the corrected cam,
+base/Hall stack, enclosure height, selected coupon dimensions, and final assembly sequence.
 ## SECTION 4: BEGINNER SOLDERING MISTAKES
 If you are doing the flat-soldering for the ULN2003:
 - **Cold Joint:** Looks like a dull, grey blob that doesn't stick to the pad. *Fix: Apply a tiny bit of flux, heat the pin and wire simultaneously for 2 seconds, and reapply a dab of solder.*

@@ -249,7 +249,11 @@ Entering continuous hall monitor...
 ---
 
 ## What's next after this works?
-1. Mount the motor + cam disc in the printed cell
-2. Glue a magnet to the cam disc, place hall sensor in its pocket
-3. Write homing firmware: spin until hall crosses threshold → that's position 0
-4. Index to any of the 64 cam positions on command
+1. Keep the motor, cam, magnet, and Hall sensor loose on the bench.
+2. Run the fit coupons and mechanism bench test in `PRINT_RELEASE_2026-08-19.md` and
+   `MECHANISM_BENCH_TEST.md`; the current production cam/socket and Hall pocket are on HOLD.
+3. Write homing firmware: spin until Hall crosses the threshold → that is position 0.
+4. Index to any of the 64 cam positions on command.
+
+Do **not** trim the shaft, press or glue the current cam, or glue the Hall sensor into the
+production base. Final mechanical assembly waits for the measured stack repair and coupon results.

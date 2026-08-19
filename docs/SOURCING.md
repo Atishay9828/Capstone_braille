@@ -9,17 +9,17 @@
 | NeFeB disc magnets **8mm dia × 1mm thick** | plenty — CAD v6.1 pockets sized for these |
 | Hall sensor (SS49E-class) | validated (saturates 0/4095, fine for edge homing) |
 | 6×6mm tactile switches ×3 | in hand |
-| Inline female DC pigtail jack + 5V/3A adapter | in hand; testing only, likely 5.5/2.1mm |
+| Inline female DC pigtail jack + 5V/3A adapter | in hand; current pod choice; polarity verified red = positive |
 | Jumper wires (Dupont) | in hand (housings get cut off for in-cell wiring) |
 
 ## 🛒 TO BUY
 
-### 0. Final enclosure power jack — threaded panel mount
+### 0. Enclosure power connector — no new purchase for this revision
 
-Buy one **5.5×2.1mm female panel-mount DC jack with a retaining nut**, rated for at least 5V/3A.
-The photographed inline pigtail jack has no thread or nut, so it cannot lock into the pod wall.
-Keep it for breadboard testing. Record the selected panel jack's purchase link/drawing before
-finalizing the lid hole and internal cradle.
+Use the owned inline pigtail. Its body remains outside the pod; only the two leads pass through the
+coupon-selected lid slot and tie to the internal strain-relief post. Print
+`pigtail_slot_coupon.gcode` before finalizing `power_cable_slot_w/h`. A threaded panel-mount jack is
+only a future redesign option.
 
 ### 1. Return springs x6 (+ spares) — 2mm OD MICRO springs
 **Spec: 2.0mm OD, ~0.3mm stainless wire, ~4mm free length.** One per braille dot.
@@ -35,12 +35,12 @@ finalizing the lid hole and internal cradle.
   size — it covers us if the free length needs adjusting after the first assembly.
 - If a seller offers **0.2mm wire**, prefer it: same OD but a wider bore, which gives more
   clearance around the 1.0mm nub.
-- Working range in the design: 3.5mm when the dot is down, 2.7mm when raised. A ~4mm free
-  length with ~5 coils is ideal (1.5mm solid height, so it never bottoms out).
+- Working range in the design: 3.0mm when the dot is down, 2.2mm when raised. A ~3.5-4.0mm free
+  length with ~5 coils is the test range (<=1.5mm solid height, so it never bottoms out).
 
 **Fitting them:** thread each spring over the 1.5mm dome by TWISTING it on (the coil acts
 like a thread against the 1.4mm bore — 0.1mm interference, trivial for steel). Then it sits
-on the linkage flange and drops into the counterbore in the top plate. Glue optional.
+on the linkage flange and drops into the counterbore in the resin dot insert. Do not glue the spring before the bench test.
 
 **Backup if springs cannot be sourced:** a small disc of **soft open-cell sponge** in place
 of each spring. Must be squishy sponge/upholstery/packing foam — **NOT stiff EVA craft
@@ -81,7 +81,7 @@ before the final print.** Current pocket dims are placeholders.
 |---|---|
 | M2.5 × 25mm bolts | 4 |
 | M2 × 6mm self-tap screws | 6 (4 muscle-board*, 2 pod lid) |
-| M4 × 10mm bolts + nuts | 2 (motor ears) |
+| M4 × 5mm or 6mm thread-forming screws | 2 (motor ears; choose only after ear/point measurement and base coupon; never M4×10) |
 *not needed while running the ULN2003-on-floor prototype
 
 ### 6. Consumables

@@ -34,8 +34,8 @@ you actually have the right thing.*
 | 3 | **ULN2003 driver board** | Small **blue** PCB, 4 red LEDs, white 5-pin socket, black 16-pin chip, IN1–IN4 + `+`/`-` pins | 1 | ✅ HAVE — **this is your motor driver, no chip to buy** |
 | 4 | **Hall sensor module (MH-Sensor-Series)** | Small **blue** PCB, tiny black 3-pin sensor on one edge, blue trimmer pot, 1–2 LEDs, pins marked **AO DO GND VCC** | 1 | ✅ HAVE (₹50) — ⚠️ **must use AO (analog)**, and the pocket won't fit it (see note) |
 | 5 | **5V / 3A power adapter** | Wall plug, barrel connector on the lead, "5V 3A" on the label | 1 | ✅ HAVE (₹160 w/ jack) |
-| 6 | **Inline female DC pigtail jack** | Black cylindrical barrel socket with red/black wires; no thread or nut | 1 | ✅ HAVE for testing; ✅ **polarity MEASURED CORRECT 2026-08-01** (red = +). No thread/nut, so mounting is a CAD problem. |
-| 6b | **5.5×2.1mm female panel-mount jack** | Threaded neck plus retaining nut, rated ≥5V/3A | 1 | ❌ SELECT/BUY for the final pod; record exact drawing/link before lid CAD |
+| 6 | **Inline female DC pigtail jack** | Black cylindrical barrel socket with red/black wires; no thread or nut | 1 | ✅ HAVE / CURRENT POD CHOICE; body stays outside, leads pass through the selected lid slot, internal tie post carries pull load. ✅ Polarity measured correct 2026-08-01 (red = +). |
+| 6b | **5.5×2.1mm female panel-mount jack** | Threaded neck plus retaining nut | 0 | ⛔ NOT REQUIRED for the current inline-pigtail revision |
 | 7 | **Connecting wire (2m)** | Loose hookup wire | 2m | ✅ HAVE (₹20) |
 | 8 | **Dupont jumper wires** | Ribbon of coloured wires with plastic pin housings | some | ✅ HAVE — need ~8× M-F and ~5× M-M |
 | 9 | **Neodymium magnets 8×1mm** | Small silver discs, strongly attract each other | 10 | ✅ HAVE (₹135) — for docking, **not** for cam homing |
@@ -47,7 +47,7 @@ you actually have the right thing.*
 **#6 — ✅ polarity is VERIFIED CORRECT (2026-08-01).** Measured with the multimeter: **red = positive.**
 This retires the single largest risk to the ESP32. Mark the positive wire physically (nail polish,
 marker, tag) so the information cannot be lost at the bench.
-There is still no reverse-polarity protection in the circuit, so any *new* power connector must be
+There is still no reverse-polarity protection in the circuit, so if this connector is ever replaced, the replacement must be
 measured the same way before it is trusted.
 
 **#4 — your whole Hall module does not fit the base plate.** v7.5 rebuilt an underside pocket for
@@ -80,7 +80,7 @@ The soldering station is the bulk of it and is the one genuinely missing tool.
 | 6 | **Micro compression springs** | **2.0mm OD**, ~0.3mm stainless wire, ~4mm free length. Buy an assortment kit. 🔴 Pen springs (4mm) **cannot** work — braille rows are 2.6mm apart. | 6 + spares | ~500 |
 | 7 | **Homing magnet** | 🔴 **3mm dia × 1mm thick** neodymium — **CHANGED from 3×2mm in v7.5.** The cam disc floor is only 2mm, so a 2mm magnet's pocket cut clean through it and punched a hole across three cam tracks. 1mm leaves 0.8mm of floor and couples just as well. Your 8×1mm ones are too wide. | 1 (buy 10) | ~120 |
 | 8 | **M2.5 × 25mm bolts** | Top plate → standoffs → box bosses | 4 | ~60 |
-| 9 | **M4 × 10mm screws** | Motor mounting ears. **v7.5: nuts no longer needed** — the right-hand ear sits under the spinning cam with nowhere to put a nut, so the screws now thread directly into Ø3.3 pilot holes in the base plate. Self-tapping/thread-forming M4 preferred. | 2 | ~30 |
+| 9 | **M4 × 5mm or 6mm thread-forming screws** | Candidate range for the approved raised-stack design. Select the pilot with `base_interface_coupon`; measure the real ear and screw point; require ≥0.5mm clearance below the cam. **Never use M4×10.** No nuts. | 2 | ~30 |
 | 10 | **M2 × 8mm self-tap** | Pod lid. **NOT M2×6** — through a 4mm lid that leaves only 2mm of thread. | 2 | ~40 |
 | 11 | **Superglue or 5-min epoxy** | Glues the resin dot insert into the PETG plate. Epoxy preferred — you get time to seat it square. | 1 | ~80 |
 | 12 | **Digital calipers** | 150mm digital | Already in hand; M5, M11b, and M21 recorded on 2026-07-31. | 1 | already owned |

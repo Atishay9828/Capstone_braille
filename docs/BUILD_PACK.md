@@ -1,5 +1,10 @@
 # Braillix — Build Pack
 
+> **CURRENT RELEASE GATE - 2026-08-19:** This pack predates the full print-readiness audit. Do not
+> permanently assemble or print production cam/base/top/enclosure/pod parts from its older status
+> claims. Current authority is `PRINT_RELEASE_2026-08-19.md`, `PRINT_DAY_MONDAY.md`, and
+> `MECHANISM_BENCH_TEST.md`. Only the checked G-code folder is released; the full product is NO-GO.
+
 **Written 2026-08-15. For the 24 August evaluation.**
 Scope: **electronics, assembly and sourcing.** Mechanical/CAD issues are *flagged* here and
 fixed in the CAD fork, never here.
@@ -23,7 +28,7 @@ Split the project the way an evaluator will accept:
 | Layer | State on 24 Aug | How it is shown |
 |---|---|---|
 | Encoding — 64 states, 6 dots | ✅ Solved, provable | Simulator + the 64-state table |
-| Actuation — motor, cam, homing | ✅ **Buildable now** | **Real hardware turning on the bench** |
+| Actuation — motor, cam, homing | 🔴 **HOLD** | Current cam socket cannot install; use the coupon/bench fixture only |
 | Control — ESP32, WiFi dashboard | ✅ **Buildable now** | **Phone browser, live** |
 | Transmission — linkages to dots | 🟠 In progress | Simulator, plus one linkage held by hand |
 
@@ -376,7 +381,7 @@ Sizes taken from the CAD parameters, not guessed:
 |---|---|---|---|---|
 | 1 | **Bolt** — top plate → standoffs → box | **M2.5 x 25mm**, socket cap or button head | 4 | `top_plate.scad` `screw_dia=3.2` clearance |
 | 2 | **Heat-set insert** — box corner posts | **M2.5**, OD **3.5mm**, length **5.0mm** | 4 (buy 10) | `outer_box.scad` `insert_m25_dia=3.5`, `depth=5.5` |
-| 3 | **Screw** — motor ears | **M4 x 10mm**, thread-forming preferred | 2 | `base_plate.scad` `motor_mount_pilot=3.3` |
+| 3 | **Screw** — motor ears | **M4 x 5mm or 6mm**, thread-forming; exact length after ear/point measurement | 2 | `base_plate.scad`; `base_interface_coupon`; **never M4x10** |
 | 4 | **Screw** — pod lid | **M2 x 8mm** *(or M2.5 x 8 — see 7.3)* | 2 | `esp32_pod_params.scad` |
 | 5 | **Heat-set insert** — pod lid posts | **M2**, OD **3.2mm**, length **4.0mm** *(or M2.5 — see 7.3)* | 2 (buy 10) | `insert_m2_dia=3.2`, `depth=4.5` |
 
@@ -400,7 +405,7 @@ if a size is genuinely unavailable, Part 7.3 tells you what can move.
 |---|---|---|---|
 | Box corners | M2.5 x 25 | 🔒 **Keep** | Inserts and bores already in the CAD; changing means re-printing the box |
 | Pod lid | M2 x 8 | ✅ **→ M2.5 x 8** | An M2.5 insert needs a 3.5mm bore. The post is 6.5mm dia, leaving **1.5mm of wall** — thinner than the 1.65mm it has now, but still enough for hot brass. |
-| Motor ears | M4 x 10 | 🔴 **Keep M4** | The 28BYJ-48's own mounting ears are drilled **4.2mm**. An M2.5 screw leaves 1.7mm of slop, and the motor would shift under load — which moves the cam off centre. This is the one place slop is unacceptable. |
+| Motor ears | M4 x 5 or x6 | 🔴 **Keep M4 diameter; shorten length** | The 4.2mm ear needs M4, but M4x10 reaches into the raised cam. Select the shortest screw that fully engages the 2mm pilot and remains ≥0.5mm below the cam. |
 
 ### Recommendation
 

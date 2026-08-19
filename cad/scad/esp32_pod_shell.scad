@@ -203,7 +203,7 @@ module esp32_pod_shell() {
             nav_button_holes();
             pogo_pad_recess_cutout();
             magnet_pockets();
-            antenna_grille();
+            // antenna_grille(); // removed: overlapped pogo recess, leaving 0.5mm skin
             header_socket_channels();
             nav_count_grooves();  // 1/2/3 grooves under Prev/Select/Next (v6.1)
         }

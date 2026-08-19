@@ -36,10 +36,10 @@ the CAD depends on a press fit or exact header alignment.
 | M11b | 1.6 mm | **MEASURED**; 1.6 mm nominal / 1.68 mm family max | Current 1.6 mm pocket is exact-fit; dry-fit because there is no print margin |
 | M11c | 3.1–3.2 mm | **SPEC**, 49E/SS49E TO-92S family | Design to 3.3 mm envelope |
 | M11d | 1.27–1.30 mm straight-lead pitch | **SPEC**; formed-lead SS49E-F is 2.54 mm | Verify sensor marking/lead form before desoldering |
-| M12–M14 | Body dimensions not needed for final CAD | **PHOTO-ID** inline female DC pigtail jack | Keep for testing; do not design the lid around it |
+| M12–M14 | Body dimensions not needed; cable-slot fit remains | **PHOTO-ID** inline female DC pigtail jack | Current pod choice: body outside, cable through coupon-selected slot, internal tie-post strain relief |
 | M15 | likely 5.5 mm barrel / 2.1 mm centre pin | **PHOTO-ID + PROJECT SPEC** | Confirm by mating plug or purchase record; photo alone cannot distinguish 2.1 from 2.5 mm |
 | M16 | No thread or ring nut | **PHOTO-ID** | Cannot clamp directly into a lid hole |
-| M17 | Red/black pigtail wires present | **PHOTO-ID** | Red is normally positive, but continuity-check centre pin before power |
+| M17 | Centre pin maps to red / positive | **MEASURED 2026-08-01** | Verified for the owned pigtail; re-test only if the connector is replaced |
 | M18 | 15 pins per row / 30 total | **MEASURED** | Resolved |
 | M19 | approximately 51.5–52.0 mm | **LIKELY**, matching 30-pin USB-C CH340C listings | Safe for pod length envelope |
 | M20 | approximately 28.0–28.5 mm | **LIKELY**, matching board listings | Safe for pod width envelope |
@@ -65,19 +65,18 @@ the CAD depends on a press fit or exact header alignment.
    base plate.
 4. A 30-pin ESP32 designation did **not** prove M21, but the owned board is now measured at
    **25.6 mm**. The live socket-channel pitch now uses that reading.
-5. The 2026-07-31 photo confirms an inline female DC pigtail jack with red/black wires. It is not
-   the panel-mount jack represented by the lid CAD. It is suitable for testing, but the final pod
-   should use a real nut-mounted 5.5×2.1 mm jack rather than clamp this cable body.
+5. The 2026-07-31 photo confirms an inline female DC pigtail jack with red/black wires. The current
+   lid intentionally keeps its connector body outside, passes only the cable pair through a rounded
+   slot, and transfers pull load to an internal tie post. A panel-mount jack is not required for
+   this revision; the remaining evidence is the physical 5x3 / 6x4 / 7x5 cable-slot coupon.
 
 ## Recommended power-connector decision
 
-Use a real **panel-mount 5.5 x 2.1 mm, centre-positive jack with a retaining nut** for the final
-pod. That matches the CAD's mounting concept and is mechanically serviceable. The photographed
-inline pigtail jack is useful for testing, but it should not be treated as a drop-in panel part.
-Adafruit product 610 is one documented example that supports panels up to 8 mm thick; the exact
-purchased jack must still be recorded before the lid cradle is finalized.
-
-Reference example: https://www.adafruit.com/product/610
+Use the owned **inline female pigtail** for the current pod. Keep the barrel body outside, pass only
+the two insulated leads through the lid, and secure them to the internal tie post before soldering.
+Print `pigtail_slot_coupon.gcode` and choose the smallest slot that passes both leads without
+scraping or pinching insulation. The middle 6 x 4 mm slot is the current CAD nominal. A threaded
+panel jack is only a future redesign option, not a current purchase requirement.
 
 ## Sources
 
