@@ -52,6 +52,14 @@ const uint8_t LETTER_DOTS[26][6] PROGMEM = {
 const int HALL_THRESHOLD = 500;   // analogRead below this = magnet present
 bool homed = false;
 
+// Tunable live over serial (!speed, !gap). A one-state move is only 64 steps, so
+// it is ACCELERATION-limited, not speed-limited: at accel 500 the motor needs 490
+// steps just to reach 700, and never gets past 179 steps/s on a single letter.
+// Raising accel shortens short moves; raising vmax only helps long ones.
+int  vmax  = 1000;   // half-steps/s. 28BYJ-48 torque falls off hard past ~1200.
+int  accel = 2000;   // half-steps/s^2
+int  gapMs = 250;    // hold time between characters of a typed word
+
 // --- encoding -------------------------------------------------------------
 
 int cellToState(char c) {
@@ -151,6 +159,8 @@ void help() {
   Serial.println("           !zero   call this position step 0");
   Serial.println("           !hall   print the hall reading");
   Serial.println("           !spin   one full revolution, to eyeball direction");
+  Serial.println("           !speed V A   set max speed and acceleration");
+  Serial.println("           !gap MS      pause between letters of a word");
   Serial.println("           !help   this list");
   Serial.println();
 }
@@ -163,8 +173,8 @@ void setup() {
                 STEPS_PER_REV, STEPS_PER_POS, DWELL_OFFSET);
 
   pinMode(HALL_PIN, INPUT);
-  stepper.setMaxSpeed(700);      // 28BYJ-48 loses torque past ~1000 half-steps/s
-  stepper.setAcceleration(500);  // must ramp; commanding full speed cold = stall
+  stepper.setMaxSpeed(vmax);     // must ramp; commanding full speed cold = stall
+  stepper.setAcceleration(accel);
 
   tryHome();
   help();
@@ -182,6 +192,20 @@ void loop() {
     if      (line == "!home") tryHome();
     else if (line == "!zero") { stepper.setCurrentPosition(0); Serial.println("  zero set."); }
     else if (line == "!hall") Serial.printf("  hall = %d\n", analogRead(HALL_PIN));
+    else if (line.startsWith("!speed")) {
+      int v, a;
+      if (sscanf(line.c_str(), "!speed %d %d", &v, &a) == 2 && v > 0 && a > 0) {
+        vmax = v; accel = a;
+        stepper.setMaxSpeed(vmax); stepper.setAcceleration(accel);
+        Serial.printf("  vmax %d (%.1f RPM), accel %d\n", vmax, vmax * 60.0 / STEPS_PER_REV, accel);
+        if (vmax > 1200) Serial.println("  WARNING: past ~1200 the 28BYJ-48 will start skipping steps.");
+      } else Serial.println("  usage: !speed <maxspeed> <accel>   e.g. !speed 1000 2000");
+    }
+    else if (line.startsWith("!gap")) {
+      int g;
+      if (sscanf(line.c_str(), "!gap %d", &g) == 1 && g >= 0) { gapMs = g; Serial.printf("  gap %d ms\n", gapMs); }
+      else Serial.println("  usage: !gap <milliseconds>");
+    }
     else if (line == "!spin") {
       Serial.println("  one revolution...");
       stepper.moveTo(stepper.currentPosition() + STEPS_PER_REV);
@@ -193,7 +217,7 @@ void loop() {
   } else {
     for (unsigned i = 0; i < line.length(); i++) {
       showChar(line[i]);
-      delay(500);                 // hold each letter long enough to see it
+      delay(gapMs);               // hold each letter long enough to see it
     }
   }
   Serial.print("> ");
