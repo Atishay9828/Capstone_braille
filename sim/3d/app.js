@@ -424,35 +424,51 @@ function gotoIndex(i) {
 // firmware answers, so what you watch on screen is what the motor has actually
 // finished doing — not a guess running alongside it.
 function wireHardware() {
-  const btn = $('btnHw');
-  // Serial chatter goes to the browser console, not the page. The Arduino monitor
-  // is already the right place to read it, and a scrolling log on screen is noise
-  // in front of a panel.
+  const btn = $('btnHw'), stat = $('hwstat');
+  // One status line, not a scrolling log — the Arduino monitor owns the chatter.
+  // But a failure has to be VISIBLE: the first version only did console.log, so a
+  // busy COM port looked exactly like nothing happening.
+  const say = (text, kind) => {
+    stat.textContent = text;
+    stat.className = text ? 'on ' + (kind || '') : '';
+  };
   const line = t => console.log('[cell]', t);
 
   if (!serialSupported()) {
     btn.textContent = 'Cell: needs Chrome';
     btn.disabled = true;
-    btn.title = 'Web Serial is Chrome/Edge only, over https or localhost.';
+    say('Web Serial is Chrome/Edge only, over https or localhost.', 'bad');
     return;
   }
 
   btn.addEventListener('click', async () => {
-    if (cell && cell.connected) { await cell.disconnect(); return; }
+    if (cell && cell.connected) {
+      await cell.disconnect();
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Connecting…';
+    say('waiting for the board to reset and home…');
     try {
-      // requestPort() must be called straight from the click, not after an await
+      // requestPort() must be reached straight from the click, not after an await
       cell = new Cell(line, st => {
         const on = st === 'connected';
         btn.textContent = on ? 'Cell: LIVE — disconnect' : 'Connect Cell';
         btn.classList.toggle('on', on);
-        if (!on) hwBusy = false;
+        if (!on) { hwBusy = false; say('disconnected'); }
       });
       await cell.connect();
       await cell.setSpeed(FW.vmax, FW.accel);   // make the motor match the screen
+      say('live — the cam follows the text box', 'good');
       gotoIndex(idx);                           // park it on the current cell
     } catch (e) {
       cell = null;
+      btn.textContent = 'Connect Cell';
+      btn.classList.remove('on');
+      say(e.message, 'bad');
       line(e.message);
+    } finally {
+      btn.disabled = false;
     }
   });
 }

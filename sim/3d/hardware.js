@@ -16,6 +16,7 @@
 const BAUD = 115200;           // matches Serial.begin() in braille_cell.ino
 const PROMPT = '>';            // the firmware prints "> " when it is ready again
 const MOVE_TIMEOUT = 6000;     // a full 360deg at vmax 1000 is about 4s
+const BOOT_TIMEOUT = 12000;    // open() resets the ESP32; setup() homes first
 
 export const supported = () => 'serial' in navigator;
 
@@ -37,13 +38,25 @@ export class Cell {
       throw new Error('This browser has no Web Serial. Use Chrome or Edge.');
     // must be called from a user gesture — the click handler, not a timer
     this.port = await navigator.serial.requestPort();
-    await this.port.open({ baudRate: BAUD });
+    try {
+      await this.port.open({ baudRate: BAUD });
+    } catch (e) {
+      this.port = null;
+      // By far the most common failure: the Arduino Serial Monitor still has the
+      // port. Windows hands a COM port to exactly one process.
+      if (/open|access|busy|failed/i.test(e.message))
+        throw new Error('Port is busy — close the Arduino Serial Monitor, then retry.');
+      throw e;
+    }
     this.writer = this.port.writable.getWriter();
     this._readLoop();
     this.onState('connected');
     this.onLog('connected at ' + BAUD + ' baud');
-    // the sketch prints its banner on boot; give it a moment before driving it
-    await new Promise(r => setTimeout(r, 400));
+    // Opening the port toggles DTR/RTS, which RESETS the ESP32. It then runs
+    // tryHome() — up to a full revolution, several seconds — before printing its
+    // first prompt. Sending during that window looks like a dead connection, so
+    // wait for the prompt rather than guessing with a fixed delay.
+    await this.waitForPrompt(BOOT_TIMEOUT);
     return true;
   }
 
@@ -106,6 +119,20 @@ export class Cell {
         .catch(e => { this.onLog('write failed: ' + e.message); done(); });
     }));
     return this.queue;
+  }
+
+  // Resolves on the firmware's next prompt, or after `ms` — used to sit out the
+  // reset-and-home that follows opening the port.
+  waitForPrompt(ms) {
+    return new Promise(resolve => {
+      const done = () => { clearTimeout(t); resolve(); };
+      const t = setTimeout(() => {
+        this.waiters = this.waiters.filter(w => w.resolve !== done);
+        this.onLog('no prompt after ' + ms + 'ms — is the sketch flashed?');
+        resolve();
+      }, ms);
+      this.waiters.push({ resolve: done });
+    });
   }
 
   goToState(state) { return this.send('!s ' + state); }
