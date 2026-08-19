@@ -8,8 +8,8 @@
 // Pod is now 64×68×58mm — docking face (68×58) matches the cell
 // so the chain looks like a uniform row of bricks.
 //
-// ESP32 DevKit V1 mounts horizontally on two 1×15 female header
-// strips seated in floor channels. Plug-and-play, no soldering.
+// ESP32 DevKit V1 mounts horizontally on two raised 1×15 female-header
+// strips. Pre-solder the used socket tails; the ESP32 itself remains removable.
 //
 // Print orientation: upright (open top facing up).
 // Material: PETG.
@@ -18,6 +18,8 @@
 include <esp32_pod_params.scad>
 
 shell_h = pod_height - lid_h;
+assert(pod_wall == dock_wall_t,
+       "Pod wall and shared dock receiver wall thickness have drifted");
 
 // --- CUTOUT MODULES ---
 
@@ -39,10 +41,11 @@ module nav_button_holes() {
     }
 }
 
-module pogo_pad_recess_cutout() {
-    translate([pod_length/2 - pogo_pad_recess, -pogo_pad_w/2,
-               pogo_z_from_bot - pogo_pad_h/2])
-        cube([pogo_pad_recess + 1, pogo_pad_w, pogo_pad_h]);
+module dock_receiver_cutout() {
+    // Through service receiver. It is deliberately contact-agnostic until a
+    // measured, current-rated flush cartridge is selected.
+    translate([pod_length/2, 0, pogo_z_from_bot])
+        cube([pod_wall * 2 + 2, pogo_pad_w, pogo_pad_h], center=true);
 }
 
 module magnet_pockets() {
@@ -69,31 +72,39 @@ module antenna_grille() {
 // --- INTERIOR FEATURE MODULES ---
 
 module header_socket_channels() {
-    // Two parallel floor channels to locate 1×15 female header strips
-    // Strips sit in recesses; DevKit male pins plug down into them
+    // Retired: the 1mm blind floor recess left nowhere for 30 socket tails,
+    // solder joints, or wires. Raised prewired decks below replace it.
+}
+
+module header_socket_decks() {
+    // Cross-ribs land between the 2.54mm pin positions, supporting each socket
+    // body at z=8 while leaving 5mm beneath it for pre-soldered tails and wires.
+    rib_x = [-6.5, -2.5, 2.5, 6.5];
+    rib_w = 0.8;
+    end_t = 1.5;
     for(sy = [-1, 1]) {
-        translate([devkit_x_offset, sy * hdr_row_pitch/2, 0]) {
-            // Floor recess to locate strip
-            translate([-hdr_strip_len/2, -hdr_strip_w/2, pod_floor - hdr_channel_depth])
-                cube([hdr_strip_len, hdr_strip_w, hdr_channel_depth + 0.1]);
-            // Retention walls (printed around strip, 1mm tall bumps at ends)
-            // These are positive features added in the union, not cuts
+        for(rx = rib_x)
+            translate([devkit_x_offset + rx*2.54 - rib_w/2,
+                       sy*hdr_row_pitch/2 - hdr_cradle_w/2,
+                       pod_floor - 0.1])
+                cube([rib_w, hdr_cradle_w, hdr_tail_space + 0.1]);
+
+        // Connected end posts stop longitudinal movement and rise 3mm above
+        // the socket-body seat. Glue only the socket plastic after a dry fit.
+        for(sx = [-1, 1]) {
+            translate([devkit_x_offset + sx*(hdr_cradle_len/2 + end_t/2) - end_t/2,
+                       sy*hdr_row_pitch/2 - hdr_cradle_w/2,
+                       pod_floor - 0.1])
+                cube([end_t, hdr_cradle_w, hdr_tail_space + 3.1]);
         }
     }
 }
 
-module header_retention_walls() {
-    // Small bumps at each end of the header channels to keep strips from sliding
-    wall_h = 3;
-    wall_t = 1.5;
-    for(sy = [-1, 1]) {
-        for(sx = [-1, 1]) {
-            translate([devkit_x_offset + sx * (hdr_strip_len/2 + wall_t/2),
-                       sy * hdr_row_pitch/2,
-                       pod_floor])
-                cube([wall_t, hdr_strip_w + 1, wall_h], center=true);
-        }
-    }
+module rear_harness_cutout() {
+    // Temporary one-/two-cell direct-GPIO harness route. A directly driven cell
+    // needs eight conductors, so the four-contact dock cannot carry this build.
+    translate([0, pod_width/2, 7])
+        cube([15, pod_wall + 2, 6], center=true);
 }
 
 // v6.1b: REAL switch retention. The old "pockets + snap nibs" were geometry errors —
@@ -132,13 +143,13 @@ module switch_cages() {
     }
 }
 
-module wire_tie_post() {
-    translate([pod_length/2 - pod_wall - 8, pod_int_width/2 - 4, pod_floor]) {
+module wire_tie_post(px, py) {
+    translate([px, py, pod_floor]) {
         difference() {
             cylinder(d=tie_post_dia, h=tie_post_h, $fn=30);
-            translate([-tie_post_dia/2 - 1, -tie_post_hole/2,
-                       tie_post_h/2 - tie_post_hole/2])
-                cube([tie_post_dia + 2, tie_post_hole, tie_post_hole]);
+            translate([-tie_post_dia/2 - 1, -tie_slot_w/2,
+                       tie_post_h/2 - tie_slot_h/2])
+                cube([tie_post_dia + 2, tie_slot_w, tie_slot_h]);
         }
     }
 }
@@ -200,18 +211,19 @@ module esp32_pod_shell() {
 
             shell_internal_cavity();
             usb_cutout();
+            rear_harness_cutout();
             nav_button_holes();
-            pogo_pad_recess_cutout();
+            dock_receiver_cutout();
             magnet_pockets();
             // antenna_grille(); // removed: overlapped pogo recess, leaving 0.5mm skin
-            header_socket_channels();
             nav_count_grooves();  // 1/2/3 grooves under Prev/Select/Next (v6.1)
         }
 
         // Positive interior features
-        header_retention_walls();
+        header_socket_decks();
         switch_cages();       // v6.1b: real switch retention (old nibs were floating)
-        wire_tie_post();
+        wire_tie_post(power_tie_x, power_tie_y);
+        wire_tie_post(0, 26);  // direct-GPIO rear harness strain relief
         // v6.2: lid_locating_lip() REMOVED — the new over-cap lid locates with an outer
         // ±Y skirt, so the inner lip is redundant and would foul the skirt. Module kept
         // below (unused) for reference.

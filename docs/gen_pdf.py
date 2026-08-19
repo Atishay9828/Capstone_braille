@@ -45,9 +45,9 @@ story.append(Paragraph("A. ESP32 Brain Pod", h1))
 story.append(make_table(
     ["#", "Item", "Specs", "Qty", "Price", "Source"],
     [
-        ["1", "ESP32 DOIT DevKit V1 (30-pin)", "CP2102, WiFi+BT, micro-USB", "1", "Rs 350", "Robocraze"],
+        ["1", "ESP32 DevKit-compatible (30-pin)", "WiFi+BT, USB-C; owned board", "1", "Owned", "-"],
         ["2", "Female header strip 1x15", "2.54mm pitch", "2", "Rs 10 ea", "Local"],
-        ["3", "Barrel jack (panel mount)", "5.5x2.1mm, threaded", "1", "Rs 15", "Local"],
+        ["3", "Inline female barrel pigtail", "5.5x2.1mm; owned cable", "1", "Owned", "-"],
         ["4", "5V 3A DC adapter", "5.5x2.1mm barrel plug", "1", "Rs 200", "Local/Amazon"],
         ["5", "6x6x5mm tactile switch", "4-pin DIP, momentary", "3", "Rs 5 ea", "Robocraze"],
         ["6", "4.7k ohm resistor", "1/4W through-hole", "2", "Rs 1 ea", "Local"],
@@ -62,7 +62,7 @@ story.append(make_table(
     [
         ["8", "28BYJ-48 stepper motor", "5V DC, 4-phase, 64:1", "1", "Rs 80", "Robocraze"],
         ["9", "SS49E Hall effect sensor", "Linear, SIP-3, 3-6V", "1", "Rs 25", "Robocraze"],
-        ["10", "3x2mm NeFeB disc magnet", "Neodymium, homing", "1", "Rs 5", "Local"],
+        ["10", "3x1mm NeFeB disc magnet", "Neodymium, homing", "1", "Rs 5", "Local"],
         ["11", "2mm SS bearing balls", "For braille dot caps", "6", "Rs 2 ea", "Amazon"],
         ["12", "Micro compression spring", "OD 4-4.5mm, L 5-6mm", "6", "Rs 3 ea", "Local hw"],
     ], col_widths=W))
@@ -84,7 +84,7 @@ story.append(make_table(
     ["#", "Item", "Specs", "Qty", "Price", "Source"],
     [
         ["15", "4-pin pogo connector pair", "2mm pitch, spring+pad", "2 pairs", "Rs 40/pr", "LCSC/AliExpr"],
-        ["16", "3x2mm NeFeB magnets (docking)", "Cell + pod snap faces", "9", "Rs 5 ea", "Local"],
+        ["16", "8x1mm NeFeB magnets (docking)", "2 per face; pod + two cells", "10", "Owned", "-"],
     ], col_widths=W))
 
 # E
@@ -138,10 +138,10 @@ items = [
     "Arduino Pro Mini 5V/16MHz x1",
     "ULN2003 driver board x1",
     "SS49E Hall sensor x1",
-    "5V/3A adapter + barrel jack (panel mount) x1",
+    "5V/3A adapter + owned inline female barrel pigtail x1",
     "6x6x5mm tactile switch x3",
     "4-pin pogo connector pair x2",
-    "3x2mm neodymium magnets x9",
+    "3x1mm homing magnet x1; 8x1mm docking magnets x10 owned",
     "2mm stainless steel bearing balls x6",
     "Micro springs (OD 4mm, length 5mm) x6",
     "Female header 1x15 x2",
@@ -151,8 +151,8 @@ items = [
     "Capacitors: 22pF x2, 100nF x2, 100uF/10V x1",
     "16MHz crystal x1",
     "M2.5x25 bolts x4",
-    "M2x6 screws x6",
-    "M4 bolts + nuts x2",
+    "M2x8 screws x2 (pod lid); M2x6 x4 only for deferred board",
+    "M4x5 thread-forming screws x2; no nuts/x6/x10",
     "Hookup wire (Red, Black, Blue, Yellow, Green, White)",
     "Heat shrink tubing assorted",
     "Solder wire + flux paste",

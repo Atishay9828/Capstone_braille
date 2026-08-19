@@ -182,5 +182,5 @@ Every dimension is read from the CAD, not from memory:
 | 6.2 mm cell pitch, 2.5 mm dot pitch | braille standard (Library of Congress / Marburg Medium) |
 | 44.4 mm cam disc, 68 mm cell | `cad/scad/mech_layout.scad`, `cad/scad/outer_box.scad` |
 | pressure angles | computed from `pin_lift`, `track_r`, `angular_ramp_fraction` |
-| 4096 steps/rev, 64 steps/position | `firmware/breadboard_test/breadboard_test.ino` |
+| Nominal 4096 steps/rev, 64 steps/position; owned motor requires Hall-to-Hall calibration | `firmware/breadboard_test/breadboard_test.ino` |
 | traverse timings | 28BYJ-48 at 800–1000 steps/s, belt versus leadscrew |

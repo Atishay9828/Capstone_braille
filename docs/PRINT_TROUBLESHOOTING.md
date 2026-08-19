@@ -293,7 +293,7 @@ Explicitly specify **TOUGH or ABS-like resin, not standard brittle resin** — t
 | `esp32_pod_shell` | PETG | Upright, open top **UP** | **No** | 0.2 | 25 % | 5 |
 | `esp32_pod_lid` | PETG | Outer face **DOWN** | **No** | 0.2 | 30 % | 5 |
 | `base_plate` | PETG | Flat, standoffs **UP** | **No** | 0.2 | 40 % | 5 |
-| `mid_plate` | PETG | Flat | **No** | 0.16 | 40 % | 4 |
+| `mid_plate` | PETG | Flat | **No** | 0.16 | 40 % | 5 |
 | `top_plate` | PETG after interface coupon | Reading face **UP** | **No** | 0.16 | 40 % | 5 |
 | `pogo_end_cap` | TPU 95A only | Flange down, hollow tongue **UP** | **No** | 0.16-0.20 | spool-specific | 3-4 |
 | `braille_cam`, `linkage`, `nav_cap`, `dot_insert` | Resin (SLA) | see §2.8 | — | — | — | — |
@@ -438,7 +438,7 @@ PETG strings. Normal, and mostly fixable. **Work through these in order:**
 | `dot_insert` dot holes | Ø1.7 | **1.7mm** — resin part, shouldn't need it. Only if a dome binds. |
 | M2 self-tap pilots (`outer_box` muscle-board bosses 1.7; pod lid bosses 2.0) | Ø1.7–2.0 | **1.6mm** if you want the screw to cut its own thread; **2.05mm** for a clearance hole |
 | M2.5 corner-boss pilots (`outer_box`, 2.3) | Ø2.3 | **2.3mm** to true it; **2.6mm** for a clearance pass |
-| Motor mount holes (`base_plate`, 4.3) | Ø4.3 | **4.2–4.3mm** |
+| Motor thread-forming pilots (`base_plate`, coupon-select 3.3/3.4/3.5) | selected coupon size | Do not ream to clearance size; use the winning pilot and M4x5 only |
 | Cam shaft clearance / standoff bores | Ø6–10 | Round needle file — not a drill |
 | Magnet pockets (8.4 × 1.2, teardrop) | Ø8.4 | **Do not drill.** Test-fit the 8 × 1mm magnet; if tight, a few passes with a round needle file or a rolled strip of 240 grit. Drilling destroys the teardrop roof. |
 | Pogo window (10 x 8 through 4 mm wall) | rectangular | Test the receiver coupon; remove loose strings only, never cut structural wall |

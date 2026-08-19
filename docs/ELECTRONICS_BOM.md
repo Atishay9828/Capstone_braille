@@ -151,7 +151,7 @@ theoretical.
 | **Flyback diodes** | ❌ Built into the ULN2003A (that's what COM does). |
 | **Level shifters** | ❌ Not needed — hall runs on 3V3, so GPIO34 never sees 5V. |
 | **2mm bearing balls** | ❌ Obsolete since v7.1 — the dot is printed as a dome. |
-| **Pogo pin connectors** | ⏸️ Deferred. Spec when needed: 4-pin, 2.54mm pitch, spring-loaded, ~0.5A. |
+| **Pogo pin connectors** | ⏸️ Deferred. Do not buy from the CAD window alone. Future contacts need >=1A continuous at working compression (prefer 2-3A for power) and a flush measured carrier; the four-wire bus also needs a per-cell 3.3V expander interface. |
 | **Crystal / oscillator** | ❌ ESP32 and the modules have their own. |
 
 ---

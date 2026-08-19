@@ -3,7 +3,9 @@
 
   Three disconnected test pieces reproduce the base plate's riskier interfaces:
     1. Real Ø29 x 1.5 mm underside motor seat around the Ø10 shaft opening.
-    2. Three 2 mm-deep M4 thread-forming pilots: Ø3.3 / 3.4 / 3.5 mm.
+    2. Three through M4 thread-forming pilots in a 5 mm wall:
+       Ø3.3 / 3.4 / 3.5 mm. This matches the Option-A base and prevents a
+       nominal M4x5 from bottoming during the coupon test.
     3. Three Ø6 x 12 mm future-stack standoffs: Ø2.9 / 3.0 / 3.1 mm bores.
 
   Print exactly as modelled. Do not enable supports: the point is to test the
@@ -23,10 +25,10 @@ module motor_seat_piece() {
 
 module m4_pilot_piece() {
     difference() {
-        translate([-18, -5, 0]) cube([36, 10, 2]);
+        translate([-18, -5, 0]) cube([36, 10, 5]);
         for (i = [0:2])
             translate([-12 + i*12, 0, -1])
-                cylinder(d=3.3 + i*0.1, h=4);
+                cylinder(d=3.3 + i*0.1, h=7);
     }
 }
 

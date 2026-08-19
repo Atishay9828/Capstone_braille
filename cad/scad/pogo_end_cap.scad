@@ -8,17 +8,19 @@
 // places real flexible barbs just beyond the 4mm enclosure wall.
 // =========================================================
 
-pogo_slot_w    = 10.0;
-pogo_slot_h    = 8.0;
-wall_thickness = 4.0;
+include <dock_interface.scad>
 
-face_w = 12.0;
-face_h = 10.0;
+pogo_slot_w    = dock_receiver_w;
+pogo_slot_h    = dock_receiver_h;
+wall_thickness = dock_wall_t;
+
+face_w = pogo_slot_w + 2.0;
+face_h = pogo_slot_h + 2.0;
 face_t = 1.8;
 face_r = 1.2;
 
-tongue_w     = 9.4;   // 0.3mm clearance per slot side
-tongue_h     = 7.4;
+tongue_w     = pogo_slot_w - 0.6;   // 0.3mm clearance per slot side
+tongue_h     = pogo_slot_h - 0.6;
 tongue_depth = 6.0;   // 2mm beyond the inner wall
 shell_t      = 1.2;   // hollow tongue flexes during insertion
 

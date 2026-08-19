@@ -64,7 +64,7 @@ We are wiring the **ESP32**, **ULN2003**, and **Hall Sensor** together.
 1. Print `motor_cam_socket_coupon.gcode`; test the unpowered shaft from 3.1 to 3.3mm and record the
    smallest removable fit. Never hammer, heat, power, glue, or cut the shaft during this test.
 2. Print `base_interface_coupon.gcode`. Inspect the Ø29 motor-seat roof for sag, test the actual M4
-   screw in the 3.3/3.4/3.5mm 2mm-deep pilots, and test the M2.5 bolt in the 2.9/3.0/3.1mm Ø6x12
+   screw in the 3.3/3.4/3.5mm through pilots, and test the M2.5 bolt in the 2.9/3.0/3.1mm Ø6x12
    standoffs. Do not force a bore that whitens or splits.
 3. Print the remaining required coupons in `PRINT_RELEASE_2026-08-19.md` and record every selected
    fit before changing a production dimension.

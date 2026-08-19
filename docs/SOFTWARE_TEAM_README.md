@@ -143,8 +143,8 @@ computes the slices from the total cell count across all pods.
 | Thing | Value | Notes |
 |---|---|---|
 | Motor | 28BYJ-48 stepper (geared) | Driven via ULN2003 (prototype) or muscle board |
-| Steps per full revolution | **4096** half-steps | NOT 2048. 8 half-steps × 64:1 gearbox |
-| Cam positions | **64** (0–63) | One per 6-bit braille combo. **4096 / 64 = 64 steps per position** |
+| Steps per full revolution | **4096 nominal** half-steps | Starting value only; calibrate the owned gearbox Hall-midpoint to Hall-midpoint |
+| Cam positions | **64** (0–63) | One per 6-bit braille combo; firmware adds half a state pitch to stop at dwell centre |
 | Homing | Hall sensor + magnet on cam | Find position 0 on power-up before moving |
 | Stepper library | AccelStepper (HALF4WIRE) | Already working in `breadboard_test.ino` |
 | I²C pins (ESP32) | SDA = GPIO21, SCL = GPIO22 | Master = the pod |

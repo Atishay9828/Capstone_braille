@@ -14,7 +14,7 @@
 //     56mm plate + 2mm clearance each side. ✓
 // =========================================================
 
-include <mech_layout.scad>   // homing_mag_r / homing_mag_angle — the hall sensor
+include <hall_interface.scad> // shared Hall geometry also includes mech_layout.scad
                              // MUST sit under the cam magnet, so both come from
                              // the one shared file. They used to be declared in
                              // two places and had drifted (cam r=17.35 vs plate y=20).
@@ -32,6 +32,11 @@ include <mech_layout.scad>   // homing_mag_r / homing_mag_angle — the hall sen
 base_length     = 58;      // X
 base_width      = 50;      // Y — unchanged
 base_thickness  = 5;       // Z
+
+// Cam Interface (matches braille_cam.scad). Declared before the motor pilot
+// calculation because OpenSCAD `use` callers evaluate these bindings eagerly.
+cam_pocket_diameter = 46;   // 44.4mm cam OD + 0.8mm clearance/side
+cam_pocket_depth    = 3;
 
 // Motor Interface — CORRECTED for actual 28BYJ-48 measurements
 // Owned values: can Ø28.1, shaft offset 7.5, ear spacing 34.7; seat Ø29 retains 0.45mm/side
@@ -52,19 +57,20 @@ motor_mount_spacing  = 34.7;   // MEASURED M8: owned motor ear spacing
 // FASTENER GATE: never use the previously documented M4x10. Under Option A the
 // raised cam underside is z=47; with the ~0.8mm ear, M4x5 or M4x6 is the safe
 // candidate range. Measure the real ear and screw point, then use the shortest
-// coupon-proven screw that fully engages this 2mm pilot and stays >=0.5mm below
+// coupon-proven screw that fully engages the through pilot and stays >=0.5mm below
 // the cam. The current production stack remains HOLD.
 motor_mount_pilot    = 3.3;    // M4 thread-forming pilot (drill to 3.4 if it binds)
-
-// Cam Interface (unchanged — matches braille_cam.scad)
-cam_pocket_diameter = 46;   // 44.4mm cam OD + 0.8mm clearance/side (v5.1: inner_radius 8→12)
-cam_pocket_depth    = 3;    // Disc base (2mm) sits in pocket; bumps 0.2mm below plate top
+motor_mount_pilot_depth = stack_option_a ? base_thickness + 0.1
+                                         : base_thickness - cam_pocket_depth;
 
 // Standoffs — CRITICAL FIX: was 3.5mm, now 8mm
 // Stack above plate: 8mm standoff + 3mm top plate = 11mm
 // Linkage total height = 12mm, foot on cam bump (0.2mm below plate top) → nub at +0.8mm
 standoff_diameter = 6;
-standoff_height   = 8;     // Was 3.5mm — FAR too short for cam + linkage + top plate stack
+standoff_height   = 8 + stack_repair_raise;
+// Option A raises the cam/linkage/top datums together by 4mm while the motor and
+// base underside stay fixed. The top plate underside therefore moves from local
+// z=13 to z=17, requiring 12mm posts instead of 8mm.
 standoff_x = 26;
 standoff_y = 21;
 
@@ -100,19 +106,13 @@ standoff_y = 21;
 // The module's PCB is ~15 x 11mm plus an 8-11mm header. Nothing that size fits in
 // a 5mm plate underneath a cam. Desolder the 3-legged black sensor off the module
 // and run three wires back to it (or straight to the ESP32). See docs.
-hall_body_w     = 4.1;     // MEASURE (M11) — sensor body width, across the flat face
-hall_body_d     = 3.1;     // MEASURE (M11) — sensor body depth, flat face to round back
-hall_body_t     = 1.6;     // MEASURED (M11b) — owned sensor body thickness
-hall_fit        = 0.4;     // print/glue clearance added to width and depth
-hall_floor_t    = 0.4;     // plate left between the sensor and the cam pocket floor
-
-hall_pocket_x   = homing_mag_r * cos(homing_mag_angle);   // 0
-hall_pocket_y   = homing_mag_r * sin(homing_mag_angle);   // 17.35
-hall_pocket_h   = base_thickness - cam_pocket_depth - hall_floor_t;   // 1.6
-
-// Lead channel, also on the underside, running out to the +Y plate edge
-hall_wire_w     = 4;       // three leads at 1.27mm pitch = ~2.6mm, plus room
-hall_wire_d     = 1;
+// Legacy: sensor face sits 0.4mm below the cam-pocket floor.
+// Option A: the cam underside is local z=6.0. A 0.5mm island reaches z=5.5,
+// leaving 0.5mm mechanical running clearance; its 0.4mm roof puts the sensor
+// face 0.9mm from the flush magnet. This is still a physical Hall-test gate.
+option_a_cam_under_local = 2 + stack_repair_raise;
+hall_island_h = hall_island_height(stack_repair_raise, base_thickness);
+hall_pocket_h = hall_pocket_height(stack_repair_raise, base_thickness);
 
 // v6.1b: underside ribs REMOVED. Two reasons (both confirmed on the fit-test print):
 //  1. Printing flat put the ribs on the bed and BRIDGED the whole plate body over
@@ -151,15 +151,16 @@ module motor_features() {
     // tracks start at r=12 and no linkage foot ever travels over r=9.5.
     for(sx = [-1, 1]) {
         translate([sx * (motor_mount_spacing / 2) + motor_body_x_offset, 0, -0.1])
-            cylinder(d=motor_mount_pilot, h=base_thickness - cam_pocket_depth + 0.1);
+            cylinder(d=motor_mount_pilot, h=motor_mount_pilot_depth + 0.1);
     }
 }
 
 module cam_features() {
-    // Cam disc pocket (from top face, 3mm deep)
-    // Disc base (2mm) sits here; bump tops end up 0.2mm below plate top
-    translate([0, 0, base_thickness - cam_pocket_depth])
-        cylinder(d=cam_pocket_diameter, h=cam_pocket_depth + 1);
+    if (!stack_option_a) {
+        // Legacy cam disc pocket (from top face, 3mm deep).
+        translate([0, 0, base_thickness - cam_pocket_depth])
+            cylinder(d=cam_pocket_diameter, h=cam_pocket_depth + 1);
+    }
 }
 
 // M11b equals the available 1.6mm recess exactly. This passes the geometric guard,
@@ -169,19 +170,8 @@ assert(hall_pocket_h >= hall_body_t,
        "Hall sensor is thicker than the base plate can recess it. Either reduce \
 hall_floor_t, or move the sensor outboard of the cam pocket and re-site the magnet.");
 
-module hall_sensor_pocket() {
-    // Cut UP from the plate UNDERSIDE (z=0), not down from the top face.
-    pw = hall_body_w + hall_fit;
-    pd = hall_body_d + hall_fit;
-    translate([hall_pocket_x - pw/2, hall_pocket_y - pd/2, -0.1])
-        cube([pw, pd, hall_pocket_h + 0.1]);
-
-    // Lead channel, underside, from the pocket out to the +Y plate edge
-    translate([hall_pocket_x - hall_wire_w/2, hall_pocket_y - pd/2, -0.1])
-        cube([hall_wire_w,
-              base_width/2 - hall_pocket_y + pd/2 + 1,
-              hall_wire_d + 0.1]);
-}
+assert(!stack_option_a || hall_island_h >= 0.5,
+       "Option A Hall island is too low to preserve a printable roof and cam gap");
 
 module standoffs() {
     // 4 corner posts — support top plate 8mm above base plate top
@@ -200,12 +190,19 @@ module standoffs() {
 
 // --- 3. ASSEMBLY ---
 
-union() {
-    difference() {
-        main_body();
-        motor_features();
-        cam_features();
-        hall_sensor_pocket();   // v7.5: spring_cavity() deleted — see note in params
+module base_plate() {
+    union() {
+        difference() {
+            union() {
+                main_body();
+                hall_sensor_island(stack_repair_raise, base_thickness);
+            }
+            motor_features();
+            cam_features();
+            hall_sensor_pocket(stack_repair_raise, base_thickness, base_width);
+        }
+        standoffs();
     }
-    standoffs();
 }
+
+base_plate();

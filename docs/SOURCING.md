@@ -47,10 +47,10 @@ of each spring. Must be squishy sponge/upholstery/packing foam — **NOT stiff E
 foam**, which is roughly 20x too stiff and risks stalling the motor. Free from packaging.
 The printed parts are identical either way, so this can be tested without a reprint.
 
-### 2. Homing magnets 3×2mm ×1 per cell — small but specific
+### 2. Homing magnets 3×1mm ×1 per cell — small but specific
 Your 8×1mm magnets are for DOCKING. The cam's homing pocket (`braille_cam.scad`) needs a
-**3mm dia × 2mm thick** disc — an 8mm one won't fit the 2mm-thick cam base.
-- Search: **"3x2mm neodymium magnet"** on robu.in / Amazon.in — ₹100–200 for 10–20 pcs.
+**3mm dia × 1mm thick** disc — an 8mm one will not fit and a 2mm-thick magnet destroys the cam floor.
+- Search: **"3x1mm neodymium magnet"** on robu.in / Amazon.in — verify the actual thickness.
 - Glue flush into the cam underside pocket at r=17.35 (the 90° position).
 
 ### 3. ~~Bearing balls 2mm~~ — NO LONGER NEEDED (v7.1)
@@ -67,7 +67,9 @@ The top plate is now PETG/FDM with a small **resin dot insert** glued into a poc
   holes the domes will jam and the cell is dead.
 
 ### 4. Pogo connector (4-pin) — DEFERRED DECISION (per v6 audit)
-Don't buy until the design is pinned. Two candidate styles:
+Don't buy until the electrical architecture and carrier are pinned. A 0.5A/contact part is
+insufficient for the aggregate chain. Require >=1A continuous/contact at working compression,
+preferably 2-3A on power, and a flush internal carrier. Two candidate styles:
 - **Spring-loaded pogo pin strip, 4-pin, 2.54mm pitch** (search "pogo pin connector 4 pin
   2.54mm") — what the CAD windows roughly assume; needs a mating flat-pad part.
 - **Magnetic pogo connector module** (search "magnetic pogo connector 4 pin") — combines
@@ -76,12 +78,17 @@ Don't buy until the design is pinned. Two candidate styles:
 **When the part arrives → measure it → update `pogo_carrier_*` dims in outer_box.scad
 before the final print.** Current pocket dims are placeholders.
 
+The four-contact 5V/GND/SDA/SCL bus is future-only: every cell still needs a 3.3V-powered
+expander/regulator or explicit level shifting. Tomorrow's direct one-cell build uses the separate
+8-wire rear harness, not the pogo window.
+
 ### 5. Fasteners (one trip to a fastener shop / one Amazon order)
 | Item | Qty (1 cell + pod) |
 |---|---|
 | M2.5 × 25mm bolts | 4 |
-| M2 × 6mm self-tap screws | 6 (4 muscle-board*, 2 pod lid) |
-| M4 × 5mm or 6mm thread-forming screws | 2 (motor ears; choose only after ear/point measurement and base coupon; never M4×10) |
+| M2 × 8mm self-tap screws | 2 (pod lid) |
+| M2 × 6mm self-tap screws | 4 only if the deferred muscle board is ever built |
+| M4 × 5mm thread-forming screws | 2 (motor ears; coupon first; do not use M4×6/x10 without measured clearance) |
 *not needed while running the ULN2003-on-floor prototype
 
 ### 6. Consumables

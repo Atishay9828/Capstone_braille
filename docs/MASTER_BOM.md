@@ -30,15 +30,15 @@
 | Inline female DC pigtail jack | ✅ **HAVE / CURRENT POD CHOICE** | Connector body remains outside; only the red/black leads pass through the lid slot and are strain-relieved on the internal tie post. Polarity measured correct 2026-08-01, red = positive. Prove slot size with `pigtail_slot_coupon.gcode`. |
 | Threaded 5.5×2.1mm female panel-mount jack | ⛔ **NOT REQUIRED FOR THIS REVISION** | The old guessed panel-jack cradle was removed. Reconsider only in a future enclosure redesign. |
 | 28BYJ-48 stepper motor (5V) | ✅ HAVE IT / MEASURED | Fit-critical caliper readings recorded, including M5=3.0mm. Vertical stack still needs one coordinated CAD pass. |
-| ULN2003 driver module | ✅ HAVE IT | Fits the 16mm pocket **only** with wires soldered flat (~12mm). With vertical Dupont headers it is ~20mm and will NOT fit. |
+| ULN2003 driver module | ✅ HAVE IT | Nominally fits the 14mm pocket **only** with wires soldered flat (~12mm). Vertical Dupont headers will not fit; final board/tail measurement and retention are still required. |
 | Hall sensor — MH-Sensor-Series (blue module) | ⚠️ **HAVE BUT WRONG FORM FACTOR** | The whole blue PCB will not fit. v7.5 provides a **4.5 × 3.5 × 1.6mm underside pocket** for its bare TO-92 sensor. M11b is exactly 1.6mm, so dry-fit before gluing. Desolder the sensor and run three wires back; use analog AO behavior for homing. |
 | Neodymium magnets 8×1mm (docking) | ✅ HAVE IT | 10 purchased. 4 needed per cell (2 per ±X face). |
-| Homing magnet **3×2mm** (for the cam) | ❌ NEED TO BUY | 1 per cell. An 8×1mm will **not** fit the cam's 3.2mm pocket. Search "3x2mm neodymium magnet" — ~₹120 for 10–20 pcs. |
+| Homing magnet **3×1mm** (for the cam) | ❌ NEED TO BUY | 1 per cell. The blind pocket is 1.2mm deep and leaves 0.8mm of cam floor. An 8×1mm docking magnet is too wide. |
 | Tactile switches 6×6×5mm | ✅ HAVE IT | 3 needed (pod nav buttons). Not required for a Tier-0 demo. |
 | Female header strips 1×15 | ❌ NEED TO BUY | 2 for the pod DevKit mount. ~₹40. Not needed for a breadboard demo. |
 | USB-C cable (data, not charge-only) | ❌ NEED TO BUY / verify | Must carry **data**. Many charge-only cables look identical and silently fail to flash. ~₹150. |
 | Resistors / capacitors | ✅ **NOT NEEDED** | 4.7k I²C pull-ups are only for the multi-cell I²C bus, which is not in the demo. No protection parts needed for a single cell. |
-| Pogo pin connectors | ⏸️ **DEFERRED** | Spec: 4-pin, 2.54mm pitch, spring-loaded, ~0.5A. Not needed for a single-cell demo. Pocket dims in the CAD are placeholders pending a real part. |
+| Pogo pin connectors | ⏸️ **DEFERRED** | Do not buy yet. Require a measured flush carrier and >=1A/contact continuous (prefer 2-3A for power). The four-wire architecture also needs a per-cell 3.3V expander interface. |
 
 ## 2. Mechanical & fasteners
 *Counts derived from the SCAD sources and verified against them.*
@@ -46,7 +46,7 @@
 | Component | Qty | Status | Serves / Action |
 |---|---|---|---|
 | **M2.5 × 25mm bolts** | 4 | ❌ NEED TO BUY | `top_plate` counterbores → `base_plate` standoffs → `outer_box` corner bosses. Verified: 25mm gives ~9.5mm engagement. ~₹60 |
-| **M4 × 5mm or 6mm thread-forming screws** | 2 | ⏸️ SELECT AFTER STACK APPROVAL | Motor ears into the Ø3.3/3.4/3.5 coupon-selected 2mm pilots. **Never M4×10:** it enters the raised cam envelope. Measure the real ear and screw point; keep the tip ≥0.5mm below the cam. No nuts. |
+| **M4 × 5mm thread-forming screws** | 2 | ⏸️ SELECT AFTER COUPON | Motor ears into the Ø3.3/3.4/3.5 coupon-selected through pilots. **Do not use M4×6 or M4×10** until the real ear and screw point prove ≥0.5mm cam clearance. No nuts. |
 | **M2 × 8mm self-tap** | 2 | ❌ NEED TO BUY | Pod lid → shell bosses. 🔴 **NOT M2×6** — through a 4mm lid that leaves only **2mm** of thread; 8mm gives 4mm. Verified. ~₹40 |
 | M2 × 6mm self-tap | 4 | ⏸️ DEFERRED | Muscle-board bosses. Not used in the prototype (ULN2003 sits on the pocket floor). |
 | **2mm OD micro compression springs** | 6 + spares | ❌ NEED TO BUY | 🔴 **CRITICAL, no substitute.** 2.0mm OD, ~0.3mm stainless wire, ~4mm free length. Pen springs (4mm) **cannot** work — braille rows are 2.6mm apart. Buy an **assortment kit** (200–400pcs) so you're not betting on one guess. ~₹500 |

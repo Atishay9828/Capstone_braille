@@ -66,7 +66,8 @@ Step | IN1 | IN2 | IN3 | IN4
   8  |  1  |  0  |  0  |  1
 ```
 
-Repeat this 8-step cycle. One full revolution = 4096 half-steps (after the gear ratio).
+Repeat this 8-step cycle. Start with a nominal 4096 half-steps per output revolution, then
+replace it with the owned motor's measured Hall-midpoint-to-midpoint count before production.
 
 ### Speed Guideline
 
@@ -80,7 +81,7 @@ Repeat this 8-step cycle. One full revolution = 4096 half-steps (after the gear 
 The cam disc has 64 positions (one per Braille character). One full revolution = 64 characters.
 
 ```
-steps_per_character = 4096 / 64 = 64 half-steps
+nominal_steps_per_character = 4096 / 64 = 64 half-steps
 target_steps = character_index × 64
 ```
 

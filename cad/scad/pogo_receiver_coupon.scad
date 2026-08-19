@@ -13,16 +13,18 @@
   spool is known and a spool-specific slow profile can be validated.
 */
 
+include <dock_interface.scad>
+
 $fn = 40;
 base_x = 76;
 base_y = 18;
 base_z = 3.0;
-wall_t = 4.0;
+wall_t = dock_wall_t;
 wall_h = 25.0;
 wall_y = 0;
 slot_z = base_z + 12.0;
-slot_widths = [10.0, 10.2, 10.4];
-slot_heights = [8.0, 8.2, 8.4];
+slot_widths = [for (delta=[0, 0.2, 0.4]) dock_receiver_w + delta];
+slot_heights = [for (delta=[0, 0.2, 0.4]) dock_receiver_h + delta];
 
 module engrave(label, x) {
     translate([x, -6.0, base_z-0.28])

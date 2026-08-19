@@ -1,0 +1,14 @@
+{
+  "variant": "option_a",
+  "stack_repair_raise_mm": 4,
+  "status": "HOLD_PENDING_PHYSICAL_COUPONS",
+  "generated_utc": "2026-08-19T22:00:48.0305324Z",
+  "sha256": {
+    "braille_cam": "b6ebaec4722a67cb7fc36b52ef463e9bcacad6c955a8701ebd096a0edcb27220",
+    "outer_box": "55816011bdcdf271c24f136a8fe98c0f67add2cf2438c02eb28ba90af7a69145",
+    "esp32_pod_lid": "8a0c35c275380edfd7c46abaabbbbca4e1baeb1c1372028e1e94e114fd9d92dc",
+    "esp32_pod_shell": "c4e49e0dea9781a0a2ee5482ef333b75cfe34b68ff4e5ee7c5e3bde0973d9511",
+    "top_plate": "80dbbcb84520f58fbfc3943b24e2269cebe24347df91d2aed6cb4925eb2a3ab7",
+    "base_plate": "9d4df16e0186166c71f275fcb4a5da307fb9841c51d441b865c5561236b9e4c3"
+  }
+}

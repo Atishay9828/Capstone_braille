@@ -267,14 +267,14 @@ Nothing here is decorative. One line each, so you can answer the panel.
 |---|---|---|
 | **ESP32 DevKit** | Decides *which* of the 64 cam states to show; serves the WiFi dashboard | No control at all |
 | **ULN2003 board** | An ESP32 pin gives ~20mA at 3.3V; a motor coil wants ~200mA at 5V. This chip is seven electronic switches that bridge that gap. | Connect the motor direct and you **destroy the ESP32 pin** |
-| **28BYJ-48 stepper** | Moves in exact, countable steps — 4096 per turn. A DC motor cannot hold a position. | No repeatable positioning |
+| **28BYJ-48 stepper** | Moves in countable half-steps. 4096/turn is a nominal starting value; the owned gearbox must be Hall-to-Hall calibrated. | No repeatable positioning |
 | **Cam disc** | The mechanical decoder: one angle = one 6-dot pattern. Six tracks read simultaneously. | 6 separate actuators instead of 1 |
 | **Hall sensor** | Finds absolute zero on power-up. A stepper knows *relative* steps, never where it actually is. | Every character wrong after a power cut |
 | **Homing magnet (3x1mm)** | The thing the hall sensor sees | Nothing to home against |
 | **Return springs** | Push each linkage back down onto the cam. Gravity alone is too weak at this scale. | Dots stick up and never retract |
 | **DC jack + 5V 3A adapter** | USB alone cannot supply motor current safely | Brown-outs, ESP32 resets mid-move |
 | **Brass heat-set inserts** | PETG threads strip after a few open/close cycles. Brass does not. | The box becomes single-use |
-| **MCP23017** *(3+ cells only)* | Turns 5 wires per cell into a shared 4-wire bus | Pin exhaustion at ~4 cells |
+| **MCP23017** *(future only)* | Could turn five per-cell signals into a shared four-wire bus, but requires a 3.3V regulator/interface and measured carrier | Pin exhaustion at ~4 direct cells |
 
 ---
 
@@ -381,7 +381,7 @@ Sizes taken from the CAD parameters, not guessed:
 |---|---|---|---|---|
 | 1 | **Bolt** — top plate → standoffs → box | **M2.5 x 25mm**, socket cap or button head | 4 | `top_plate.scad` `screw_dia=3.2` clearance |
 | 2 | **Heat-set insert** — box corner posts | **M2.5**, OD **3.5mm**, length **5.0mm** | 4 (buy 10) | `outer_box.scad` `insert_m25_dia=3.5`, `depth=5.5` |
-| 3 | **Screw** — motor ears | **M4 x 5mm or 6mm**, thread-forming; exact length after ear/point measurement | 2 | `base_plate.scad`; `base_interface_coupon`; **never M4x10** |
+| 3 | **Screw** — motor ears | **M4 x 5mm**, thread-forming; exact point/ear measurement still required | 2 | `base_plate.scad`; `base_interface_coupon`; **no M4x6/x10** |
 | 4 | **Screw** — pod lid | **M2 x 8mm** *(or M2.5 x 8 — see 7.3)* | 2 | `esp32_pod_params.scad` |
 | 5 | **Heat-set insert** — pod lid posts | **M2**, OD **3.2mm**, length **4.0mm** *(or M2.5 — see 7.3)* | 2 (buy 10) | `insert_m2_dia=3.2`, `depth=4.5` |
 
@@ -390,7 +390,7 @@ varies by brand, and the bore is a parameter precisely so it can be adjusted. If
 inserts measure 3.6mm rather than 3.5mm, that is a one-line CAD change, not a reprint decision.
 
 **Search terms for onlyscrew.com:** "M2.5 socket cap screw 25mm", "brass threaded insert M2.5",
-"M4 socket cap 10mm". If inserts are not stocked there, they are reliably available on Robu.in
+"M4 thread forming screw 5mm". If inserts are not stocked there, they are reliably available on Robu.in
 and Amazon as "brass heat set insert assortment kit M2 M2.5 M3" (~₹350 for a mixed kit, which
 also covers you for the measuring surprise above).
 
@@ -405,7 +405,7 @@ if a size is genuinely unavailable, Part 7.3 tells you what can move.
 |---|---|---|---|
 | Box corners | M2.5 x 25 | 🔒 **Keep** | Inserts and bores already in the CAD; changing means re-printing the box |
 | Pod lid | M2 x 8 | ✅ **→ M2.5 x 8** | An M2.5 insert needs a 3.5mm bore. The post is 6.5mm dia, leaving **1.5mm of wall** — thinner than the 1.65mm it has now, but still enough for hot brass. |
-| Motor ears | M4 x 5 or x6 | 🔴 **Keep M4 diameter; shorten length** | The 4.2mm ear needs M4, but M4x10 reaches into the raised cam. Select the shortest screw that fully engages the 2mm pilot and remains ≥0.5mm below the cam. |
+| Motor ears | M4 x 5 only | 🔴 **Keep M4 diameter; coupon first** | Option A uses a through pilot. M4x5 is the only current candidate; do not use x6/x10 without measured ≥0.5mm cam clearance. |
 
 ### Recommendation
 
