@@ -95,6 +95,13 @@ let move = null;                      // the active trapezoid, or null when park
 // short moves badly wrong: a one-state hop is only 64 steps, so it is ACCELERATION
 // limited and never reaches vmax at all. Keep these in step with the sketch.
 const FW = { vmax: 1000, accel: 2000, gapMs: 250 };   // half-steps/s, /s^2, ms
+// The 28BYJ-48 itself stalls above ~1200 half-steps/s (see the sketch's own
+// !speed warning) — the sim's speed slider goes to 3x, which is 3000. Screen
+// speed and motor speed are DIFFERENT axes: the visual can run fast, the real
+// coil can't, so whatever the slider asks for gets clamped before it ever
+// reaches the hardware.
+const HW_VMAX_CAP = 1100, HW_ACCEL_CAP = 3000;
+const clampHw = (v, a) => [Math.min(v, HW_VMAX_CAP), Math.min(a, HW_ACCEL_CAP)];
 const DEG_PER_STEP = 360 / 4096;
 const VMAX_DEG  = FW.vmax  * DEG_PER_STEP;    // 87.9 deg/s
 const ACCEL_DEG = FW.accel * DEG_PER_STEP;    // 175.8 deg/s^2
@@ -458,7 +465,7 @@ function wireHardware() {
         if (!on) { hwBusy = false; say('disconnected'); }
       });
       await cell.connect();
-      await cell.setSpeed(FW.vmax, FW.accel);   // make the motor match the screen
+      await cell.setSpeed(...clampHw(FW.vmax, FW.accel));   // match the screen, capped to what the motor can actually do
       say('live — the cam follows the text box', 'good');
       gotoIndex(idx);                           // park it on the current cell
     } catch (e) {
@@ -493,7 +500,7 @@ function wireUI() {
     // faster means velocity k and acceleration k^2, so push those to the motor or
     // the screen and the cam stop agreeing the moment the slider moves.
     if (cell && cell.connected)
-      cell.setSpeed(Math.round(FW.vmax * speed), Math.round(FW.accel * speed * speed));
+      cell.setSpeed(...clampHw(Math.round(FW.vmax * speed), Math.round(FW.accel * speed * speed)));
   });
   addEventListener('resize', () => {
     camera.aspect = innerWidth / innerHeight;
