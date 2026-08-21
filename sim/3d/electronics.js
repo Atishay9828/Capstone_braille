@@ -42,22 +42,26 @@ function mats() {
   M.pcbBlue   = pbr(0x1b4b8f, 0.15, 0.55);
   M.pcbBlack  = pbr(0x14161c, 0.15, 0.55);
   M.shellPETG = pbr(0x5a6b7c, 0.05, 0.75, { transparent: true, opacity: 1 });
-  M.tin       = pbr(0xc8ccd2, 0.90, 0.28);
-  M.gold      = pbr(0xd6b45a, 0.85, 0.32);
+  M.tin       = pbr(0xc8ccd2, 0.60, 0.46);
+  M.gold      = pbr(0xd6b45a, 0.62, 0.42);
   M.blackPlas = pbr(0x1a1a1e, 0.05, 0.60);
   M.whitePlas = pbr(0xe8e8ea, 0.05, 0.55);
   M.bluePlas  = pbr(0x2f6fd0, 0.05, 0.50);
   M.copper    = pbr(0xb5651d, 0.80, 0.35);
   M.ledRed    = pbr(0xff3b3b, 0.10, 0.35, { emissive: 0x330000 });
   M.ledGreen  = pbr(0x3bff7a, 0.10, 0.35, { emissive: 0x003311 });
-  M.motorCan  = pbr(0x9ba3aa, 0.85, 0.30);
+  M.motorCan  = pbr(0x9ba3aa, 0.55, 0.50);
   M.resistor  = pbr(0x2b2b30, 0.10, 0.45);   // SMD chip resistor, black body
   M.resistTHT = pbr(0xd8c89a, 0.05, 0.55);   // through-hole, beige
   M.capCer    = pbr(0xc9a06a, 0.05, 0.60);   // ceramic, tan
-  M.capElec   = pbr(0x23252c, 0.35, 0.35);   // electrolytic can
-  M.solder    = pbr(0xb9bcc2, 0.95, 0.25);
-  M.crystal   = pbr(0xd9dde3, 0.92, 0.20);
-  M.magnet    = pbr(0xb8bcc4, 0.95, 0.22);
+  M.capElec   = pbr(0x23252c, 0.25, 0.55);   // electrolytic can
+  // Metalness near 1 with low roughness makes a part a MIRROR. On specks this
+  // size the only thing they can mirror is the three environment panels, so a
+  // slow orbit dragged a bright streak across every pad and can — it read as
+  // something spinning under the motor. Rougher and less metallic kills it.
+  M.solder    = pbr(0xb9bcc2, 0.55, 0.52);
+  M.crystal   = pbr(0xd9dde3, 0.60, 0.44);
+  M.magnet    = pbr(0xb8bcc4, 0.60, 0.46);
   M.wire = {
     red:    pbr(0xd93b3b, 0.02, 0.42), black: pbr(0x1b1c20, 0.02, 0.45),
     yellow: pbr(0xe0bf34, 0.02, 0.42), green: pbr(0x3aa757, 0.02, 0.42),
@@ -66,8 +70,8 @@ function mats() {
   };
   // The scene supplies a PMREM environment, so metals have something to reflect.
   // Without bumping this the tiny parts read as flat grey chips.
-  Object.values(M).forEach(m => { if (m.isMaterial) m.envMapIntensity = 1.35; });
-  Object.values(M.wire).forEach(m => { m.envMapIntensity = 0.9; });
+  Object.values(M).forEach(m => { if (m.isMaterial) m.envMapIntensity = 0.42; });
+  Object.values(M.wire).forEach(m => { m.envMapIntensity = 0.3; });
   return M;
 }
 
@@ -453,11 +457,14 @@ export function buildBrainPod(printed) {
   // Dock magnets. esp32_pod_shell.scad:52 cuts the pocket from the OUTER dock face
   // inward, so the disc sits FLUSH with x = +L/2 with its axis along X — not buried
   // mid-wall, and not lying on its side.
+  const mags = new THREE.Group();
+  mags.name = 'pod_magnets';
   for (const y of POD.mag.ys) {
     const mag = cyl(POD.mag.dia, 1.2, m.magnet, [L / 2 - 0.6, y, POD.mag.z], null, 20);
     mag.rotation.set(0, 0, Math.PI / 2);   // cylinder's Y axis -> X, facing the cell
-    pod.add(mag);
+    mags.add(mag);
   }
+  pod.add(mags);
   return pod;
 }
 
@@ -507,7 +514,7 @@ export function buildCellElectronics(realMotor) {
 
 // ============================================ what each piece actually is
 export const PART_INFO = [
-  ['brain pod', 'ESP32 BRAIN POD',
+  ['brain_pod', 'ESP32 BRAIN POD',
    'A 68x68x58 shell, the same brick size as a cell so a docked chain looks uniform. Holds the controller and the power inlet. One pod drives the whole chain.'],
   ['esp32', 'ESP32-WROOM-32 DEVKIT',
    'The controller. 51.5x28mm, dropped onto two female header strips so it lifts out with no soldering. Runs the text-to-braille encoding and drives the motor.'],
@@ -527,8 +534,8 @@ export const PART_INFO = [
    'Finds home. On power-up the cam turns until the magnet passes it - the only way the firmware learns which of the 64 positions it is sitting on. Shown as the bare TO-92 because the module it ships on is too big for the pocket, so the sensor gets desoldered off its blue carrier board.'],
   ['pogo_pads', 'POGO PADS',
    'The flat gold targets the pins press onto. Flat-to-sprung means no alignment tolerance problem and nothing to snap off.'],
-  ['magnets', 'DOCK MAGNETS 8x1mm',
+  ['pod_magnets', 'DOCK MAGNETS 8x1mm',
    'Two per face, flush with the dock wall at y +/-14. Poles are reversed between pod and cell so they only latch the right way round - you physically cannot dock a cell backwards.'],
-  ['wiring', 'THE 13-WIRE LOOM',
+  ['cell_wiring', 'THE 13-WIRE LOOM',
    'Dupont jumpers, no soldering. Four coil lines and power reach the driver, five cores go on to the motor, and three run back from the hall sensor. Colour coding matches the build guide.'],
 ];

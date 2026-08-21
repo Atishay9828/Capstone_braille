@@ -283,17 +283,87 @@ async function buildElectronics(glbScene) {
   }
 
   pod.visible = cellElec.visible = false;   // off until asked for
-  $('parts').innerHTML = PART_INFO.map(([, title, body]) =>
-    `<div class="pi"><b>${title}</b><span>${body}</span></div>`).join('');
+  buildHotspots();
 }
 
 function setElectronics(on) {
   elec = on;
   pod.visible = cellElec.visible = on;
   glbMotor.forEach(o => o.visible = false);       // never show the placeholder again
-  $('parts').classList.toggle('on', on);
   $('btnElec').classList.toggle('on', on);
   if (on && !xray) setXray(true);                 // pointless to hide them behind walls
+}
+
+// ---------------------------------------------------------------- hotspots
+// A dot pinned to each real part, instead of a wall of text on the right. It
+// grows and brightens as the pointer approaches, and only opens on a click, so
+// the model stays the thing you look at.
+const SPOTS = [];
+const MECH_INFO = [
+  ['cam', 'THE CAM DISC',
+   'The whole mechanism in one part. Six concentric tracks, 64 angular slices - one per possible dot pattern. Rotating it to an angle IS choosing a character.'],
+  ['linkage_1', 'LINKAGE (x6)',
+   'One per dot. A foot rides the cam track; when it meets a raised section the arm pivots and pushes its dot up 0.8mm through the reading surface.'],
+  ['top_plate', 'READING SURFACE',
+   'What the finger touches. The six dots sit at standard braille spacing - 2.6mm between rows, 4.8mm between the two columns.'],
+];
+const SPOT_MAX = 190;             // px: beyond this the dot is at its dimmest
+
+function buildHotspots() {
+  const layer = $('spots');
+  for (const [name, title, body] of [...MECH_INFO, ...PART_INFO]) {
+    const o = scene.getObjectByName(name);
+    if (!o) continue;
+    const anchor = new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3());
+    const el = document.createElement('button');
+    el.className = 'spot';
+    el.title = title;
+    el.addEventListener('click', ev => { ev.stopPropagation(); openInfo(spot, ev); });
+    layer.appendChild(el);
+    const spot = { o, el, anchor, title, body };
+    SPOTS.push(spot);
+  }
+}
+
+let openSpot = null;
+function openInfo(spot, ev) {
+  openSpot = spot;
+  SPOTS.forEach(s => s.el.classList.toggle('open', s === spot));
+  $('infoTitle').textContent = spot.title;
+  $('infoBody').textContent = spot.body;
+  const card = $('info');
+  card.classList.add('on');
+  // sit beside the dot, but never off-screen
+  const r = spot.el.getBoundingClientRect();
+  const w = 268, h = card.offsetHeight || 120;
+  card.style.left = Math.min(Math.max(12, r.left + 24), innerWidth - w - 12) + 'px';
+  card.style.top  = Math.min(Math.max(12, r.top - 10), innerHeight - h - 12) + 'px';
+}
+function closeInfo() {
+  openSpot = null;
+  SPOTS.forEach(s => s.el.classList.remove('open'));
+  $('info').classList.remove('on');
+}
+
+// visible only if the object and every parent above it is visible
+const shown = o => { for (let n = o; n; n = n.parent) if (!n.visible) return false; return true; };
+
+const ptr = { x: -1e4, y: -1e4 };
+function updateHotspots() {
+  if (!SPOTS.length) return;
+  const v = new THREE.Vector3();
+  for (const s of SPOTS) {
+    if (!shown(s.o)) { s.el.style.display = 'none'; continue; }
+    v.copy(s.anchor).project(camera);
+    if (v.z > 1) { s.el.style.display = 'none'; continue; }   // behind the camera
+    const x = (v.x * 0.5 + 0.5) * innerWidth, y = (-v.y * 0.5 + 0.5) * innerHeight;
+    s.el.style.display = 'block';
+    s.el.style.left = x + 'px';
+    s.el.style.top = y + 'px';
+    const d = Math.hypot(x - ptr.x, y - ptr.y);
+    const p = s === openSpot ? 1 : Math.max(0, 1 - d / SPOT_MAX);
+    s.el.style.setProperty('--p', (p * p).toFixed(3));        // squared: bites late, feels sharper
+  }
 }
 
 function setXray(on) {
@@ -485,6 +555,14 @@ function wireUI() {
     word = e.target.value || ' ';   // case is meaningful now: it drives the capital sign
     idx = 0; gotoIndex(0);
   });
+  addEventListener('pointermove', e => { ptr.x = e.clientX; ptr.y = e.clientY; });
+  // click anywhere that is not a dot or the card itself
+  addEventListener('pointerdown', e => {
+    if (openSpot && !e.target.closest('#info') && !e.target.closest('.spot')) closeInfo();
+  });
+  addEventListener('keydown', e => { if (e.key === 'Escape') closeInfo(); });
+  $('info').querySelector('.x').addEventListener('click', closeInfo);
+
   $('btnXray').addEventListener('click', () => setXray(!xray));
   $('btnElec').addEventListener('click', () => setElectronics(!elec));
   wireHardware();
@@ -554,6 +632,7 @@ function tick(now) {
   }
 
   updateMechanism(camDeg);
+  updateHotspots();
 
   controls.update();
   renderer.render(scene, camera);
@@ -652,6 +731,7 @@ async function main() {
     // in the same turn as the draw.
     snap: (w = 720, q = 0.55) => {
       updateMechanism(camDeg);
+  updateHotspots();
       renderer.render(scene, camera);
       const src = renderer.domElement;
       const c = document.createElement('canvas');
