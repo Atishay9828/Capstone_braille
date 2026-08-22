@@ -512,9 +512,12 @@ function wireHardware() {
   const line = t => console.log('[cell]', t);
 
   if (!serialSupported()) {
-    btn.textContent = 'Cell: needs Chrome';
+    // Android runs Chrome but has no Web Serial at all, so "needs Chrome" reads
+    // as nonsense on a tablet. Name the real requirement: a desktop.
+    btn.textContent = 'Cell: desktop only';
     btn.disabled = true;
-    say('Web Serial is Chrome/Edge only, over https or localhost.', 'bad');
+    say('Web Serial needs Chrome or Edge on a computer — it does not exist on '
+      + 'Android or iOS. The simulation still runs here.', 'bad');
     return;
   }
 
