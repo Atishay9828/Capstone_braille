@@ -18,10 +18,10 @@ older documents in this repo tell you to build things you do not need.
 | Is the jack polarity safe? | ✅ **YES — measured and confirmed correct, 2026-08-01.** |
 | Do I own a soldering iron? | ❌ **No.** Buying guide in Part 9. **Do not buy a cheap plain iron.** |
 | Can two cells work? | ✅ Yes, **direct-drive, no expander** — the ESP32 has the pins. See Part 10. |
-| Does it scale past two? | ✅ Yes — **8 cells on one bus, 64 with a mux**, at ~₹80/cell and zero custom parts. Part 5. |
+| Does it scale past two? | ⏸️ Concept only. The four-wire dock still needs a per-cell 3.3V expander/regulator or level shifting, a measured carrier, and current-rated contacts. Part 5. |
 | What breaks first at scale? | **Power, ~11 cells** — and only if they all move at once. Refresh sequentially and it goes away. |
 | How do I stop joints breaking? | Heat-shrink + **anchor the wire**, not glue on the joint. **Hot glue, not epoxy** — the pin map will still change. Part 12. |
-| What is the real blocker? | Nothing electronic. **The circuit has never been built on a breadboard** — and that needs no soldering at all. |
+| What is the real blocker? | The one-cell breadboard is buildable; the enclosure harness, Hall calibration, and future four-wire dock are not yet physically/electrically validated. |
 
 ---
 
@@ -75,8 +75,11 @@ That is the entire reason any driver exists. Nothing custom is involved.
    |    at the BRAIN end only) |         |   address set by 3 jumpers)     |
    +---------------------------+         +---------------------------------+
             |                                          ^
-            +---- 4 wires: 5V, GND, SDA, SCL ----------+
-              (1-2 cells today: 5 direct wires per cell)
+            +---- tomorrow: 8-wire direct harness ------+
+              (IN1-IN4, Hall AO, Hall 3V3, motor 5V, common GND)
+
+Future only: 4 wires (5V, GND, SDA, SCL) after each cell gets a compatible
+3.3V expander/regulator or level shifting and a measured current-rated dock.
 ```
 
 **Brain pod** = decides *what* to show. **Muscle cell** = makes it physically happen.
@@ -120,14 +123,15 @@ Requires editing `breadboard_test.ino` and re-flashing. **Do not do this before 
 
 | Location | Space | Verdict |
 |---|---|---|
-| Cell electronics pocket | **36 × 46 × 16mm** | ⚠️ **The only tight spot** |
+| Cell electronics pocket | **36 × 46 × 14mm** | ⚠️ **The only tight spot** |
 | Pod interior | ~38mm spare headroom | Fine, wildly oversized |
 
 **The problem:** a ULN2003 board with Dupont jumpers plugged in vertically stands **~20mm**.
-The pocket is **16mm**. It does not fit.
+The pocket is **14mm**. It does not fit.
 
 **The fix:** cut the Dupont ends off and solder the wires **flat** against the board.
-That drops it to ~12mm, leaving 4mm spare. This is why soldering appears at all.
+That drops it to ~12mm, leaving only about 2mm nominal spare before real tail/board measurements.
+Temporary edge hot glue is acceptable after testing; final retention still needs a measured tray.
 
 **Also flagged (CAD, not fixed here):** the *whole blue hall module* does not fit in the base
 plate. Only the bare 3-legged sensor does, desoldered from the module, with three wires run
@@ -160,8 +164,13 @@ snap-together brick can carry a cable that grows every time you add one.
                                            each brick taps the same 4
 ```
 
-Every brick hangs off the **same four wires** and is told apart by an **address**, not by
-its own pins. Cell 9 wires exactly like cell 1. **That is the whole scaling story.**
+Every future brick could hang off the **same four wires** and be told apart by an address, but
+the current CAD does not yet contain the required per-cell expander power/interface or a rated
+flush connector. Treat the diagram below as architecture work, not a build instruction.
+
+An MCP23017 powered at 5V does not guarantee a logic-high from ESP32 3.3V I2C. A real cell must
+power the expander at 3.3V from a local regulator (while separately switching 5V motor power), or
+use explicit level shifting. Prove that circuit and its enclosure fit before buying pogo hardware.
 
 ## 🔑 The decision that makes this real: one expander PER BRICK
 
@@ -528,7 +537,7 @@ sit in a breadboard.
 ## Job 2 — ULN2003 wires flat *(only when you assemble cell 1)*
 
 **Why:** with Dupont jumpers plugged in vertically the board is ~20mm tall. The pocket is
-**16mm**. Soldered flat it is ~12mm.
+**14mm**. Soldered flat it is ~12mm, leaving only nominal tolerance.
 
 1. Cut the Dupont connector off six wires — IN1, IN2, IN3, IN4, `+`, `−`.
 2. Strip and tin each.
@@ -664,4 +673,4 @@ joint will not come off — if it moves, no glue on earth will save it. Redo the
    that can hold it.
 2. **DC jack has no thread or nut** — the pod lid cannot clamp it. Needs either a mechanical
    retainer in the box or a different jack.
-3. **ULN2003 pocket is 16mm** — drives the solder-flat requirement. Working, but zero margin.
+3. **ULN2003 pocket is 14mm** — drives the solder-flat requirement. It still needs real board/tail measurement and retention proof.

@@ -1,3 +1,8 @@
+STOP — STALE v6.1 ARCHIVE — DO NOT PRINT OR SEND THIS FOLDER
+
+This pack contains old geometry, an old ZIP, 3-wall instructions, a resin top plate that is now PETG,
+and no dot insert. Use docs/PRINT_RELEASE_2026-08-19.md and printing/gcode_kobra_neo_checked instead.
+The remaining text is retained only as historical context.
 BRAILLIX — 3D Print Job Instructions
 =====================================
 Project: Refreshable Braille Display (Capstone)
@@ -27,7 +32,7 @@ BATCH 3 — Small Parts (3 files)
   Folder: Batch3_Small_Parts/
   Files:  braille_cam.stl  — print with hub/cylinder DOWN, tracks UP
           nav_cap.stl
-          pogo_end_cap.stl  — print flat (TPU if available, else PETG)
+          pogo_end_cap.stl  — TPU 95A ONLY; never PETG; no checked G-code until spool is known
   Layer height: 0.16mm (finer for small details)
   Infill: 30%
   Est. time: ~2h total (can print together)

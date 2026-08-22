@@ -12,6 +12,9 @@
 // include <esp32_pod_params.scad>
 // =========================================================
 
+include <stack_options.scad>
+include <dock_interface.scad>
+
 // --- POD SHELL DIMENSIONS ---
 // v7.5: 64 -> 68. The 51.5mm board offset +4mm in X spanned x = -21.75..+29.75
 // inside a cavity that ended at +28 — a 1.75mm interference, so the DevKit
@@ -20,7 +23,7 @@
 // chain really is a uniform row of bricks. The +X dock face is unchanged.
 pod_length       = 68;     // X — depth (USB end to dock end)
 pod_width        = 68;     // Y — matches cell shell_width for uniform chain look
-pod_height       = 58;     // Z — matches cell shell_height
+pod_height       = 58 + stack_repair_raise; // Z — matches cell shell_height
 pod_wall         = 4;      // Wall thickness
 pod_floor        = 3;      // Floor thickness
 pod_fillet       = 3.0;    // Outer corner radius — matches cell (was 2.0)
@@ -45,7 +48,10 @@ hdr_row_pitch    = 25.6;   // MEASURED (M21) — pin-row centre-to-centre
 hdr_strip_w      = 2.7;    // Female header strip body width
 hdr_strip_h      = 8.5;    // Female header strip body height (board sits at floor+8.5)
 hdr_strip_len    = 40.0;   // 15-pin strip length (~15×2.54=38.1, round up)
-hdr_channel_depth = 1.0;   // Floor recess to locate strips
+hdr_tail_space   = 5.0;    // prewired lower-tail/solder/wire service space
+hdr_body_bottom_z = pod_floor + hdr_tail_space; // raised socket-body seat at z=8
+hdr_cradle_w     = 3.2;    // 2.7mm body + 0.5mm lateral clearance
+hdr_cradle_len   = 40.4;   // 40.0mm body + 0.4mm end clearance
 
 // Board position: centred in Y, biased toward the -X/USB wall.
 // v7.5: +4 -> -2. Pushing the board TOWARD the USB wall shortens how far the plug
@@ -54,20 +60,15 @@ hdr_channel_depth = 1.0;   // Floor recess to locate strips
 //   board spans x = -2 +/- 25.75 = -27.75 .. +23.75, inside a +/-30 cavity.
 devkit_x_offset  = -2;
 
-// --- BARREL JACK (on the LID) ---
-// v6.1b FIX: was centered at x=-30 — the Ø11.5 hole overflowed the lid edge (±32)
-// and printed as an open NOTCH (confirmed on the fit-test print). A panel-mount
-// jack can't clamp in a notch. Moved fully onto the lid, offset in Y away from
-// the DevKit so the jack body hangs over open floor.
-barrel_jack_dia  = 11.5;   // PLACEHOLDER (M15/M16) — CAD assumes panel mount; owned adapter is inline
-// v7.5: -22 -> -20. The support cradle under this hole reached
-// x = barrel_jack_x - jack_body_l/2 - cradle_t = -29.5 against a cavity that ended
-// at -28, so the lid could not close. Lengthening the pod to 68 moved the cavity
-// wall to -30, and moving the jack to -20 puts the cradle at -27.5: 2.5mm clear,
-// with room left over for a real jack that measures bigger than the placeholder.
-barrel_jack_x    = -20;
-barrel_jack_y    = 18;     // off the DevKit (board spans y±14)
-
+// --- OWNED INLINE POWER PIGTAIL (through the LID) ---
+// The photographed connector is a female inline lead, not a threaded panel jack.
+// Keep its body outside the pod and pass only the red/black cable pair through this
+// rounded slot. Secure the cable to the existing internal tie post before soldering;
+// plug-in force then loads the tie, not the ESP32 or lid.
+power_cable_slot_w = 6.0;  // generous for the pictured two-wire pair
+power_cable_slot_h = 4.0;
+power_cable_x      = -20;
+power_cable_y      = 24;   // 8mm nominal clearance beyond board/slot edge
 // --- USB CUTOUT (-X end wall) ---
 // v7.5: the old usb_z had an arithmetic bug — it ignored hdr_channel_depth. The
 // header strips are RECESSED 1mm into the floor, so the board underside sits at
@@ -78,16 +79,15 @@ barrel_jack_y    = 18;     // off the DevKit (board spans y±14)
 // overmoulds can reach the socket 2.25mm inboard. Keep the existing 9mm height:
 // reducing it to 7mm would regress the cable-body clearance fixed in v7.5.
 usb_w            = 14;     // Fixed service envelope; measure only unusually large cables
-usb_h            = 9;      // Preserves clearance for typical USB-C overmould height
-board_under_z    = pod_floor + hdr_strip_h - hdr_channel_depth;   // 10.5
-usb_z            = board_under_z - 1.0;   // 9.5 — starts just under the board
+usb_h            = 12;     // conservative service envelope, z=14..26
+board_under_z    = hdr_body_bottom_z + hdr_strip_h; // nominal 16.5
+usb_z            = 14;
 
 // --- POGO INTERFACE (+X dock wall) ---
 // Matches cell ±X pogo window exactly
-pogo_pad_w       = 10;
-pogo_pad_h       = 8;
-pogo_pad_recess  = 1;     // 1mm deep recess (anti-short)
-pogo_z_from_bot  = 31;    // Matches cell pogo_z
+pogo_pad_w       = dock_receiver_w;
+pogo_pad_h       = dock_receiver_h;
+pogo_z_from_bot  = dock_center_z;
 
 // --- MAGNET POCKETS (+X dock wall) ---
 // v6.1: real magnets are 8mm dia × 1mm thick (was 3×2). 2 per face at y=±14,
@@ -96,7 +96,8 @@ pogo_z_from_bot  = 31;    // Matches cell pogo_z
 mag_dia          = 8.4;   // 8mm magnet + 0.4mm FDM clearance
 mag_depth        = 1.2;   // 1mm magnet + glue gap (4mm wall keeps 2.8mm)
 mag_y_positions  = [-14, 14];
-mag_z            = pod_height / 2;   // 29mm — matches cell
+// Dock features stay at the same absolute height when Option A adds headroom.
+mag_z            = 29;   // matches cell
 
 // --- WIFI ANTENNA GRILLE (+X end, near dock) ---
 antenna_wall     = 1.5;
@@ -107,7 +108,10 @@ antenna_slot_count = 3;
 // --- WIRE TIE POST ---
 tie_post_dia     = 4;
 tie_post_h       = 10;
-tie_post_hole    = 2;
+tie_slot_w       = 1.6;   // normal mini zip-tie thickness + print clearance
+tie_slot_h       = 3.2;   // normal mini zip-tie width + print clearance
+power_tie_x      = power_cable_x;
+power_tie_y      = pod_int_width/2 - 4;
 
 // --- NAVIGATION BUTTONS (front face, -Y wall) ---
 // 3× PS-style flanged caps: Previous (<), Select (O), Next (>)
@@ -119,7 +123,7 @@ nav_flange_h     = 1.5;
 nav_cap_body_dia = 7.5;
 nav_cap_body_h   = 3.5;
 nav_shaft_len    = 4.5;    // measured from flange INNER face: 4mm wall + 0.5mm to switch plunger
-nav_z            = pod_height * 0.42;  // ~24.4mm — comfortable thumb height
+nav_z            = 58 * 0.42;  // ~24.4mm; keep switch/USB wiring geometry stable
 nav_x_positions  = [-20, 0, 20];
 
 // --- TACTILE SWITCH POCKET (behind each nav hole, inside front wall) ---

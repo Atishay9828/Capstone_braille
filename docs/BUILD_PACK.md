@@ -1,5 +1,10 @@
 # Braillix — Build Pack
 
+> **CURRENT RELEASE GATE - 2026-08-19:** This pack predates the full print-readiness audit. Do not
+> permanently assemble or print production cam/base/top/enclosure/pod parts from its older status
+> claims. Current authority is `PRINT_RELEASE_2026-08-19.md`, `PRINT_DAY_MONDAY.md`, and
+> `MECHANISM_BENCH_TEST.md`. Only the checked G-code folder is released; the full product is NO-GO.
+
 **Written 2026-08-15. For the 24 August evaluation.**
 Scope: **electronics, assembly and sourcing.** Mechanical/CAD issues are *flagged* here and
 fixed in the CAD fork, never here.
@@ -23,7 +28,7 @@ Split the project the way an evaluator will accept:
 | Layer | State on 24 Aug | How it is shown |
 |---|---|---|
 | Encoding — 64 states, 6 dots | ✅ Solved, provable | Simulator + the 64-state table |
-| Actuation — motor, cam, homing | ✅ **Buildable now** | **Real hardware turning on the bench** |
+| Actuation — motor, cam, homing | 🔴 **HOLD** | Current cam socket cannot install; use the coupon/bench fixture only |
 | Control — ESP32, WiFi dashboard | ✅ **Buildable now** | **Phone browser, live** |
 | Transmission — linkages to dots | 🟠 In progress | Simulator, plus one linkage held by hand |
 
@@ -262,14 +267,14 @@ Nothing here is decorative. One line each, so you can answer the panel.
 |---|---|---|
 | **ESP32 DevKit** | Decides *which* of the 64 cam states to show; serves the WiFi dashboard | No control at all |
 | **ULN2003 board** | An ESP32 pin gives ~20mA at 3.3V; a motor coil wants ~200mA at 5V. This chip is seven electronic switches that bridge that gap. | Connect the motor direct and you **destroy the ESP32 pin** |
-| **28BYJ-48 stepper** | Moves in exact, countable steps — 4096 per turn. A DC motor cannot hold a position. | No repeatable positioning |
+| **28BYJ-48 stepper** | Moves in countable half-steps. 4096/turn is a nominal starting value; the owned gearbox must be Hall-to-Hall calibrated. | No repeatable positioning |
 | **Cam disc** | The mechanical decoder: one angle = one 6-dot pattern. Six tracks read simultaneously. | 6 separate actuators instead of 1 |
 | **Hall sensor** | Finds absolute zero on power-up. A stepper knows *relative* steps, never where it actually is. | Every character wrong after a power cut |
 | **Homing magnet (3x1mm)** | The thing the hall sensor sees | Nothing to home against |
 | **Return springs** | Push each linkage back down onto the cam. Gravity alone is too weak at this scale. | Dots stick up and never retract |
 | **DC jack + 5V 3A adapter** | USB alone cannot supply motor current safely | Brown-outs, ESP32 resets mid-move |
 | **Brass heat-set inserts** | PETG threads strip after a few open/close cycles. Brass does not. | The box becomes single-use |
-| **MCP23017** *(3+ cells only)* | Turns 5 wires per cell into a shared 4-wire bus | Pin exhaustion at ~4 cells |
+| **MCP23017** *(future only)* | Could turn five per-cell signals into a shared four-wire bus, but requires a 3.3V regulator/interface and measured carrier | Pin exhaustion at ~4 direct cells |
 
 ---
 
@@ -376,7 +381,7 @@ Sizes taken from the CAD parameters, not guessed:
 |---|---|---|---|---|
 | 1 | **Bolt** — top plate → standoffs → box | **M2.5 x 25mm**, socket cap or button head | 4 | `top_plate.scad` `screw_dia=3.2` clearance |
 | 2 | **Heat-set insert** — box corner posts | **M2.5**, OD **3.5mm**, length **5.0mm** | 4 (buy 10) | `outer_box.scad` `insert_m25_dia=3.5`, `depth=5.5` |
-| 3 | **Screw** — motor ears | **M4 x 10mm**, thread-forming preferred | 2 | `base_plate.scad` `motor_mount_pilot=3.3` |
+| 3 | **Screw** — motor ears | **M4 x 5mm**, thread-forming; exact point/ear measurement still required | 2 | `base_plate.scad`; `base_interface_coupon`; **no M4x6/x10** |
 | 4 | **Screw** — pod lid | **M2 x 8mm** *(or M2.5 x 8 — see 7.3)* | 2 | `esp32_pod_params.scad` |
 | 5 | **Heat-set insert** — pod lid posts | **M2**, OD **3.2mm**, length **4.0mm** *(or M2.5 — see 7.3)* | 2 (buy 10) | `insert_m2_dia=3.2`, `depth=4.5` |
 
@@ -385,7 +390,7 @@ varies by brand, and the bore is a parameter precisely so it can be adjusted. If
 inserts measure 3.6mm rather than 3.5mm, that is a one-line CAD change, not a reprint decision.
 
 **Search terms for onlyscrew.com:** "M2.5 socket cap screw 25mm", "brass threaded insert M2.5",
-"M4 socket cap 10mm". If inserts are not stocked there, they are reliably available on Robu.in
+"M4 thread forming screw 5mm". If inserts are not stocked there, they are reliably available on Robu.in
 and Amazon as "brass heat set insert assortment kit M2 M2.5 M3" (~₹350 for a mixed kit, which
 also covers you for the measuring surprise above).
 
@@ -400,7 +405,7 @@ if a size is genuinely unavailable, Part 7.3 tells you what can move.
 |---|---|---|---|
 | Box corners | M2.5 x 25 | 🔒 **Keep** | Inserts and bores already in the CAD; changing means re-printing the box |
 | Pod lid | M2 x 8 | ✅ **→ M2.5 x 8** | An M2.5 insert needs a 3.5mm bore. The post is 6.5mm dia, leaving **1.5mm of wall** — thinner than the 1.65mm it has now, but still enough for hot brass. |
-| Motor ears | M4 x 10 | 🔴 **Keep M4** | The 28BYJ-48's own mounting ears are drilled **4.2mm**. An M2.5 screw leaves 1.7mm of slop, and the motor would shift under load — which moves the cam off centre. This is the one place slop is unacceptable. |
+| Motor ears | M4 x 5 only | 🔴 **Keep M4 diameter; coupon first** | Option A uses a through pilot. M4x5 is the only current candidate; do not use x6/x10 without measured ≥0.5mm cam clearance. |
 
 ### Recommendation
 

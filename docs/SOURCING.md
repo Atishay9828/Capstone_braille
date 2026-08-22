@@ -9,17 +9,17 @@
 | NeFeB disc magnets **8mm dia × 1mm thick** | plenty — CAD v6.1 pockets sized for these |
 | Hall sensor (SS49E-class) | validated (saturates 0/4095, fine for edge homing) |
 | 6×6mm tactile switches ×3 | in hand |
-| Inline female DC pigtail jack + 5V/3A adapter | in hand; testing only, likely 5.5/2.1mm |
+| Inline female DC pigtail jack + 5V/3A adapter | in hand; current pod choice; polarity verified red = positive |
 | Jumper wires (Dupont) | in hand (housings get cut off for in-cell wiring) |
 
 ## 🛒 TO BUY
 
-### 0. Final enclosure power jack — threaded panel mount
+### 0. Enclosure power connector — no new purchase for this revision
 
-Buy one **5.5×2.1mm female panel-mount DC jack with a retaining nut**, rated for at least 5V/3A.
-The photographed inline pigtail jack has no thread or nut, so it cannot lock into the pod wall.
-Keep it for breadboard testing. Record the selected panel jack's purchase link/drawing before
-finalizing the lid hole and internal cradle.
+Use the owned inline pigtail. Its body remains outside the pod; only the two leads pass through the
+coupon-selected lid slot and tie to the internal strain-relief post. Print
+`pigtail_slot_coupon.gcode` before finalizing `power_cable_slot_w/h`. A threaded panel-mount jack is
+only a future redesign option.
 
 ### 1. Return springs x6 (+ spares) — 2mm OD MICRO springs
 **Spec: 2.0mm OD, ~0.3mm stainless wire, ~4mm free length.** One per braille dot.
@@ -35,22 +35,22 @@ finalizing the lid hole and internal cradle.
   size — it covers us if the free length needs adjusting after the first assembly.
 - If a seller offers **0.2mm wire**, prefer it: same OD but a wider bore, which gives more
   clearance around the 1.0mm nub.
-- Working range in the design: 3.5mm when the dot is down, 2.7mm when raised. A ~4mm free
-  length with ~5 coils is ideal (1.5mm solid height, so it never bottoms out).
+- Working range in the design: 3.0mm when the dot is down, 2.2mm when raised. A ~3.5-4.0mm free
+  length with ~5 coils is the test range (<=1.5mm solid height, so it never bottoms out).
 
 **Fitting them:** thread each spring over the 1.5mm dome by TWISTING it on (the coil acts
 like a thread against the 1.4mm bore — 0.1mm interference, trivial for steel). Then it sits
-on the linkage flange and drops into the counterbore in the top plate. Glue optional.
+on the linkage flange and drops into the counterbore in the resin dot insert. Do not glue the spring before the bench test.
 
 **Backup if springs cannot be sourced:** a small disc of **soft open-cell sponge** in place
 of each spring. Must be squishy sponge/upholstery/packing foam — **NOT stiff EVA craft
 foam**, which is roughly 20x too stiff and risks stalling the motor. Free from packaging.
 The printed parts are identical either way, so this can be tested without a reprint.
 
-### 2. Homing magnets 3×2mm ×1 per cell — small but specific
+### 2. Homing magnets 3×1mm ×1 per cell — small but specific
 Your 8×1mm magnets are for DOCKING. The cam's homing pocket (`braille_cam.scad`) needs a
-**3mm dia × 2mm thick** disc — an 8mm one won't fit the 2mm-thick cam base.
-- Search: **"3x2mm neodymium magnet"** on robu.in / Amazon.in — ₹100–200 for 10–20 pcs.
+**3mm dia × 1mm thick** disc — an 8mm one will not fit and a 2mm-thick magnet destroys the cam floor.
+- Search: **"3x1mm neodymium magnet"** on robu.in / Amazon.in — verify the actual thickness.
 - Glue flush into the cam underside pocket at r=17.35 (the 90° position).
 
 ### 3. ~~Bearing balls 2mm~~ — NO LONGER NEEDED (v7.1)
@@ -67,7 +67,9 @@ The top plate is now PETG/FDM with a small **resin dot insert** glued into a poc
   holes the domes will jam and the cell is dead.
 
 ### 4. Pogo connector (4-pin) — DEFERRED DECISION (per v6 audit)
-Don't buy until the design is pinned. Two candidate styles:
+Don't buy until the electrical architecture and carrier are pinned. A 0.5A/contact part is
+insufficient for the aggregate chain. Require >=1A continuous/contact at working compression,
+preferably 2-3A on power, and a flush internal carrier. Two candidate styles:
 - **Spring-loaded pogo pin strip, 4-pin, 2.54mm pitch** (search "pogo pin connector 4 pin
   2.54mm") — what the CAD windows roughly assume; needs a mating flat-pad part.
 - **Magnetic pogo connector module** (search "magnetic pogo connector 4 pin") — combines
@@ -76,12 +78,17 @@ Don't buy until the design is pinned. Two candidate styles:
 **When the part arrives → measure it → update `pogo_carrier_*` dims in outer_box.scad
 before the final print.** Current pocket dims are placeholders.
 
+The four-contact 5V/GND/SDA/SCL bus is future-only: every cell still needs a 3.3V-powered
+expander/regulator or explicit level shifting. Tomorrow's direct one-cell build uses the separate
+8-wire rear harness, not the pogo window.
+
 ### 5. Fasteners (one trip to a fastener shop / one Amazon order)
 | Item | Qty (1 cell + pod) |
 |---|---|
 | M2.5 × 25mm bolts | 4 |
-| M2 × 6mm self-tap screws | 6 (4 muscle-board*, 2 pod lid) |
-| M4 × 10mm bolts + nuts | 2 (motor ears) |
+| M2 × 8mm self-tap screws | 2 (pod lid) |
+| M2 × 6mm self-tap screws | 4 only if the deferred muscle board is ever built |
+| M4 × 5mm thread-forming screws | 2 (motor ears; coupon first; do not use M4×6/x10 without measured clearance) |
 *not needed while running the ULN2003-on-floor prototype
 
 ### 6. Consumables

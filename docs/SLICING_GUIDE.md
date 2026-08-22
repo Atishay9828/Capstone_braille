@@ -1,4 +1,9 @@
 # Braillix — Slice It Yourself (Anycubic Kobra Neo)
+
+> **CURRENT RELEASE GATE - 2026-08-19:** Do not manually slice production parts from this historical
+> guide for tomorrow's run. Use only `printing/gcode_kobra_neo_checked/` and the exact contract in
+> `PRINT_RELEASE_2026-08-19.md`. The checked profile is 0.16mm, 5 walls, 40% infill, 6/6 shells,
+> 8mm brim, PETG 235/230C, bed 80C, supports off, and arc fitting off.
 > A complete guide to producing your own G-code on your PC, so the lab just loads the file.
 > Written 2026-07-30 for: **Anycubic Kobra Neo · 0.4mm nozzle · PETG · lab accepts G-code.**
 
@@ -58,18 +63,18 @@ choose **Advanced**), or you won't see half of these.
 
 | Setting | Value | Why |
 |---|---|---|
-| Layer height | **0.2 mm** | Good balance. 0.16 for the nicest surface, 0.28 if you're in a hurry. |
-| First layer height | **0.25 mm** | Better bed adhesion |
+| Layer height | **0.16 mm** | Current checked coupon profile. |
+| First layer height | **0.24 mm** | Current checked coupon profile. |
 | **Wall loops** | **5** | 🔴 **THE FIX FOR YOUR BROKEN SCREW COLUMNS.** Default is 2. At 0.4mm each, 5 walls = 2mm of solid shell — on a Ø7.8mm boss that is nearly the entire column. |
-| Top shell layers | **5** | Fixes the "exposed infill / rough top" you saw. Default 3 is too few. |
-| Bottom shell layers | **4** | |
+| Top shell layers | **6** | Current checked coupon profile. |
+| Bottom shell layers | **6** | Current checked coupon profile. |
 | Seam position | **Aligned** | Puts the layer-change blob in a consistent line instead of scattering it |
 
 ## 2.2 Strength tab
 
 | Setting | Value | Why |
 |---|---|---|
-| Sparse infill density | **25 %** | Plenty. With 5 walls, infill is not carrying the load. |
+| Sparse infill density | **40 %** | Current checked coupon profile; do not reduce before fit tests pass. |
 | Sparse infill pattern | **Gyroid** | Strong in all directions, no sharp direction changes to shake the printer |
 
 ## 2.3 Support tab — 🔴 TURN IT ALL OFF
@@ -116,11 +121,11 @@ that you cannot reach.** That is exactly what happened to you.
 
 | Setting | Value | Why |
 |---|---|---|
-| Nozzle temperature | **235 °C** (first layer 240) | If you still get strings, drop to **230**. Too hot is the #1 cause. |
+| Nozzle temperature | **230 °C normal / 235 °C first layer** | Matches the checked NuMaker PETG profile. |
 | Bed temperature | **80 °C** | |
 | **Retraction length** | **1.0 mm** | 🔴 **Kobra Neo is DIRECT DRIVE.** Most guides say 5–6mm — that is for Bowden printers and will jam yours. |
 | Retraction speed | **35 mm/s** | |
-| Z-hop when retracting | **0.2 mm** | Stops the nozzle dragging through what it just printed |
+| Z-hop when retracting | **OFF / 0 mm** | Matches the checked machine profile; change only after a calibration test. |
 | Wipe on retract | **ON** | |
 
 ### 🔴 The thing that actually causes stringing: wet filament
@@ -158,7 +163,7 @@ If you still want them fully solid:
 6. **Repeat for the other three corners** (or select the modifier, Ctrl+C / Ctrl+V, and change
    the position)
 
-Anything inside that box prints at 100 % infill; everything else stays at 25 %.
+Anything inside that box prints at 100 % infill; everything else stays at the checked 40 %.
 
 > The same trick works for the mid-plate ledge or any other feature you want beefed up.
 
@@ -175,13 +180,13 @@ ceiling.
 
 | Part | Orientation | Supports | Layer | Infill | Walls |
 |---|---|---|---|---|---|
-| **outer_box** | **Open side UP**, rim on the bed | ❌ OFF | 0.2 | 25 % | **5** |
-| **base_plate** | Flat, standoffs UP | ❌ OFF | 0.2 | 30 % | 4 |
-| **mid_plate** | Flat, collar UP | ❌ OFF | 0.2 | 30 % | 4 |
-| **top_plate** | Flat, dot side UP, skirt down | ❌ OFF | 0.16 | 30 % | 4 |
-| **esp32_pod_shell** | Open side UP | ❌ OFF | 0.2 | 25 % | **5** |
-| **esp32_pod_lid** | Flat, ridges UP | ❌ OFF | 0.2 | 25 % | 4 |
-| **pogo_end_cap** | Flat | ❌ OFF | 0.16 | 30 % | 3 |
+| **outer_box** | **Open side UP**, solid floor on bed | ❌ OFF | 0.16 | 40 % | **5** |
+| **base_plate** | Flat, standoffs UP | ❌ OFF | 0.16 | 40 % | 5 |
+| **mid_plate** | Flat, collar UP | ❌ OFF | 0.16 | 40 % | 5 |
+| **top_plate** | HOLD pending top-interface coupon | ❌ OFF | 0.16 | 40 % | 5 |
+| **esp32_pod_shell** | HOLD; open side UP, solid floor on bed | ❌ OFF | 0.16 | 40 % | **5** |
+| **esp32_pod_lid** | HOLD; flat, ridges UP | ❌ OFF | 0.16 | 40 % | 5 |
+| **pogo_end_cap** | HOLD; TPU 95A only, spool-specific profile required | ❌ OFF | — | — | — |
 
 ---
 
@@ -200,7 +205,8 @@ ceiling.
 6. **Export G-code** → save to an SD card as e.g. `outer_box.gcode`
 7. Hand the SD card to the lab. They just load and print.
 
-> **Print ONE part first** — `pogo_end_cap` or `mid_plate`. Small, fast, and it tells you
+> **Print ONE released coupon first** — `motor_cam_socket_coupon` is the shortest useful gate. Do not print
+> `pogo_end_cap` from the PETG profile; it remains TPU-only and spool-gated. A coupon tells you
 > whether your settings are right before you commit 3 hours to the box.
 
 ---

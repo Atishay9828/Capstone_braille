@@ -1,3 +1,6 @@
+> **2026-08-19 release gate:** Use `PRINT_RELEASE_2026-08-19.md` and its checked Orca G-code.
+> This document is historical troubleshooting reference. The final top plate waits for its
+> interface coupon, and the rebuilt snap end cap is TPU 95A only - never PETG.
 # Braillix — FDM Print Troubleshooting & Cura Settings Guide
 
 **Printer:** Anycubic Kobra Neo (0.4mm nozzle, direct-drive extruder, 220×220 bed)
@@ -13,7 +16,7 @@ All Cura setting names below are written **exactly as they appear in the Cura UI
 
 ## 0. The one-line answer
 
-> **You should not have had supports on `outer_box` at all.** Every overhang in that part is already solved in the CAD — teardrop magnet pockets, printed-in 0.6mm sacrificial bridges over the pogo windows, gusset cones under the corner bosses. Turning on **Generate Support** with **Support Placement = Everywhere** filled the entire 60×60×50mm internal cavity with a support block that grew *around* the four 37mm corner bosses and *onto* the mid-plate ledge. With Cura's default **Support Z Distance** it then fused to all of it.
+> **You should not have had supports on `outer_box` at all.** The current part uses self-supporting teardrop magnet pockets, real open pogo windows, and gusseted bosses. There are no printed-in sacrificial window bridges. Turning on **Generate Support** with **Support Placement = Everywhere** fills the internal cavity and can weld around bosses and ledges.
 
 Sections 1 and 2 cover both halves of the fix: how to make supports removable when you genuinely need them, and how to orient each part so you never need them.
 
@@ -142,7 +145,7 @@ Enable Support Brim                 Off
 
 Two CAD features *look* like support in the slicer preview and must survive printing until you deliberately remove them:
 
-- **Pogo window sacrificial bridges** (`outer_box.scad → pogo_window_bridges()`) and the **USB bridge** (`esp32_pod_shell.scad → usb_bridge()`). These are **0.6mm thick (3 layers @ 0.2mm)** printed-in ledges across the top of the ±X pogo slots and the USB cutout. They were 0.4mm in v6.0 and **did not adhere** on this exact printer — v6.1 raised them to 0.6mm specifically for that. Don't let a mesh-repair step delete them, and don't pick a layer height that makes 0.6mm a fractional number of layers (0.2 → 3 layers ✓, 0.16 → 3.75 layers ✗). Score and snap them out after printing (§4.1).
+- **Current pogo and USB openings are real open geometry.** No sacrificial bridge module remains. Do not preserve, score, or snap any 0.6 mm ledge; remove loose strings only. The teardrop magnet-pocket roof below is intentional self-supporting geometry.
 - **Teardrop magnet pockets.** The 8.4mm horizontal magnet pockets have a 45° peaked roof instead of a round top, because round horizontal holes in vertical walls **fused closed** on the fit-test print. The teardrop is self-supporting — it needs no support and must not be "fixed".
 
 ---
@@ -243,6 +246,8 @@ Every feature is a through-cut: boss clearance holes, shaft hole, motor wire slo
 
 ### 2.6 `top_plate.stl` — reading face **UP** — *this is now a PETG part*
 
+**HOLD for final use until `top_interface_coupon.gcode` passes with the real M2.5 screw and resin insert.**
+
 | | |
 |---|---|
 | **Orientation** | Flat, **recessed reading face UP**, plain underside on the bed |
@@ -262,12 +267,12 @@ Reading-face-up means the finger-pad recess, the screw counterbores and the inse
 |---|---|
 | **Orientation** | Flat, open/hollow side facing UP |
 | **Supports** | **NO** |
-| Material | **TPU** preferred (flexible snap, won't scratch); PETG acceptable |
+| Material | **TPU 95A ONLY** (the hollow tongue and barbs require controlled flex) |
 | Layer Height | 0.16mm |
 | Infill Density | 30 % |
 | Wall Line Count | 3 |
 
-**TPU overrides:** Print Speed **20–25 mm/s**, Retraction Distance **0.5–1mm** (or Enable Retraction off), nozzle 225–235 °C, bed 50–60 °C, fan 30 %, **Z Hop When Retracted On, 0.2mm**. The 1.0mm snap lip (raised from 0.5mm in v6.1, because 0.5mm was below usable FDM resolution and gave no real snap) is a small feature — the fine layer height is what makes it function.
+**TPU profile gate:** Do not reuse the PETG G-code. Wait for the exact TPU 95A spool, then use its manufacturer temperatures with roughly 20-25 mm/s, 0.5-1 mm retraction, 3-4 walls, no support, and no ironing. Validate the cap in `pogo_receiver_coupon` for 20 insertion/removal cycles.
 
 ### 2.8 Resin parts — hand these to the SLA service, not to Cura
 
@@ -288,9 +293,9 @@ Explicitly specify **TOUGH or ABS-like resin, not standard brittle resin** — t
 | `esp32_pod_shell` | PETG | Upright, open top **UP** | **No** | 0.2 | 25 % | 5 |
 | `esp32_pod_lid` | PETG | Outer face **DOWN** | **No** | 0.2 | 30 % | 5 |
 | `base_plate` | PETG | Flat, standoffs **UP** | **No** | 0.2 | 40 % | 5 |
-| `mid_plate` | PETG | Flat | **No** | 0.16 | 40 % | 4 |
-| `top_plate` | PETG | Reading face **UP** | **No** | 0.16 | 40 % | 5 |
-| `pogo_end_cap` | TPU / PETG | Flat, open side **UP** | **No** | 0.16 | 30 % | 3 |
+| `mid_plate` | PETG | Flat | **No** | 0.16 | 40 % | 5 |
+| `top_plate` | PETG after interface coupon | Reading face **UP** | **No** | 0.16 | 40 % | 5 |
+| `pogo_end_cap` | TPU 95A only | Flange down, hollow tongue **UP** | **No** | 0.16-0.20 | spool-specific | 3-4 |
 | `braille_cam`, `linkage`, `nav_cap`, `dot_insert` | Resin (SLA) | see §2.8 | — | — | — | — |
 
 ---
@@ -384,7 +389,7 @@ For the muscle-board boss tops, the motor seat and the mid-plate ledge, the prac
 4. The **freezer trick** (20 min at −18 °C; differential contraction pops supports loose) works well on PLA and only somewhat on PETG. Try it before resorting to force — it costs nothing.
 5. If a support is genuinely welded, **stop**. Cut it flush with a knife, leave the stub, sand it. Pulling harder takes part material with it.
 
-**Sacrificial bridges — deliberate, remove last.** For the two `outer_box` pogo-window bridges and the `esp32_pod_shell` USB bridge: score along both edges with the hobby knife from the **outside** face, flex once with needle-nose pliers, and the 6 × 10mm chip snaps out whole. Then run the deburring tool around the window edge and test-fit the pogo carrier / a USB cable before assembling anything.
+**No sacrificial bridge material remains in the current outer box or pod.** The windows are real open geometry. Remove only loose strings; do not cut or snap a structural wall. Verify the 10 x 8 mm pogo opening with `pogo_receiver_coupon` before printing the enclosure.
 
 ### 4.2 Sanding
 
@@ -433,10 +438,10 @@ PETG strings. Normal, and mostly fixable. **Work through these in order:**
 | `dot_insert` dot holes | Ø1.7 | **1.7mm** — resin part, shouldn't need it. Only if a dome binds. |
 | M2 self-tap pilots (`outer_box` muscle-board bosses 1.7; pod lid bosses 2.0) | Ø1.7–2.0 | **1.6mm** if you want the screw to cut its own thread; **2.05mm** for a clearance hole |
 | M2.5 corner-boss pilots (`outer_box`, 2.3) | Ø2.3 | **2.3mm** to true it; **2.6mm** for a clearance pass |
-| Motor mount holes (`base_plate`, 4.3) | Ø4.3 | **4.2–4.3mm** |
+| Motor thread-forming pilots (`base_plate`, coupon-select 3.3/3.4/3.5) | selected coupon size | Do not ream to clearance size; use the winning pilot and M4x5 only |
 | Cam shaft clearance / standoff bores | Ø6–10 | Round needle file — not a drill |
 | Magnet pockets (8.4 × 1.2, teardrop) | Ø8.4 | **Do not drill.** Test-fit the 8 × 1mm magnet; if tight, a few passes with a round needle file or a rolled strip of 240 grit. Drilling destroys the teardrop roof. |
-| Pogo window (6 × 10 × 8) | rectangular | Flat needle file + deburring tool, after snapping the bridge out |
+| Pogo window (10 x 8 through 4 mm wall) | rectangular | Test the receiver coupon; remove loose strings only, never cut structural wall |
 | Spring bores (Ø2.2, 0.4mm walls) | Ø2.2 | **Resin insert only.** Never attempt in PETG — that is the entire reason `dot_insert` exists. |
 
 **Drilling technique for PETG:**

@@ -1,7 +1,10 @@
 // outer_box v6.1 — Physical-reality fixes after PETG fit-test (Kobra Neo, 0.4mm nozzle)
+include <stack_options.scad>
+include <dock_interface.scad>
+
 shell_length      = 68;
 shell_width       = 68;
-shell_height      = 58;
+shell_height      = 58 + stack_repair_raise;
 // v6.2: total height stays 58 = 54mm walls + 4mm over-cap (top_plate) sitting on top.
 // Only the OUTER shell extrusion is shortened to wall_top_h; every other feature
 // (mag_z, chevron at shell_height-22, ledge, bosses, cavity) still references
@@ -9,6 +12,8 @@ shell_height      = 58;
 cap_recess        = 4;
 wall_top_h        = shell_height - cap_recess;   // 54
 wall_thickness    = 4;
+assert(wall_thickness == dock_wall_t,
+       "Cell wall and shared dock receiver wall thickness have drifted");
 floor_thickness   = 4;
 internal_length   = 60;
 internal_width    = 60;
@@ -52,7 +57,10 @@ boss_height       = 37;    // boss top = z41 = base_plate bottom
 // -X face: N/S polarity; +X face: S/N → attract when docked
 mag_dia           = 8.4;   // 8mm magnet + 0.4mm FDM clearance
 mag_depth         = 1.2;   // 1mm magnet + glue gap (4mm wall keeps 2.8mm behind)
-mag_z             = shell_height / 2;
+// Keep the proven dock interface at its existing absolute height. Option A adds
+// 4mm only above the mechanism; moving the magnets would needlessly invalidate
+// mating parts and the existing pogo wire route.
+mag_z             = 29;
 mag_y_pos         = [-14, 14];
 
 // Pogo carrier pocket params (behind each ±X window)
@@ -112,7 +120,7 @@ module rounded_box(l, w, h, r) {
 module pogo_carrier_pocket(side_x) {
     // Captured recess behind pogo window — extends 0.1mm past cavity wall to avoid coplanar
     offset_x = (side_x < 0) ? side_x + pogo_carrier_d/2 + 0.1 : side_x - pogo_carrier_d/2 - 0.1;
-    translate([offset_x, -pogo_carrier_w/2, 31 - pogo_carrier_h/2])
+    translate([offset_x, -pogo_carrier_w/2, dock_center_z - pogo_carrier_h/2])
         cube([pogo_carrier_d + 0.2, pogo_carrier_w, pogo_carrier_h]);
 }
 
@@ -241,13 +249,15 @@ union() {
         translate([0, shell_width/2, floor_thickness + 3])
             cube([15, wall_thickness + 2, 6], center=true);
 
-        // Pogo slots — ±X walls at z=31
-        translate([-shell_length/2, 0, 31]) cube([6, 10, 8], center=true);
-        translate([ shell_length/2, 0, 31]) cube([6, 10, 8], center=true);
+        // Pogo service windows — symmetric cuts fully through both ±X walls
+        translate([-shell_length/2, 0, dock_center_z])
+            cube([wall_thickness * 2 + 2, dock_receiver_w, dock_receiver_h], center=true);
+        translate([ shell_length/2, 0, dock_center_z])
+            cube([wall_thickness * 2 + 2, dock_receiver_w, dock_receiver_h], center=true);
 
-        // Pogo carrier pockets behind each window
-        pogo_carrier_pocket(-internal_length/2);
-        pogo_carrier_pocket( internal_length/2);
+        // Carrier retention intentionally omitted until the actual pogo module is measured.
+        // pogo_carrier_pocket(-internal_length/2);
+        // pogo_carrier_pocket( internal_length/2);
 
         // Magnet pockets — -X face N/S, +X face S/N (teardrop tops, v6.1)
         for(my = mag_y_pos) {
@@ -273,6 +283,11 @@ union() {
     translate([0, 0, floor_thickness + elec_pocket_h]) difference() {
         rounded_box(internal_length + 0.2, internal_width + 0.2, 2, 1.0);
         translate([0,0,-1]) rounded_box(internal_length - 3, internal_width - 3, 4, 1.0);
+        // Real passages through the ledge, aligned to the mid-plate's ±X pogo
+        // and +Y Hall notches. Previously the continuous ring sealed all three.
+        translate([-internal_length/2 - 1, -3, -1]) cube([7, 6, 4]);
+        translate([ internal_length/2 - 6, -3, -1]) cube([7, 6, 4]);
+        translate([-3, internal_width/2 - 6, -1]) cube([6, 7, 4]);
     }
 
     // Corner Bosses — M2.5 tap pilot for through-bolt

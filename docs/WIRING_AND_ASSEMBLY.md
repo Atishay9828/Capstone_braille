@@ -1,8 +1,14 @@
 # Braillix v6.1 — Wiring & Assembly Guide
 
+> **CURRENT RELEASE GATE - 2026-08-19:** The wiring tables remain useful, but the historical full
+> assembly sequence is retired. Do not trim the shaft, press the current cam, use bearing balls,
+> drop springs into the PETG top plate, or install unretained pogo/header hardware. Use
+> `PRINT_RELEASE_2026-08-19.md`, `ASSEMBLY_BIBLE.md`, and `MECHANISM_BENCH_TEST.md` as the current
+> authority.
+
 ## Prototype Cell Electronics (no muscle board yet) — ULN2003 module fit
 
-The off-the-shelf ULN2003 driver module DOES fit the 36×46×16mm electronics pocket,
+The off-the-shelf ULN2003 driver module DOES fit the 36×46×14mm electronics pocket,
 **but only with low-profile wiring** (measured: ~20mm tall with vertical Dupont jumpers
 plugged in — too tall; ~12mm with wires soldered flat):
 
@@ -80,42 +86,33 @@ ESP32:     ~80mA
 Total:     ~1.4A    5V/3A adapter = 2x headroom
 ```
 
-## Assembly — Cell (repeat per cell)
+## Mechanical assembly status - HOLD
 
-1. Press-fit pogo connectors into both +-X wall windows
-2. Route 8 pogo leads down wall guides, through mid-plate notches into pocket
-3. Mount muscle board on 4 M2 bosses, screw down (M2x6 x4)
-4. Solder pogo leads to J1 (bridge -X and +X: 3-way splice per net)
-5. Tuck wires into floor gutters and hooks
-6. Drop mid-plate onto z=20 ledge (collar up, notches aligned)
-7. **Outside the box:** bolt motor to base plate (M4 x2), TRIM SHAFT TO 4mm, press cam onto D-shaft, seat hall sensor
-8. Lower motor+baseplate module in (motor enters collar, plate on bosses)
-9. Connect motor->J2, hall->J3 through mid-plate slots
-10. Place 6 resin-printed linkages: feet on their cam tracks, nubs up at the braille dot
-    positions (the comb was scrapped in v6.0 — linkages are constrained by cam foot below
-    + top-plate hole above)
-11. Glue 2mm bearing balls onto nub tips
-12. Drop springs into top plate pockets
-13. Lower top plate over standoffs (balls through 2.5mm holes)
-14. 4x M2.5x25 corner bolts (top->standoff->base->boss)
-15. Glue 2× 8×1mm magnets into each ±X face teardrop pocket
-    (-X face = N/S out, +X face = S/N out — test-dock before the glue sets!)
-16. Last cell: snap TPU end cap on +X pads
+### Cell
 
-## Assembly — Pod
+The cell cannot be assembled as a final product from the current source:
 
-1. Snap 3 tactile switches into front wall pockets
-2. Wire: switch pin1 -> GPIO32/33/25, pin2 -> common GND
-3. Seat 2 female 1x15 headers in floor channels, wire 5V/GND/SDA/SCL to dock pogo
-4. Wire barrel jack: (+)->VIN, (-)->GND
-5. Solder 2x 4.7k pull-ups: 3V3->SDA, 3V3->SCL
-6. Glue 2× 8×1mm magnets into +X dock face teardrop pockets (S/N polarity — must
-   attract a cell's -X face; test-dock before the glue sets)
-7. Plug ESP32 DevKit into female headers
-8. Press 3 nav caps into front holes
-9. Close lid (2x M2x6)
-10. Dock pod -> cell 1 (magnets snap, pogos connect)
+- the cam socket is only 3.5mm deep for the measured 7.5mm shaft;
+- the cam/linkage/spring motion and torque have not passed the real bench test;
+- the cell pogo windows have no measured carrier or retention geometry;
+- the ULN2003 has no positive board retainer in its pocket;
+- insert, motor-pilot, Hall, magnet, and standoff fits are coupon-gated.
 
+For now, keep electronics on the breadboard and print only the checked coupons/fixture. Never trim
+the shaft. The resin design integrates each 1.5mm dome into its linkage; there are no bearing balls.
+The 2mm OD spring twists over the dome, seats on the linkage flange, and enters the resin dot-insert
+counterbore; it is not dropped or glued into the PETG top plate.
+
+### Pod
+
+The pod shell also remains on HOLD. Standard 1x15 female headers have downward solder tails, but the
+current shell provides only 1mm-deep blind body channels and no tail/wire exits. The dock pad recess
+also has no measured pad retainer or lead route. Do not print the full pod until the exact headers
+and dock contacts are selected and those paths are designed/tested.
+
+The owned inline power pigtail is the current connector choice: its body remains outside, only the
+two insulated leads pass through the coupon-selected lid slot, and the cable ties to the internal
+post before termination. The red lead was measured centre-positive on 2026-08-01.
 ## Quick Reference
 ```
 POGO:     1=5V  2=GND  3=SDA  4=SCL

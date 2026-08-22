@@ -123,6 +123,35 @@ assert(magnet_depth < disk_base_thickness - 0.5,
 hub_h = 4;             // <-- MEASURE (M6/M7). Provisional.
 shaft_bore_depth = 8;  // total Double-D bore depth from hub bottom through disc floor
 
+// Option A shaft socket. The hub bottom sits on the measured Ø9 x 2mm collar;
+// the owned shaft then projects 7.5mm into the cam. A 7.7mm socket gives 0.2mm
+// axial tolerance, and a 0.5mm roof closes it instead of leaving a through-hole.
+// The resulting central cap is 4.2mm above the disc underside, only 2.2mm above
+// the flat cam surface. Linkage arms start 3.5mm above that surface, leaving
+// 1.3mm nominal clearance over the cap.
+option_a_socket_depth = 7.7;
+option_a_socket_roof  = 0.5;
+option_a_cap_h        = option_a_socket_depth - hub_h + option_a_socket_roof; // 4.2
+option_a_cap_r        = 3.6;  // 1mm radial wall around the Ø5.2 socket
+
+assert(!stack_option_a || option_a_socket_depth >= 7.5 + 0.2,
+       "Option A socket lacks the required shaft-tip clearance");
+
+module option_a_central_cap() {
+    if (stack_option_a)
+        cylinder(h=option_a_cap_h, r=option_a_cap_r, $fn=50);
+}
+
+module option_a_socket_cut() {
+    // Extruding a 2D intersection avoids the legacy center=true Z-overlap bug.
+    translate([0, 0, -hub_h - 0.01])
+        linear_extrude(height=option_a_socket_depth + 0.01)
+            intersection() {
+                circle(r=2.6, $fn=50);
+                square([10, 3.2], center=true);
+            }
+}
+
 // Calculated Variables
 slice_angle = 360 / states;
 ramp_angle = slice_angle * angular_ramp_fraction;
@@ -257,6 +286,9 @@ union() {
         }
     }
 
+    // Option A only: material above the measured shaft tip creates a real roof.
+    option_a_central_cap();
+
     // 2. Generate Tracks
     for(t = [0 : dots-1]) {
         color( (t%2==0) ? [0.2, 0.6, 1] : [0.3, 0.7, 1] )
@@ -273,11 +305,16 @@ union() {
     }
 } // end union
 
-// Double-D shaft bore through hub AND disc floor (4mm total from hub bottom)
-translate([0, 0, -hub_h - 1])
-intersection() {
-    cylinder(h=shaft_bore_depth + 1, r=2.6, $fn=50);
-    cube([10, 3.2, shaft_bore_depth + 1], center=true);  // M5 3.0 + 0.2mm clearance
+// Preserve the audited legacy mesh by default. Option A replaces the accidental
+// 3.5mm blind cut with the measured 7.7mm socket above.
+if (stack_option_a) {
+    option_a_socket_cut();
+} else {
+    translate([0, 0, -hub_h - 1])
+    intersection() {
+        cylinder(h=shaft_bore_depth + 1, r=2.6, $fn=50);
+        cube([10, 3.2, shaft_bore_depth + 1], center=true);
+    }
 }
 
 // Homing magnet pocket (subtracted from disc underside)
@@ -308,14 +345,18 @@ module braille_cam() {
                     cube([10, 3.2, hub_h+2], center=true);  // Double-D
                 }
             }
+            option_a_central_cap();
             // All 6 cam tracks
             for(t=[0:dots-1]) build_track_polyhedron(t);
         }
-        // Double-D shaft bore through hub + disc floor (4mm total engagement)
-        translate([0, 0, -hub_h - 1])
-        intersection() {
-            cylinder(h=shaft_bore_depth + 1, r=2.6, $fn=50);
-            cube([10, 3.2, shaft_bore_depth + 1], center=true);  // M5 3.0 + 0.2mm clearance
+        if (stack_option_a) {
+            option_a_socket_cut();
+        } else {
+            translate([0, 0, -hub_h - 1])
+            intersection() {
+                cylinder(h=shaft_bore_depth + 1, r=2.6, $fn=50);
+                cube([10, 3.2, shaft_bore_depth + 1], center=true);
+            }
         }
         // Homing magnet pocket
         translate([magnet_radius*cos(magnet_angle),

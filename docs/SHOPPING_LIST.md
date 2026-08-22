@@ -18,9 +18,9 @@
 
 | # | Item | Specs | Qty | Est. Price | Source |
 |---|---|---|---|---|---|
-| 1 | ESP32 DOIT DevKit V1 (30-pin) | CP2102, WiFi+BT, micro-USB | 1 | Rs 350 | Robocraze / Amazon |
+| 1 | ESP32 DevKit V1-compatible (30-pin) | WiFi+BT, **USB-C; use the owned board** | 1 | Already owned | — |
 | 2 | Female header strip 1x15 | 2.54mm pitch, through-hole | 2 | Rs 10 each | Local / Robocraze |
-| 3 | 5.5x2.1mm barrel jack (panel mount) | Threaded, panel-mount | 1 | Rs 15 | Local electronics |
+| 3 | 5.5x2.1mm inline female barrel pigtail | Use the owned cable; not a panel-mount jack | 1 | Already owned | — |
 | 4 | 5V 3A DC adapter | 5.5x2.1mm barrel plug, regulated | 1 | Rs 200 | Local / Amazon |
 | 5 | 6x6x5mm tactile push switch | 4-pin DIP, momentary | 3 | Rs 5 each | Robocraze / LCSC |
 | 6 | 4.7k ohm resistor (1/4W) | Through-hole or 0805 SMD | 2 | Rs 1 each | Local |
@@ -36,7 +36,7 @@
 |---|---|---|---|---|---|
 | 8 | 28BYJ-48 stepper motor | 5V DC, 4-phase, 64:1 gearbox | 1 | Rs 80 | Robocraze |
 | 9 | SS49E Hall effect sensor | Linear, SIP-3, 3-6V | 1 | Rs 25 | Robocraze / LCSC |
-| 10 | 3x2mm NeFeB disc magnet | Neodymium, for cam homing | 1 | Rs 5 | Local / AliExpress |
+| 10 | 3x1mm NeFeB disc magnet | Neodymium, for cam homing | 1 | Rs 5 | Local / AliExpress |
 | 11 | 2mm stainless steel bearing balls | For braille dot caps | 6 | Rs 2 each | Local hardware / Amazon |
 | 12 | Micro compression spring | OD 4-4.5mm, length 5-6mm | 6 | Rs 3 each | Local hardware |
 
@@ -84,7 +84,7 @@
 | # | Item | Specs | Qty | Est. Price | Source |
 |---|---|---|---|---|---|
 | 27 | 4-pin pogo connector (spring+pad pair) | 2mm pitch, spring-loaded | N+1 pairs | Rs 40/pair | LCSC / AliExpress |
-| 28 | 3x2mm NeFeB disc magnets (docking) | For cell-to-cell + pod-to-cell snap | 3 per face, 2 faces per cell + 1 pod face | Rs 5 each | Local |
+| 28 | 8x1mm NeFeB disc magnets (docking) | 2 per docking face; 10 owned covers pod + two cells | 10 | Already owned | — |
 
 **Count your magnets carefully:**
 - Each cell: 3 on -X face + 3 on +X face = **6 per cell**
@@ -160,7 +160,7 @@ SS49E Hall sensor x1
 Panel-mount barrel jack 5.5x2.1mm x1
 6x6x5mm tactile switch x3
 4-pin pogo connector pair x2
-3x2mm neodymium magnets x9
+3x1mm homing magnet x1; 8x1mm docking magnets x10 already owned
 2mm bearing balls x6
 Micro compression springs (OD 4mm, 5mm long) x6
 Female header strip 1x15 x2
@@ -171,8 +171,8 @@ Resistors: 4.7k x4, 10k x2
 SS14 Schottky diode x1
 16MHz crystal x1
 M2.5x25 bolts x4
-M2x6 screws x6
-M4 bolts+nuts x2
+M2x8 screws x2 (pod lid); M2x6 x4 only if the deferred muscle board is built
+M4x5 thread-forming screws x2; no nuts, no M4x6/x10
 Hookup wire (Red, Black, Blue, Yellow, Green, White)
 Heat shrink assorted
 Solder wire

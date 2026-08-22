@@ -81,7 +81,7 @@ standoff_x       = 26.0;
 standoff_y       = 21.0;
 screw_dia        = 3.2;   // v6.2: 2.8→3.2 M2.5 clearance for print tolerance
 counterbore_dia  = 5.6;   // v6.2: 5.0→5.6 M2.5 button-head
-counterbore_depth = 1.5;
+counterbore_depth = 1.5 + finger_pad_depth; // 1.5mm below the recessed reading surface
 
 $fn = 60;
 
@@ -166,12 +166,12 @@ translate([0, -plate_width/2 + 1.5, plate_thickness])
 // OLD SPEC (do not use): 4.0mm pen spring on a mid-arm pad
 // Spring constant: as soft as possible (<= 0.1 N/mm) — the 28BYJ-48 has to
 //   compress all six at once, so stiff springs risk stalling the motor
-// Travel: pad top sits 3.5mm below the plate underside with the dot DOWN,
-//   2.7mm with it UP, so the spring must be shorter than 2.7mm when fully
-//   compressed (4 coils of 0.3mm wire = 1.2mm solid — fine)
-// Fitting: glue the spring into the plate pocket. The linkage's arm pad then
-//   pushes up against it — no threading it over anything, the nub+dome never
-//   passes through the spring.
+// Working length: 3.0mm with the dot DOWN and 2.2mm with it UP. A 3.5-4.0mm
+// free spring with <=1.5mm solid height stays preloaded without bottoming out.
+// Fitting: twist the spring over the 1.5mm dome onto the linkage's coaxial
+// 2.2mm flange, then place that assembly into the resin dot insert. The spring
+// seats in the insert counterbore and pushes DOWN on the flange. Do not glue a
+// spring to the PETG plate and do not use the rejected mid-arm pad arrangement.
 
 // --- 6. MODULE WRAPPER (used by print_small_parts.scad) ---
 module top_plate() {

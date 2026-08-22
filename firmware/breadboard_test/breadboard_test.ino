@@ -53,8 +53,17 @@ AccelStepper stepper(AccelStepper::HALF4WIRE, IN1, IN3, IN2, IN4);
 // Web server on port 80
 WebServer server(80);
 
-// 28BYJ-48: 4096 half-steps per revolution (8 half-steps × 64:1 gear ratio)
+// 28BYJ-48 nominal half-steps per output revolution. The real gearbox ratio varies;
+// measure Hall-midpoint to Hall-midpoint on the owned motor before final operation.
 const int STEPS_PER_REV = 4096;
+const int CAM_POSITIONS = 64;
+const long CAM_DWELL_OFFSET_STEPS = STEPS_PER_REV / (CAM_POSITIONS * 2);
+
+long camDwellTargetStep(int position) {
+  // Each cam state has a ramp followed by a flat dwell. Homing defines the start
+  // of state 0; adding half a state pitch stops at the dwell centre, not mid-ramp.
+  return (long)position * STEPS_PER_REV / CAM_POSITIONS + CAM_DWELL_OFFSET_STEPS;
+}
 
 // Homing thresholds
 const int HALL_HOME = 500;
@@ -212,21 +221,21 @@ void handleData() {
 
 // --- Command handlers ---
 void handleCW() {
-  log("[CMD] CW 90 degrees (1024 steps)");
+  log("[CMD] CW nominal 90 degrees");
   currentStatus = "Spinning CW...";
-  stepper.move(1024);   // 90 deg = 4096/4
+  stepper.move(STEPS_PER_REV / 4);
   server.send(200, "text/plain", "OK");
 }
 
 void handleCCW() {
-  log("[CMD] CCW 90 degrees (1024 steps)");
+  log("[CMD] CCW nominal 90 degrees");
   currentStatus = "Spinning CCW...";
-  stepper.move(-1024);  // 90 deg = 4096/4
+  stepper.move(-STEPS_PER_REV / 4);
   server.send(200, "text/plain", "OK");
 }
 
 void handleFullRev() {
-  log("[CMD] Full CW revolution (4096 steps)");
+  log("[CMD] Full nominal revolution (" + String(STEPS_PER_REV) + " steps)");
   currentStatus = "Full revolution...";
   stepper.move(STEPS_PER_REV);
   server.send(200, "text/plain", "OK");
@@ -236,7 +245,7 @@ void handleGoTo() {
   if (server.hasArg("pos")) {
     int pos = server.arg("pos").toInt();
     if (pos >= 0 && pos < 64) {
-      long targetStep = (long)pos * STEPS_PER_REV / 64;
+      long targetStep = camDwellTargetStep(pos);
       log("[CMD] Go to cam position " + String(pos) + " (step " + String(targetStep) + ")");
       currentStatus = "Moving to pos " + String(pos) + "...";
       stepper.moveTo(targetStep);
@@ -360,7 +369,7 @@ void runTests() {
     case 2: {
       log("\n[TEST 2] Smooth CW quarter turn...");
       currentStatus = "Test 2: CW quarter turn";
-      stepper.move(1024);   // 90 deg = 4096/4
+      stepper.move(STEPS_PER_REV / 4);
       while (stepper.run()) { server.handleClient(); }
       stepper.disableOutputs();
       log("  Done. Motor turned ~90 degrees CW.");
@@ -371,7 +380,7 @@ void runTests() {
     case 3: {
       log("\n[TEST 3] Smooth CCW quarter turn (back)...");
       currentStatus = "Test 3: CCW quarter turn";
-      stepper.move(-1024);  // 90 deg = 4096/4
+      stepper.move(-STEPS_PER_REV / 4);
       while (stepper.run()) { server.handleClient(); }
       stepper.disableOutputs();
       log("  Done. Motor back at start.");
@@ -541,7 +550,7 @@ void loop() {
     if (input.length() > 0) {
       int target = input.toInt();
       if (target >= 0 && target < 64) {
-        long targetStep = (long)target * STEPS_PER_REV / 64;
+        long targetStep = camDwellTargetStep(target);
         log("[Serial] Go to pos " + String(target) + " (step " + String(targetStep) + ")");
         currentStatus = "Moving to pos " + String(target) + "...";
         stepper.moveTo(targetStep);

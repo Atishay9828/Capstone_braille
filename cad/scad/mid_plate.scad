@@ -1,8 +1,8 @@
 // mid_plate_v1.scad
-plate_l = 59.5;
-plate_w = 59.5;
+plate_l = 59.0;  // 0.5mm clearance per side in the 60mm cavity
+plate_w = 59.0;
 plate_h = 2.0;
-motor_x_offset = -8;
+motor_x_offset = -7.5;  // MEASURED M3
 
 $fn = 60;
 
@@ -23,14 +23,15 @@ union() {
         // Holes to allow the 4 corner bosses to pass through
         for(sx = [-1, 1]) for(sy = [-1, 1]) {
             translate([sx * 26, sy * 21, -1])
-                cylinder(d=8.5, h=plate_h + 2);
+                cylinder(d=9.0, h=plate_h + 2);
         }
 
         // Central hole for motor shaft to pass up to the cam
         translate([0, 0, -1]) cylinder(d=10, h=plate_h + 2);
 
         // Slot for motor wires to drop down into the electronics bay
-        translate([-8, 20, -1]) cube([15, 8, plate_h + 2], center=true);
+        translate([motor_x_offset, 20, plate_h/2])
+            cube([18, 16, plate_h + 2], center=true);
 
         // v6.1: ULN2003 connector relief slot. The off-the-shelf driver module measured
         // ~20mm tall as wired vs the 16mm pocket. With wires soldered flat the stack is
@@ -49,14 +50,18 @@ union() {
         translate([-3, plate_w/2 - 6, -1]) cube([6, 6, plate_h + 2]);
     }
     
-    // Motor Retaining Collar (Centered at X=-8)
-    // Audit 2 fix (2026-05-15): added boss relief notches — collar at x=-8 with r=17.25mm
+    // Motor Retaining Collar (Centered at measured X=-7.5)
+    // Audit 2 fix (2026-05-15): added boss relief notches — collar at x=-7.5 with r=17.25mm
     // was crashing into corner bosses at (-15, +-15), distance=16.55mm < 17.25mm
     // >>> collar ID is BLOCKED ON MEASUREMENT (M1) — 29.5 assumes a Ø28 can. <<<
     // If the real can is bigger the motor will not drop into this collar at all.
     translate([motor_x_offset, 0, plate_h]) difference() {
         cylinder(d=34.5, h=8); // 8mm tall collar
         translate([0,0,-1]) cylinder(d=29.5, h=10); // MEASURE (M1): can Ø + 1.5mm
+        // Open the +Y side for the owned motor's blue lead housing and five wires.
+        // The old plate slot was cut before this annulus was unioned, so the ring
+        // silently sealed the intended escape path.
+        translate([-9, 12, -1]) cube([18, 20, 10]);
         // Boss relief notches for the two -X corner bosses
         for(sy = [-1, 1])
             translate([-26 - motor_x_offset, sy * 21, -1])

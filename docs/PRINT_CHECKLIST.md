@@ -1,89 +1,68 @@
-# Braillix v5.0 — Print Day Checklist
+# Braillix print checklist - current release
 
-## STL Files (all in `cad/stl/`)
+**Use:** [`PRINT_RELEASE_2026-08-19.md`](PRINT_RELEASE_2026-08-19.md)
 
-### PROTOTYPE ROUND — ALL PETG
+This replaces the historical v5 prototype checklist. Do not print obsolete files such as
+`braille_cam2.stl`, `linkage_comb.stl`, the old panel-jack pod, or the old `print_batch` ZIP.
 
-| # | File | Part | Qty | Orientation | Supports | Est. Time | Notes |
-|---|---|---|---|---|---|---|---|
-| 1 | `outer_box.stl` | Motor cell shell | x1 per cell | Open-top UP | None | ~3h | Semi-hollow, 4mm walls |
-| 2 | `mid_plate.stl` | Mid-plate + collar | x1 per cell | Flat | None | ~30min | Motor collar faces up |
-| 3 | `base_plate.stl` | Base plate | x1 per cell | Flat (ribs down) | None | ~1h | Ribs print bridging - ok |
-| 4 | `braille_cam2.stl` | Cam disc | x1 per cell | Hub DOWN, tracks UP | None | ~1.5h | Resin for final |
-| 5 | `linkage_comb.stl` | Linkage guide | x1 per cell | Flat | None | ~20min | |
-| 6 | `top_plate.stl` | Top plate | x1 per cell | Flat | None | ~1h | Resin for final |
-| 7 | `esp32_pod_shell.stl` | Pod shell | x1 total | Open-top UP | None | ~3h | |
-| 8 | `esp32_pod_lid.stl` | Pod lid | x1 total | Flat (jack up) | None | ~30min | |
-| 9 | `nav_cap.stl` | Nav caps x3 | x1 set total | Shaft DOWN, dome UP | None | ~15min | Resin for final |
-| 10 | `pogo_end_cap.stl` | End cap | x1 total | Flat | None | ~10min | TPU if available |
+## Checked PETG files
 
-### DO NOT PRINT
-| File | Why |
-|---|---|
-| `braille_cap.stl` | DEPRECATED — ball-on-nub replaces this |
-| `print_small_parts.stl` | Composite plate (cam+caps) — print individually instead |
-| `linkage.stl` | Laser-cut 1mm steel, not 3D printed (use cardboard for prototype fit test) |
+- [ ] `motor_cam_socket_coupon.gcode`
+- [ ] `motor_collar_wire_coupon.gcode`
+- [ ] `hall_island_coupon.gcode`
+- [ ] `base_interface_coupon.gcode`
+- [ ] `pod_header_usb_coupon.gcode`
+- [ ] `pigtail_slot_coupon.gcode`
+- [ ] `pogo_receiver_coupon.gcode`
+- [ ] `top_interface_coupon.gcode`
+- [ ] `hardware_fit_coupon.gcode`
+- [ ] `cam_linkage_test_fixture.gcode` if the resin test set and spring are available
+- [ ] `mid_plate.gcode` after the first coupon prints cleanly
 
-## PETG Print Settings (recommended)
-- Layer height: 0.2mm (0.16 for cam disc)
-- Infill: 20% for shells, 40% for base plate + mid-plate
-- Walls: 3 perimeters minimum
-- Nozzle: 0.4mm
-- Temp: 230-240C nozzle, 80C bed
-- Speed: 50mm/s for outer walls
-- No supports needed for any part!
+All are under `printing/gcode_kobra_neo_checked` and validated for the stock Kobra Neo:
+0.16 mm, 5 walls, 40% infill, PETG 235/230 C, bed 80 C, supports off, no arcs.
+Speeds are 30/45/60/20/150 mm/s (outer/inner/infill/first/travel) with effective
+1 mm retraction at 35 mm/s.
 
-## Print Order (suggested)
-```
-DAY 1 — Fit-test coupon:
-  [ ] top_plate.stl
-  [ ] braille_cam2.stl
-  --> Test: does nub pass 2.5mm hole? Does cam sit in pocket?
+## Required fit results
 
-DAY 1 — While testing coupon:
-  [ ] outer_box.stl (longest print, start it)
-  [ ] esp32_pod_shell.stl
+- [ ] motor double-flat socket selected without force
+- [ ] motor sits flat on the bridged seat coupon without rocking
+- [ ] motor can sits flat in collar and the blue lead housing exits without pinching
+- [ ] exact Hall island roof does not sag and switches through the intended magnet gap
+- [ ] actual M4 screw pilot selected without splitting/stripping
+- [ ] actual M2.5 bolt bore selected in a Ø6 x 12 mm post without splitting
+- [ ] pigtail passes the smallest selected cable-only slot without insulation damage
+- [ ] M2.5 shank/head diameter/depth selected
+- [ ] real resin dot insert fits selected pocket
+- [ ] real female headers, pre-soldered tails, ESP32, and USB-C plug pass the pod coupon
+- [ ] heat-set insert bore selected using purchased insert
+- [ ] 8 x 1 mm magnet pocket selected
+- [ ] Hall-body depth selected
+- [ ] printed pogo receiver size measured
+- [ ] exact TPU 95A spool identified before any end-cap G-code
 
-DAY 2 — Internals:
-  [ ] base_plate.stl
-  [ ] mid_plate.stl
-  [ ] linkage_comb.stl
+## Mechanism evidence
 
-DAY 2 — Small parts:
-  [ ] esp32_pod_lid.stl
-  [ ] nav_cap.stl (3 caps on one plate)
-  [ ] pogo_end_cap.stl
-```
+Use [`MECHANISM_BENCH_TEST.md`](MECHANISM_BENCH_TEST.md).
 
-## FINAL ROUND — Resin (after prototype validates fit)
-| File | Why resin |
-|---|---|
-| `braille_cam2.stl` | 0.8mm bumps need SLA precision; FDM layer lines cause motor stall |
-| `top_plate.stl` | 2.5mm holes need tight tolerance for bearing balls |
-| `nav_cap.stl` | Raised symbols must be smooth for blind user's fingertips |
+- [ ] dot-5 dry travel passes in both directions
+- [ ] dot-6 dry travel passes in both directions
+- [ ] down height is flush within +/-0.10 mm
+- [ ] up travel is 0.80 +/-0.10 mm for the current cam
+- [ ] each linkage completes 50 spring cycles in both directions
+- [ ] no scoring, cracking, whitening, dust, or coil damage
+- [ ] high/low dwell is stable
+- [ ] worst simultaneous transition has at least 2x motor torque reserve
 
-## Pre-Print Measurements Needed
-- [x] 28BYJ-48 shaft across-flats: 3.0mm measured; cam bore provides 3.2mm
-- [x] ESP32 DevKit pin-row pitch: 25.6mm measured; `hdr_row_pitch` updated
-- [ ] Chosen 4-pin pogo connector: L x W x H (update `pogo_carrier_*` in `outer_box.scad`)
-- [ ] Muscle board mounting holes: read coords from KiCad (update `mb_boss_positions` in `outer_box.scad`)
+## Production parts on HOLD
 
-## Hardware Shopping List (for assembly after printing)
-- [ ] 28BYJ-48 stepper motor x N
-- [ ] 5V/3A barrel jack adapter + panel-mount jack
-- [ ] ESP32 DOIT DevKit V1 (30-pin)
-- [ ] 2x 1x15 female header strips (for pod)
-- [ ] 4-pin pogo connector pairs x (N+1)
-- [ ] SS49E hall sensor x N
-- [ ] 3x2mm NdFeB magnets (3 per docking face)
-- [ ] 2mm SS bearing balls x 6 per cell
-- [ ] Micro compression springs OD 4-4.5mm x 6 per cell
-- [ ] 6x6x5mm tactile switches x 3 (pod buttons)
-- [ ] M2.5x25 bolts x 4 per cell (corner through-bolts)
-- [ ] M2x6 screws x 4 per cell (muscle board) + 2 (pod lid)
-- [ ] M4 bolts x 2 per cell (motor mount)
-- [ ] M2 grub screw x 1 per cell (comb lock)
-- [ ] 4.7k resistors x 2 (I2C pull-ups, pod only)
-- [ ] Hookup wire (22-26 AWG) + heat shrink
-- [ ] Superglue (bearing balls onto nubs)
-- [ ] Silicone grease (linkage feet on cam tracks)
+- [ ] top plate - wait for actual screw and insert coupon
+- [ ] Option-A production cam - candidate socket valid in CAD; pending resin/ramp/spring/torque proof
+- [ ] Option-A base plate - pending Hall, motor, M4, and standoff coupon results
+- [ ] Option-A outer box and pod - pending hardware/electrical fit despite corrected height
+- [ ] linkage/dot insert - pending real resin motion test
+- [ ] nav caps - supported/angled resin only
+- [ ] pogo end cap - TPU 95A receiver/retention test only
+
+Do not mark the product print-ready merely because the STL is manifold or the slicer succeeds.
