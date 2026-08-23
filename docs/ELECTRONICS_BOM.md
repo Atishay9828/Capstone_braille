@@ -147,7 +147,7 @@ theoretical.
 | **Any motor driver IC** | ❌ You own it. The chip on the blue board **is** the ULN2003A. |
 | **ATmega328P / custom muscle board** | ❌ Never. Multi-cell is solved by an **MCP23017 per brick** (DIP-28, hand-solderable, ~₹80) — see `ELECTRONICS_PLAN.md` Part 5. TQFP-32 at 0.8mm pitch is beyond basic soldering and would need PCBA ordering. |
 | **Resistors** | ❌ None for one or two cells. *(From 3 cells: exactly 2× 4.7kΩ I²C pull-ups, **at the brain end only, once, ever** — repeating them per brick kills the bus.)* |
-| **Capacitors** | ❌ None. Both modules and the DevKit carry their own. |
+| **Capacitors** | ❌ None **while the ESP32 runs off USB** with the motor on the adapter — both modules and the DevKit carry their own. ⚠️ **One exception:** if you power the ESP32 from the adapter's `VIN` so it shares the motor's rail, keep a **470µF–1000µF electrolytic** on hand against brown-out resets. See `BUILD_PACK.md` 3.2. |
 | **Flyback diodes** | ❌ Built into the ULN2003A (that's what COM does). |
 | **Level shifters** | ❌ Not needed — hall runs on 3V3, so GPIO34 never sees 5V. |
 | **2mm bearing balls** | ❌ Obsolete since v7.1 — the dot is printed as a dome. |

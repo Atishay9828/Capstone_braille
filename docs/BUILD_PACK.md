@@ -173,10 +173,63 @@ It still clears, but check the fit with real soldered wires before closing the b
    grounds are not joined, the hall sensor reads garbage and the motor behaves randomly. This
    is the single most common cause of "everything worked, now nothing".
 2. **Never connect the adapter to ESP32 `VIN` while USB is plugged into the laptop.** Two
-   supplies fighting each other back-feeds your laptop's USB port. Motor from the adapter,
-   ESP32 from USB, **grounds joined only.**
+   supplies fighting each other back-feeds your laptop's USB port. During bench work: motor
+   from the adapter, ESP32 from USB, **grounds joined only.**
+   *(To run the ESP32 off the adapter instead — for an untethered demo — see 3.2.)*
 
-## 3.2 Control — ESP32 to ULN2003
+## 3.2 Running the ESP32 off the adapter (no laptop)
+
+For the demo you want one plug, not a laptop tether. The ESP32 has a `VIN` pin that feeds its
+onboard regulator, so it can share the motor's 5V rail.
+
+**It is one extra wire.** The ground wire is already there as the common ground.
+
+| From | Wire | To | Note |
+|---|---|---|---|
+| Breadboard **+ rail** | `RED` | ESP32 `VIN` | ⬅️ the only new connection |
+| Breadboard **- rail** | `BLACK` | ESP32 `GND` | already present — common ground |
+
+On the 30-pin DevKit V1 the pin is marked `VIN`. Some clones label it `V5` or `5V` — same pin,
+at the corner next to `GND`.
+
+### 🔴 Two mistakes that destroy the board
+
+1. **Never USB and `VIN` at the same time.** Many cheap DevKit clones tie USB 5V and `VIN`
+   together with no blocking diode, so a 3A adapter back-feeds the laptop's USB port — which is
+   built to *source* current, not receive it.
+2. **Never put 5V on the `3V3` pin.** `3V3` is the regulator's **output**, not an input.
+   Feeding 5V there bypasses the regulator and puts 5V directly onto a 3.3V chip. Instant,
+   permanent damage. **`VIN` is the only correct pin.**
+
+### The working discipline: pull one wire
+
+`VIN` is a Dupont wire into the header, so switching modes means unplugging it — nothing else.
+
+| Mode | `VIN` wire | USB | Use for |
+|---|---|---|---|
+| **Flashing / serial monitor** | ⚠️ **unplugged** | plugged in | Development. Adapter may stay on for the motor; grounds stay joined. |
+| **Standalone demo** | plugged in | ⚠️ **unplugged** | The 24 August demo. One plug, no laptop. |
+
+**One wire in or out, never both connected.**
+
+**Power budget:** ESP32 ~250mA + two motors ~500mA against a 3A adapter. Comfortable.
+
+### ⚠️ If the ESP32 reboots when the motor moves
+
+That is a **brown-out**, not a firmware bug. Sharing one supply means the motor's current
+pulses dip the rail, and the ESP32 resets below ~2.8V.
+
+**Fix:** a **470µF–1000µF electrolytic capacitor** across the `+` and `-` rails, physically
+near the ESP32. About ₹10.
+
+🔴 **Electrolytics are polarised.** The stripe on the can marks the **negative** leg → it goes
+to the `-` rail. Fitted backwards it heats up and can burst.
+
+⚠️ **This supersedes the "no capacitors needed" line in `ELECTRONICS_BOM.md`** — that was
+correct while the ESP32 ran off USB with the motor on a separate supply. Sharing the rail
+changes it. Buy one to have on hand; only fit it if you actually see resets.
+
+## 3.3 Control — ESP32 to ULN2003
 
 Use the **corrected** pins. Do not use 21/22.
 
@@ -191,7 +244,7 @@ Use the **corrected** pins. Do not use 21/22.
 boot to decide how the chip starts. A coil pulling one of them low can stop the ESP32 booting,
 and it looks like a dead board.
 
-## 3.3 Sense — the hall sensor
+## 3.4 Sense — the hall sensor
 
 | ESP32 | Wire | Hall module | Caution |
 |---|---|---|---|
@@ -200,7 +253,7 @@ and it looks like a dead board.
 | `GPIO34` | `WHITE` | `AO` | Analog. Input-only pin on ADC1 — correct choice. |
 | — | — | `DO` | Unused for one cell. Needed from 3 cells up (expanders have no ADC). |
 
-## 3.4 Motor — the 28BYJ-48 plug
+## 3.5 Motor — the 28BYJ-48 plug
 
 The motor's white 5-pin plug goes into the white socket on the ULN2003 board. **It only fits
 one way.** Colours are listed for diagnosis only:
@@ -216,7 +269,7 @@ one way.** Colours are listed for diagnosis only:
 ⚠️ **If the motor buzzes and vibrates but does not turn,** the coil order is wrong, not the
 wiring. Swap `IN2` and `IN3` in firmware before touching any hardware.
 
-## 3.5 Navigation buttons — brain pod
+## 3.6 Navigation buttons — brain pod
 
 | ESP32 | To | Config |
 |---|---|---|
@@ -227,7 +280,7 @@ wiring. Swap `IN2` and `IN3` in firmware before touching any hardware.
 **No resistors needed.** The ESP32 has internal pull-ups; the button only has to pull the pin
 down to ground.
 
-## 3.6 The whole circuit on one page
+## 3.7 The whole circuit on one page
 
 ```
      5V 3A ADAPTER
@@ -240,11 +293,13 @@ down to ground.
      |                         |                       |
      |                         |                    ESP32 GND   <-- COMMON GROUND
      |                         |                       |            (mandatory)
+     +--> ESP32 VIN            |                       |    <-- standalone only,
+     |    (see 3.2)            |                       |        NEVER with USB
   ULN2003 (+)            ULN2003 (-)                   |
      |                                                 |
   [ULN2003 BOARD]                              [ESP32 DEVKIT]
-     IN1 <---------------- orange ---------------- GPIO18   (USB from laptop)
-     IN2 <---------------- yellow ---------------- GPIO19
+     IN1 <---------------- orange ---------------- GPIO18   powered by EITHER
+     IN2 <---------------- yellow ---------------- GPIO19   USB *or* VIN (3.2)
      IN3 <---------------- green  ---------------- GPIO23
      IN4 <---------------- blue   ---------------- GPIO27
      |
@@ -332,8 +387,9 @@ tactile switches · hookup wire · Dupont jumpers
 | 6 | Spare iron tip | Any, cheap | ⚠️ **Dedicated to heat-set inserts** | 100 | Local |
 | 7 | Brass wool tip cleaner | — | Keeps the tip alive | 100 | Local |
 | 8 | 2-way screw terminal blocks | 5mm pitch | Power spine without splicing | 40 | Local |
+| 9 | **Electrolytic capacitor** | **470µF–1000µF, 10V or higher** | Brown-out insurance once the ESP32 shares the motor's rail — see 3.2. Buy it now, fit it only if you see resets. | 10 | Local |
 
-**Electronics subtotal: ~₹940** (~₹790 if your USB-C cable does data)
+**Electronics subtotal: ~₹950** (~₹800 if your USB-C cable does data)
 
 ## 6.2 What NOT to buy yet
 
