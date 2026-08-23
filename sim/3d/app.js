@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { buildBrainPod, buildCellElectronics, PART_INFO } from './electronics.js';
-import { Cell, WifiCell, AP_DEFAULT, supported as serialSupported } from './hardware.js';
+import { Cell, BleCell, supported as serialSupported, bleSupported } from './hardware.js';
 
 // ---------------------------------------------------------------- braille
 // Grade 1, mirrors firmware/braille_mapping.py
@@ -501,7 +501,7 @@ function gotoIndex(i) {
 // firmware answers, so what you watch on screen is what the motor has actually
 // finished doing — not a guess running alongside it.
 function wireHardware() {
-  const btnUsb = $('btnHw'), btnWifi = $('btnWifi'), stat = $('hwstat');
+  const btnUsb = $('btnHw'), btnBle = $('btnBle'), stat = $('hwstat');
   // One status line, not a scrolling log — the Arduino monitor owns the chatter.
   // But a failure has to be VISIBLE: the first version only did console.log, so a
   // busy COM port looked exactly like nothing happening.
@@ -515,8 +515,9 @@ function wireHardware() {
   // is identical whether the cell is on a cable or on its own access point.
   const onState = (usb) => (st) => {
     const on = st === 'connected';
-    const btn = usb ? btnUsb : btnWifi, other = usb ? btnWifi : btnUsb;
-    btn.textContent = on ? (usb ? 'USB: LIVE' : 'WiFi: LIVE') : (usb ? 'Connect USB' : 'Connect WiFi');
+    const btn = usb ? btnUsb : btnBle, other = usb ? btnBle : btnUsb;
+    btn.textContent = on ? (usb ? 'USB: LIVE' : 'Bluetooth: LIVE')
+                         : (usb ? 'Connect USB' : 'Connect Bluetooth');
     btn.classList.toggle('on', on);
     other.disabled = on;                 // one transport at a time
     if (!on) { hwBusy = false; say('disconnected'); }
@@ -528,7 +529,7 @@ function wireHardware() {
     const was = btn.textContent;
     btn.textContent = 'Connecting…';
     say(usb ? 'waiting for the board to reset and home…'
-            : 'asking the board on ' + AP_DEFAULT + '…');
+            : 'pick Braillix-Cell in the Bluetooth chooser…');
     try {
       cell = make();
       await cell.connect();
@@ -551,15 +552,21 @@ function wireHardware() {
     // as nonsense on a tablet. Name the real requirement: a desktop.
     btnUsb.textContent = 'USB: desktop only';
     btnUsb.disabled = true;
-    say('Web Serial needs Chrome or Edge on a computer. WiFi works anywhere.', 'bad');
+    say('Web Serial needs Chrome or Edge on a computer. Bluetooth works here, '
+      + 'and is the only one that works from GitHub Pages.', 'bad');
   } else {
     // requestPort() must be reached straight from the click, not after an await
     btnUsb.addEventListener('click', () =>
       attach(() => new Cell(line, onState(true)), btnUsb, true));
   }
 
-  btnWifi.addEventListener('click', () =>
-    attach(() => new WifiCell(line, onState(false), AP_DEFAULT), btnWifi, false));
+  if (!bleSupported()) {
+    btnBle.textContent = 'Bluetooth: unsupported';
+    btnBle.disabled = true;
+  } else {
+    btnBle.addEventListener('click', () =>
+      attach(() => new BleCell(line, onState(false)), btnBle, false));
+  }
 }
 
 function wireUI() {

@@ -209,3 +209,89 @@ export class WifiCell {
   home()           { return this.send('/home'); }
   setSpeed(v, a)   { return this.send(`/speed?v=${v}&a=${a}`); }
 }
+
+// =====================================================================
+// Same interface again, over Bluetooth Low Energy.
+//
+// This is the one that works from GitHub Pages. BLE is not fetch, so the
+// mixed-content rule that blocks an https page from calling a plain-http board
+// simply does not apply — and unlike joining the board's access point, the
+// laptop keeps its own network the whole time.
+//
+// Bandwidth is a non-issue: a command is ~8 bytes and connection intervals are
+// 7.5-50ms, so a letter lands in well under 100ms.
+//
+// Chrome/Edge on desktop, and Chrome on Android. Not Safari, not iOS.
+// =====================================================================
+const NUS_SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_RX      = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const NUS_TX      = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+export const bleSupported = () => 'bluetooth' in navigator;
+
+export class BleCell {
+  constructor(onLog, onState) {
+    this.onLog = onLog || (() => {});
+    this.onState = onState || (() => {});
+    this.queue = Promise.resolve();
+    this.waiter = null;
+    this.ok = false;
+  }
+
+  get connected() { return this.ok; }
+
+  async connect() {
+    if (!bleSupported())
+      throw new Error('No Web Bluetooth here. Chrome or Edge on desktop, or Chrome on Android.');
+    // must run inside the click, same as requestPort()
+    this.device = await navigator.bluetooth.requestDevice({
+      filters: [{ services: [NUS_SERVICE] }],
+    });
+    this.device.addEventListener('gattserverdisconnected', () => {
+      this.ok = false;
+      this.onState('disconnected');
+    });
+    const gatt = await this.device.gatt.connect();
+    const svc = await gatt.getPrimaryService(NUS_SERVICE);
+    this.rx = await svc.getCharacteristic(NUS_RX);
+    this.tx = await svc.getCharacteristic(NUS_TX);
+    await this.tx.startNotifications();
+    this.tx.addEventListener('characteristicvaluechanged', e => {
+      const text = new TextDecoder().decode(e.target.value).trim();
+      this.onLog(text);
+      const w = this.waiter; this.waiter = null;
+      if (w) w();                      // the board finished moving
+    });
+    this.ok = true;
+    this.onState('connected');
+    this.onLog('bluetooth: ' + (this.device.name || 'cell'));
+    return true;
+  }
+
+  async disconnect() {
+    this.ok = false;
+    try { if (this.device && this.device.gatt.connected) this.device.gatt.disconnect(); }
+    finally { this.onState('disconnected'); }
+  }
+
+  // Serialised, and each write resolves on the board's notify — the same
+  // "arrived" contract as the serial prompt and the HTTP response.
+  send(text) {
+    if (!this.ok) return Promise.resolve();
+    this.queue = this.queue.then(() => new Promise(resolve => {
+      const timer = setTimeout(() => {
+        this.waiter = null;
+        this.onLog('no reply from the cell — carrying on');
+        resolve();
+      }, MOVE_TIMEOUT);
+      this.waiter = () => { clearTimeout(timer); resolve(); };
+      this.rx.writeValue(new TextEncoder().encode(text))
+        .catch(e => { this.onLog('write failed: ' + e.message); this.waiter = null; clearTimeout(timer); resolve(); });
+    }));
+    return this.queue;
+  }
+
+  goToState(state) { return this.send('!s ' + state); }
+  home()           { return this.send('!home'); }
+  setSpeed(v, a)   { return this.send(`!speed ${v} ${a}`); }
+}

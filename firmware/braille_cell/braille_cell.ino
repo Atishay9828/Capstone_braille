@@ -24,6 +24,23 @@
 #include <AccelStepper.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
+// --- BLUETOOTH LOW ENERGY -------------------------------------------------
+// Nordic UART Service UUIDs. Not a standard, but the de-facto one every tool
+// and library already knows, so a generic BLE terminal app can drive the cell
+// too - useful for debugging without the simulator.
+#define NUS_SERVICE "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+#define NUS_RX      "6E400002-B5A3-F393-E0A9-E50E24DCCA9E"   // browser -> board
+#define NUS_TX      "6E400003-B5A3-F393-E0A9-E50E24DCCA9E"   // board -> browser
+const char* BLE_NAME = "Braillix-Cell";
+
+BLECharacteristic* bleTx = nullptr;
+volatile bool bleConnected = false;
+String bleLine;                      // commands arrive whole, but never assume it
 
 // --- WIRELESS -------------------------------------------------------------
 // The board makes its OWN network. No router, no lab wifi, no credentials to
@@ -35,7 +52,12 @@
 // a network with one client. Change it if you like; nothing else depends on it.
 const char* AP_SSID = "Braillix-Cell";
 const char* AP_PASS = "braillix2026";     // >= 8 chars or softAP() opens it wide
-const bool  USE_WIFI = true;              // false = serial only, exactly as before
+// WiFi is now OFF by default. It cannot be reached from a GitHub Pages page at
+// all: that page is https, the board is plain http, and browsers block mixed
+// content. BLE has no such problem, and it does not take the laptop off its own
+// network the way joining the AP does. Turn this back on only for a localhost demo.
+const bool  USE_WIFI = false;
+const bool  USE_BLE  = true;
 
 WebServer server(80);
 
@@ -176,6 +198,10 @@ void tryHome() {
   }
 }
 
+// One entry point for a command, whatever carried it here. Serial, HTTP and BLE
+// all funnel through this, so the three transports can never drift apart.
+void handleLine(String line, bool echo);
+
 // --- wireless API ---------------------------------------------------------
 // Every handler BLOCKS until the motor has arrived, so the HTTP response is the
 // "done" signal - same contract the serial prompt gives, so the simulator syncs
@@ -222,6 +248,52 @@ void startWifi() {
                 WiFi.softAPIP().toString().c_str());
 }
 
+class BleServerCB : public BLEServerCallbacks {
+  void onConnect(BLEServer* s) override { bleConnected = true;  Serial.println("
+BLE connected"); }
+  void onDisconnect(BLEServer* s) override {
+    bleConnected = false;
+    Serial.println("
+BLE disconnected");
+    BLEDevice::startAdvertising();      // otherwise it is invisible after one use
+  }
+};
+
+class BleRxCB : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* c) override {
+    String v = String(c->getValue().c_str());
+    v.trim();
+    if (!v.length()) return;
+    handleLine(v, false);
+    // showState() has already returned, so the motor has ARRIVED. That is what
+    // the simulator waits on before advancing to the next cell.
+    if (bleTx) { bleTx->setValue("ok"); bleTx->notify(); }
+  }
+};
+
+void startBle() {
+  BLEDevice::init(BLE_NAME);
+  BLEServer* srv = BLEDevice::createServer();
+  srv->setCallbacks(new BleServerCB());
+  BLEService* svc = srv->createService(NUS_SERVICE);
+
+  bleTx = svc->createCharacteristic(NUS_TX, BLECharacteristic::PROPERTY_NOTIFY);
+  bleTx->addDescriptor(new BLE2902());
+
+  BLECharacteristic* rx = svc->createCharacteristic(
+      NUS_RX, BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
+  rx->setCallbacks(new BleRxCB());
+
+  svc->start();
+  BLEAdvertising* adv = BLEDevice::getAdvertising();
+  adv->addServiceUUID(NUS_SERVICE);      // the browser filters on this; without
+  adv->setScanResponse(true);            // it the device never appears in the picker
+  BLEDevice::startAdvertising();
+  Serial.printf("
+BLE up: look for \"%s\" in the simulator
+", BLE_NAME);
+}
+
 void help() {
   Serial.println();
   Serial.println("Type a letter or a word, then Enter.  Examples:  a    hello    cab");
@@ -249,17 +321,15 @@ void setup() {
 
   tryHome();
   if (USE_WIFI) startWifi();
+  if (USE_BLE)  startBle();
   help();
   Serial.print("> ");
 }
 
-void loop() {
-  if (USE_WIFI) server.handleClient();
-  if (!Serial.available()) return;
-  String line = Serial.readStringUntil('\n');
+void handleLine(String line, bool echo) {
   line.trim();
   line.toLowerCase();
-  if (line.length() == 0) { Serial.print("> "); return; }
+  if (line.length() == 0) return;
 
   if (line.startsWith("!")) {
     if      (line == "!home") tryHome();
@@ -298,5 +368,13 @@ void loop() {
       delay(gapMs);               // hold each letter long enough to see it
     }
   }
+}
+
+void loop() {
+  if (USE_WIFI) server.handleClient();
+  if (!Serial.available()) return;
+  String line = Serial.readStringUntil('
+');
+  handleLine(line, true);
   Serial.print("> ");
 }
