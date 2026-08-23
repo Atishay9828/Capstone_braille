@@ -139,3 +139,73 @@ export class Cell {
   home()           { return this.send('!home'); }
   setSpeed(v, a)   { return this.send(`!speed ${v} ${a}`); }
 }
+
+// =====================================================================
+// Same interface as Cell, over WiFi instead of USB.
+//
+// The ESP32 runs its own access point, so there is no router and no lab network
+// to be let onto. Each handler on the board blocks until the motor has arrived,
+// so the HTTP response IS the "done" signal — exactly what the serial prompt
+// gave us. app.js never has to know which transport it is holding.
+//
+// One hard limit: a page served over https CANNOT call a plain-http board
+// (mixed content). So this works from localhost, not from GitHub Pages.
+// =====================================================================
+export const AP_DEFAULT = '192.168.4.1';
+
+export class WifiCell {
+  constructor(onLog, onState, host) {
+    this.host = (host || AP_DEFAULT).replace(/^https?:\/\//, '').replace(/\/$/, '');
+    this.onLog = onLog || (() => {});
+    this.onState = onState || (() => {});
+    this.queue = Promise.resolve();
+    this.ok = false;
+  }
+
+  get connected() { return this.ok; }
+  url(path) { return `http://${this.host}${path}`; }
+
+  async connect() {
+    if (isSecureContext && location.protocol === 'https:')
+      throw new Error('An https page cannot reach a plain-http board. Run from localhost.');
+    const r = await this._fetch('/ping', 4000);
+    this.ok = true;
+    this.onState('connected');
+    this.onLog('wifi cell at ' + this.host + ' — ' + r);
+    return true;
+  }
+
+  async disconnect() {
+    this.ok = false;
+    this.onState('disconnected');
+  }
+
+  async _fetch(path, ms) {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), ms || MOVE_TIMEOUT);
+    try {
+      const res = await fetch(this.url(path), { signal: ac.signal, cache: 'no-store' });
+      if (!res.ok) throw new Error('board replied ' + res.status);
+      return (await res.text()).trim();
+    } catch (e) {
+      if (e.name === 'AbortError')
+        throw new Error('no reply from ' + this.host + ' — joined the Braillix-Cell network?');
+      throw new Error('cannot reach ' + this.host + ' — joined the Braillix-Cell network?');
+    } finally {
+      clearTimeout(t);
+    }
+  }
+
+  // serialised like the serial transport: one move in flight at a time
+  send(path) {
+    if (!this.ok) return Promise.resolve();
+    this.queue = this.queue
+      .then(() => this._fetch(path))
+      .catch(e => { this.onLog(e.message); });
+    return this.queue;
+  }
+
+  goToState(state) { return this.send('/s?v=' + state); }
+  home()           { return this.send('/home'); }
+  setSpeed(v, a)   { return this.send(`/speed?v=${v}&a=${a}`); }
+}

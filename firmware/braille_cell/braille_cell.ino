@@ -22,6 +22,22 @@
  */
 
 #include <AccelStepper.h>
+#include <WiFi.h>
+#include <WebServer.h>
+
+// --- WIRELESS -------------------------------------------------------------
+// The board makes its OWN network. No router, no lab wifi, no credentials to
+// beg for, and it works in a room with no internet at all. The laptop joins
+// this AP and loses its internet for the duration - which is fine, because the
+// simulator is served from localhost.
+//
+// NOT a personal secret: this is a throwaway AP password for a demo device on
+// a network with one client. Change it if you like; nothing else depends on it.
+const char* AP_SSID = "Braillix-Cell";
+const char* AP_PASS = "braillix2026";     // >= 8 chars or softAP() opens it wide
+const bool  USE_WIFI = true;              // false = serial only, exactly as before
+
+WebServer server(80);
 
 #define IN1 18
 #define IN2 19
@@ -107,8 +123,7 @@ void showState(int state) {
   long target = shortestTarget(from, stateToStep(state));
   long delta  = target - from;
 
-  Serial.printf("state %2d  step %4d  move %+5ld (%s)  %.1f deg
-",
+  Serial.printf("state %2d  step %4d  move %+5ld (%s)  %.1f deg",
                 state, stateToStep(state), delta,
                 delta >= 0 ? "CW " : "CCW", delta * 360.0 / STEPS_PER_REV);
 
@@ -120,8 +135,7 @@ void showState(int state) {
 
 void showChar(char c) {
   int state = cellToState(c);
-  if (state < 0) { Serial.printf("  skip '%c' (a-z and space only)
-", c); return; }
+  if (state < 0) { Serial.printf("  skip '%c' (a-z and space only)", c); return; }
 
   Serial.printf("  '%c'  dots ", c == ' ' ? '_' : c);
   if (c == ' ') Serial.print("(none)  ");
@@ -162,6 +176,52 @@ void tryHome() {
   }
 }
 
+// --- wireless API ---------------------------------------------------------
+// Every handler BLOCKS until the motor has arrived, so the HTTP response is the
+// "done" signal - same contract the serial prompt gives, so the simulator syncs
+// against either transport without knowing which it is talking to.
+void cors() { server.sendHeader("Access-Control-Allow-Origin", "*"); }
+
+void handleState() {
+  cors();
+  if (!server.hasArg("v")) { server.send(400, "text/plain", "need ?v=0-63"); return; }
+  int st = server.arg("v").toInt();
+  if (st < 0 || st > 63) { server.send(400, "text/plain", "state must be 0-63"); return; }
+  showState(st);
+  server.send(200, "text/plain", "ok");
+}
+
+void handleSpeed() {
+  cors();
+  int v = server.arg("v").toInt(), a = server.arg("a").toInt();
+  if (v > 0 && a > 0) {
+    vmax = v; accel = a;
+    stepper.setMaxSpeed(vmax); stepper.setAcceleration(accel);
+  }
+  server.send(200, "text/plain", "ok");
+}
+
+void handlePing()  { cors(); server.send(200, "text/plain", homed ? "homed" : "not-homed"); }
+void handleHome()  { cors(); tryHome(); server.send(200, "text/plain", "ok"); }
+
+void startWifi() {
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP(AP_SSID, AP_PASS);
+  server.on("/s", handleState);
+  server.on("/speed", handleSpeed);
+  server.on("/ping", handlePing);
+  server.on("/home", handleHome);
+  // the browser preflights any cross-origin GET it considers non-simple
+  server.onNotFound([]() { cors(); server.send(204); });
+  server.begin();
+  Serial.println();
+  Serial.printf("WiFi AP up:  SSID \"%s\"  pass \"%s\"
+", AP_SSID, AP_PASS);
+  Serial.printf("  join it, then point the simulator at  http://%s
+",
+                WiFi.softAPIP().toString().c_str());
+}
+
 void help() {
   Serial.println();
   Serial.println("Type a letter or a word, then Enter.  Examples:  a    hello    cab");
@@ -188,11 +248,13 @@ void setup() {
   stepper.setAcceleration(accel);
 
   tryHome();
+  if (USE_WIFI) startWifi();
   help();
   Serial.print("> ");
 }
 
 void loop() {
+  if (USE_WIFI) server.handleClient();
   if (!Serial.available()) return;
   String line = Serial.readStringUntil('\n');
   line.trim();

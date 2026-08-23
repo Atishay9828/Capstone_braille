@@ -17,7 +17,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { buildBrainPod, buildCellElectronics, PART_INFO } from './electronics.js';
-import { Cell, supported as serialSupported } from './hardware.js';
+import { Cell, WifiCell, AP_DEFAULT, supported as serialSupported } from './hardware.js';
 
 // ---------------------------------------------------------------- braille
 // Grade 1, mirrors firmware/braille_mapping.py
@@ -501,7 +501,7 @@ function gotoIndex(i) {
 // firmware answers, so what you watch on screen is what the motor has actually
 // finished doing — not a guess running alongside it.
 function wireHardware() {
-  const btn = $('btnHw'), stat = $('hwstat');
+  const btnUsb = $('btnHw'), btnWifi = $('btnWifi'), stat = $('hwstat');
   // One status line, not a scrolling log — the Arduino monitor owns the chatter.
   // But a failure has to be VISIBLE: the first version only did console.log, so a
   // busy COM port looked exactly like nothing happening.
@@ -511,46 +511,55 @@ function wireHardware() {
   };
   const line = t => console.log('[cell]', t);
 
-  if (!serialSupported()) {
-    // Android runs Chrome but has no Web Serial at all, so "needs Chrome" reads
-    // as nonsense on a tablet. Name the real requirement: a desktop.
-    btn.textContent = 'Cell: desktop only';
-    btn.disabled = true;
-    say('Web Serial needs Chrome or Edge on a computer — it does not exist on '
-      + 'Android or iOS. The simulation still runs here.', 'bad');
-    return;
-  }
+  // Both transports expose the same goToState/setSpeed, so everything downstream
+  // is identical whether the cell is on a cable or on its own access point.
+  const onState = (usb) => (st) => {
+    const on = st === 'connected';
+    const btn = usb ? btnUsb : btnWifi, other = usb ? btnWifi : btnUsb;
+    btn.textContent = on ? (usb ? 'USB: LIVE' : 'WiFi: LIVE') : (usb ? 'Connect USB' : 'Connect WiFi');
+    btn.classList.toggle('on', on);
+    other.disabled = on;                 // one transport at a time
+    if (!on) { hwBusy = false; say('disconnected'); }
+  };
 
-  btn.addEventListener('click', async () => {
-    if (cell && cell.connected) {
-      await cell.disconnect();
-      return;
-    }
+  async function attach(make, btn, usb) {
+    if (cell && cell.connected) { await cell.disconnect(); cell = null; return; }
     btn.disabled = true;
+    const was = btn.textContent;
     btn.textContent = 'Connecting…';
-    say('waiting for the board to reset and home…');
+    say(usb ? 'waiting for the board to reset and home…'
+            : 'asking the board on ' + AP_DEFAULT + '…');
     try {
-      // requestPort() must be reached straight from the click, not after an await
-      cell = new Cell(line, st => {
-        const on = st === 'connected';
-        btn.textContent = on ? 'Cell: LIVE — disconnect' : 'Connect Cell';
-        btn.classList.toggle('on', on);
-        if (!on) { hwBusy = false; say('disconnected'); }
-      });
+      cell = make();
       await cell.connect();
-      await cell.setSpeed(...clampHw(FW.vmax, FW.accel));   // match the screen, capped to what the motor can actually do
+      await cell.setSpeed(...clampHw(FW.vmax, FW.accel));
       say('live — the cam follows the text box', 'good');
-      gotoIndex(idx);                           // park it on the current cell
+      gotoIndex(idx);
     } catch (e) {
       cell = null;
-      btn.textContent = 'Connect Cell';
+      btn.textContent = was;
       btn.classList.remove('on');
       say(e.message, 'bad');
       line(e.message);
     } finally {
       btn.disabled = false;
     }
-  });
+  }
+
+  if (!serialSupported()) {
+    // Android runs Chrome but has no Web Serial at all, so "needs Chrome" reads
+    // as nonsense on a tablet. Name the real requirement: a desktop.
+    btnUsb.textContent = 'USB: desktop only';
+    btnUsb.disabled = true;
+    say('Web Serial needs Chrome or Edge on a computer. WiFi works anywhere.', 'bad');
+  } else {
+    // requestPort() must be reached straight from the click, not after an await
+    btnUsb.addEventListener('click', () =>
+      attach(() => new Cell(line, onState(true)), btnUsb, true));
+  }
+
+  btnWifi.addEventListener('click', () =>
+    attach(() => new WifiCell(line, onState(false), AP_DEFAULT), btnWifi, false));
 }
 
 function wireUI() {
