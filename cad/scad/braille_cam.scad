@@ -152,6 +152,31 @@ module option_a_socket_cut() {
             }
 }
 
+// THE BORE BUG, FIXED (2026-08-25). The old cut was
+//     translate([0,0,-hub_h-1])
+//     intersection() {
+//         cylinder(h = shaft_bore_depth + 1, r = 2.6);
+//         cube([10, 3.2, shaft_bore_depth + 1], center = true);
+//     }
+// cube(center=true) centres on the TRANSLATED origin, so it spanned z=-4.5..+4.5
+// while the cylinder spanned 0..9. Their intersection ended at z=-0.5: a BLIND
+// hole 3.5mm deep from the hub bottom that never reached the disc floor, against
+// the 8mm shaft_bore_depth claims.
+//
+// The shaft is 9.5mm from the mounting face (M6) and the collar takes the first
+// 2.0mm, leaving 7.5mm to swallow. A 3.5mm hole leaves the cam standing 4mm
+// proud — exactly what the printed resin part does.
+//
+// Extruding the 2D profile has no centring to get wrong.
+module legacy_shaft_bore() {
+    translate([0, 0, -hub_h - 0.01])
+        linear_extrude(height = hub_h + disk_base_thickness + 0.02)
+            intersection() {
+                circle(r = 2.6, $fn = 50);
+                square([10, 3.2], center = true);
+            }
+}
+
 // Calculated Variables
 slice_angle = 360 / states;
 ramp_angle = slice_angle * angular_ramp_fraction;
@@ -352,11 +377,7 @@ module braille_cam() {
         if (stack_option_a) {
             option_a_socket_cut();
         } else {
-            translate([0, 0, -hub_h - 1])
-            intersection() {
-                cylinder(h=shaft_bore_depth + 1, r=2.6, $fn=50);
-                cube([10, 3.2, shaft_bore_depth + 1], center=true);
-            }
+            legacy_shaft_bore();
         }
         // Homing magnet pocket
         translate([magnet_radius*cos(magnet_angle),
