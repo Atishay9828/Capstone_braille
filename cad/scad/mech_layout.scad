@@ -162,6 +162,17 @@ spring_free_l = 4.0;   // free length to order (~5 coils; 1.5mm solid)
 // export_linkage_assembly.scad — all six dots were 0.500mm out.)
 link_thickness = 1.0;
 
+// Foot height, cam surface up to the underside of the arm. Lives here rather than
+// in linkage.scad because linkage_comb.scad needs it too: the comb has to start
+// ABOVE the foot. When it was private to linkage.scad the comb read it as undef
+// and silently rendered 1mm tall instead of 6mm.
+foot_len = 2.5;
+
+// Height of the arm's underside above the cam. Shared for the same reason as
+// foot_len: linkage_comb.scad has to stop BELOW the arm, and reading this as
+// undef is how the first comb silently rendered 1mm tall.
+arm_y = 3.5;
+
 dot_dome_dia  = 1.5;   // the braille dot itself = braille standard size
 nub_width     = 1.0;   // slides inside spring_id (1.4) with 0.2mm/side
 plate_hole_dia = 1.7;  // passes the 1.5mm dome with 0.1mm/side

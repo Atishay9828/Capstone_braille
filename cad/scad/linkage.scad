@@ -38,11 +38,12 @@ thickness   = link_thickness;  // 1.0, from mech_layout.scad — the assembly
                      // TANGENTIAL contact width — it must fit inside the cam's
                      // flat dwell zone (see braille_cam.scad v6.3 header).
 foot_w      = 1.4;   // foot RADIAL width: 1.6mm track - 0.1mm clearance/side
-foot_len    = 2.5;   // foot height, contact face up to the riser
+// foot_len comes from mech_layout.scad — the comb needs the same number
 foot_roll_r = 0.5;   // radius of the rolled contact face (= thickness/2)
 
 arm_h       = 1.0;   // horizontal arm thickness
-arm_y       = 3.5;   // COMMON to all six (v7.0). Arm top when a dot is raised =
+// arm_y comes from mech_layout.scad — the comb needs the same number.
+             // COMMON to all six (v7.0). Arm top when a dot is raised =
                      // 3.5+1.0+0.8 = 5.3mm, vs plate underside at 9.0mm -> 3.7mm clear.
 
 // Dot end — all from mech_layout.scad so the plate cannot disagree
