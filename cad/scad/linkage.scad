@@ -37,7 +37,7 @@ thickness   = link_thickness;  // 1.0, from mech_layout.scad — the assembly
                      // sheet thickness. Once assembled this is the foot's
                      // TANGENTIAL contact width — it must fit inside the cam's
                      // flat dwell zone (see braille_cam.scad v6.3 header).
-foot_w      = 1.4;   // foot RADIAL width: 1.6mm track - 0.1mm clearance/side
+// foot_w comes from mech_layout.scad — the comb pocket is sized from it
 // foot_len comes from mech_layout.scad — the comb needs the same number
 foot_roll_r = 0.5;   // radius of the rolled contact face (= thickness/2)
 

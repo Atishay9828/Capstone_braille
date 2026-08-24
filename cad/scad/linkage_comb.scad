@@ -26,8 +26,9 @@
 
 include <mech_layout.scad>
 
-assert(!is_undef(foot_len) && !is_undef(plate_under_y) && !is_undef(link_thickness),
-       "linkage_comb needs foot_len, plate_under_y and link_thickness from mech_layout.scad");
+assert(!is_undef(foot_len) && !is_undef(plate_under_y) && !is_undef(link_thickness)
+       && !is_undef(arm_y) && !is_undef(foot_w),
+       "linkage_comb needs foot_len, arm_y, foot_w, plate_under_y and link_thickness from mech_layout.scad");
 
 // --- what the slot has to hold -------------------------------------------
 // Foot and lower riser share one width. Declared separately so a future thin
@@ -54,17 +55,24 @@ track_min  = min([for (d = [1:6]) norm(foot_pos(d))]);
 track_max  = max([for (d = [1:6]) norm(foot_pos(d))]);
 ring_in    = track_min - 1.5;
 rim_width  = 2.0;
-slot_out   = track_max + 1.2;                // slots stop here
-ring_out   = slot_out + rim_width;           // rim holds the ring in one piece
+ring_out   = track_max + (foot_w + slot_fit) / 2 + rim_width;
 
 $fn = 90;
 
-// One radial slot, centred on that dot's foot. Open at the inner edge so the
-// linkage drops in from the side during assembly; closed at the outer rim.
+// A CLOSED pocket, walls on all four sides, centred on that dot's foot.
+//
+// An open radial channel holds the foot tangentially but lets it slide in and
+// out along the arm, so the linkage can still yaw about the dot. Closing the
+// radial ends locates the foot completely; together with the nub in the dot
+// insert the part is then fully determined and cannot rotate at all.
+//
+// Assembly is still straightforward: the arm sits at arm_y and the comb tops
+// out below it, so a linkage lowers straight down into its pocket from above.
 module foot_slot(d) {
     rotate([0, 0, dot_phase_of(d)])
-        translate([ring_in - 1, -slot_w / 2, comb_bot - 0.1])
-            cube([slot_out - ring_in + 1, slot_w, comb_h + 0.2]);
+        translate([track_r(dot_track_of(d)) - (foot_w + slot_fit) / 2,
+                   -slot_w / 2, comb_bot - 0.1])
+            cube([foot_w + slot_fit, slot_w, comb_h + 0.2]);
 }
 
 module linkage_comb() {

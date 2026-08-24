@@ -173,6 +173,11 @@ foot_len = 2.5;
 // undef is how the first comb silently rendered 1mm tall.
 arm_y = 3.5;
 
+// Radial length of the foot. Shared because linkage_comb.scad sizes its pocket
+// from it. NOTE this is the FOOT's dimension: if the foot is ever narrowed
+// independently of the arm, the comb must follow the foot, not the arm.
+foot_w = 1.4;
+
 dot_dome_dia  = 1.5;   // the braille dot itself = braille standard size
 nub_width     = 1.0;   // slides inside spring_id (1.4) with 0.2mm/side
 plate_hole_dia = 1.7;  // passes the 1.5mm dome with 0.1mm/side
