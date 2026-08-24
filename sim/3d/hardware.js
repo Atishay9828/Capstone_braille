@@ -243,10 +243,27 @@ export class BleCell {
   async connect() {
     if (!bleSupported())
       throw new Error('No Web Bluetooth here. Chrome or Edge on desktop, or Chrome on Android.');
+    // navigator.bluetooth can EXIST while the feature is switched off underneath,
+    // so a support check is not enough — the truth only comes back from the call.
+    if (navigator.bluetooth.getAvailability) {
+      const ok = await navigator.bluetooth.getAvailability().catch(() => true);
+      if (!ok) throw new Error('No Bluetooth adapter found, or it is turned off.');
+    }
     // must run inside the click, same as requestPort()
-    this.device = await navigator.bluetooth.requestDevice({
-      filters: [{ services: [NUS_SERVICE] }],
-    });
+    let dev;
+    try {
+      dev = await navigator.bluetooth.requestDevice({ filters: [{ services: [NUS_SERVICE] }] });
+    } catch (e) {
+      const m = e.message || '';
+      if (/globally disabled|not allowed|policy/i.test(m))
+        throw new Error('Browser has Web Bluetooth switched off. Brave: '
+          + 'brave://flags/#brave-web-bluetooth-api. Chrome: check chrome://policy for '
+          + 'DefaultWebBluetoothGuardSetting — if it is 2, device management blocks it.');
+      if (/cancell?ed|No device selected/i.test(m))
+        throw new Error('No device picked. Is the board powered and flashed with the BLE build?');
+      throw e;
+    }
+    this.device = dev;
     this.device.addEventListener('gattserverdisconnected', () => {
       this.ok = false;
       this.onState('disconnected');
