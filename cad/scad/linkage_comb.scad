@@ -22,8 +22,8 @@
 // part; four pegs stop it turning. The middle is relieved so nothing touches the
 // rotating cam.
 //
-// ORIENTATION. The TOP-LEFT corner (-X, +Y) is chamfered off and carries a raised
-// triangle. Every other corner is square. Fit it chamfer-back-left.
+// ORIENTATION. One small raised dot near the top-left corner (-X, +Y). Nothing
+// else on the part is proud, so it reads by eye or by fingertip in one touch.
 // =========================================================
 
 include <mech_layout.scad>
@@ -64,7 +64,9 @@ bore_r       = min([for (d = [1:6]) norm(foot_pos(d))]) - 1.6;
 peg_xy = 17.5;
 peg_d  = 2.2;
 
-mark_chamfer = 6.0;                     // top-left corner cut off
+mark_d   = 1.6;    // orientation dot
+mark_h   = 0.5;
+mark_pos = 5.0;    // in from the top-left corner, on both axes
 
 $fn = 60;
 
@@ -80,23 +82,16 @@ module foot_pocket(d) {
             cube([pocket_l, pocket_w, comb_h + 0.2]);
 }
 
-// Corner chamfer + raised triangle, both at (-X, +Y).
-module orientation_mark() {
-    translate([-comb_side/2, comb_side/2, rest_z - 0.1])
-        rotate([0, 0, -45])
-            translate([-mark_chamfer, 0, 0])
-                cube([2 * mark_chamfer, mark_chamfer, comb_h + 0.2]);
-}
-module orientation_bump() {
-    translate([-comb_side/2 + 7.5, comb_side/2 - 7.5, comb_top])
-        cylinder(r1 = 1.8, r2 = 0.2, h = 0.9, $fn = 3);
+module orientation_dot() {
+    translate([-comb_side/2 + mark_pos, comb_side/2 - mark_pos, comb_top - 0.01])
+        cylinder(d = mark_d, h = mark_h);
 }
 
 module linkage_comb() {
     difference() {
         union() {
             translate([0, 0, rest_z]) rounded_square(comb_side, corner_r, comb_h);
-            orientation_bump();
+            orientation_dot();
         }
         // relieve the underside over the cam so nothing touches the bumps
         translate([0, 0, rest_z - 0.1])
@@ -107,7 +102,6 @@ module linkage_comb() {
         for (sx = [-1, 1], sy = [-1, 1])
             translate([sx * peg_xy, sy * peg_xy, rest_z - 0.1])
                 cylinder(d = peg_d, h = comb_h + 0.2);
-        orientation_mark();
     }
 }
 
@@ -117,8 +111,8 @@ assert(clear_z > pin_lift, "comb underside would strike the cam bumps");
 assert(comb_side/2 > cam_pocket_d/2, "comb does not reach past the cam pocket to rest on");
 assert(peg_xy * sqrt(2) > cam_pocket_d/2 + 1,
        str("peg holes at r=", peg_xy*sqrt(2), " fall inside the Ø", cam_pocket_d, " cam pocket"));
-assert((comb_side/2 - peg_xy) * sqrt(2) > mark_chamfer + peg_d,
-       "the corner chamfer cuts into the top-left peg hole");
+assert(norm([comb_side/2 - mark_pos - peg_xy, comb_side/2 - mark_pos - peg_xy])
+       > (mark_d + peg_d) / 2, "orientation dot overlaps the top-left peg hole");
 assert(comb_side <= 50, "comb overhangs the 58x50 base plate");
 bore_ok = bore_r < min([for (d = [1:6]) norm(foot_pos(d))]) - pocket_l/2;
 assert(bore_ok, "central bore eats into the innermost pocket");
