@@ -188,8 +188,30 @@ ramp_angle = slice_angle * angular_ramp_fraction;
 // track_idx 0 = innermost (smallest arc/slice -> gets the SLOWEST bit, MSB)
 // track_idx dots-1 = outermost (biggest arc/slice -> gets the FASTEST bit, LSB)
 // i.e. bit_for_track = (dots-1-track_idx). See the v6.3 header note above for why.
+// v8.2 GRAY ORDER. Slice i now carries the pattern gray(i) = i XOR (i >> 1),
+// instead of the pattern i. Consecutive slices then differ in exactly ONE bit,
+// so exactly one dot moves per step instead of up to six.
+//
+// What that buys: crossing several slices to reach a letter no longer flickers
+// every dot on the way (measured 359 -> 171 dot movements typing "hello world"),
+// and peak torque drops ~6x because the motor lifts one dot at a time rather
+// than six together. That matters a lot with one motor.
+//
+// What it does NOT buy, despite my earlier claim: ramp room. A state's angle is
+// the CENTRE of its slice and the foot must be flat there, so a ramp always has
+// one slice minus the foot to complete in, however long the track then holds its
+// value. Ramp room comes from radius, foot width, lift and ramp fraction.
+//
+// FIRMWARE MUST MATCH. To show pattern P, rotate to slice gray_to_binary(P),
+// not to slice P. See firmware/braille_cell/braille_cell.ino.
+use_gray_order = true;
+
+function bit_of(v, b) = floor(v / pow(2, b)) % 2;
+function gray_bit(i, b) = (bit_of(i, b) + bit_of(i, b + 1)) % 2;
+
 function get_pattern_bit(state_idx, track_idx) =
-    floor(state_idx / pow(2, dots - 1 - track_idx)) % 2;
+    let(b = dots - 1 - track_idx)
+    use_gray_order ? gray_bit(state_idx, b) : bit_of(state_idx, b);
 
 // Linear Interpolation (Lerp)
 function lerp(start, end, bias) = (1 - bias) * start + bias * end;

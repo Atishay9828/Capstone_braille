@@ -73,6 +73,7 @@ AccelStepper stepper(AccelStepper::HALF4WIRE, IN1, IN3, IN2, IN4);
 const int STEPS_PER_REV = 4096;   // 28BYJ-48 half-steps, 64:1 gearbox
 const int STEPS_PER_POS = 64;     // one of 64 cam states
 const int DWELL_OFFSET  = 32;     // land MID-dwell, not on a ramp edge
+#define USE_GRAY_ORDER 1          // must match braille_cam.scad's use_gray_order
 
 // bit = DOT_TO_BIT[dot]; dot 1->3, 2->2, 3->1, 4->4, 5->5, 6->0
 const uint8_t DOT_TO_BIT[7] = {0, 3, 2, 1, 4, 5, 0};
@@ -112,8 +113,19 @@ int cellToState(char c) {
   return state;
 }
 
+// v8.2 GRAY ORDER. The cam carries pattern gray(i) = i ^ (i>>1) at slice i, so
+// to show pattern P we must rotate to the slice whose Gray value IS P — that is
+// grayToBinary(P), not P. Get this wrong and every letter shows a different one.
+// Must stay in step with use_gray_order in cad/scad/braille_cam.scad.
+int grayToBinary(int g) {
+  int b = g;
+  while (g >>= 1) b ^= g;
+  return b;
+}
+
 int stateToStep(int state) {
-  return state * STEPS_PER_POS + DWELL_OFFSET;
+  int slice = USE_GRAY_ORDER ? grayToBinary(state) : state;
+  return slice * STEPS_PER_POS + DWELL_OFFSET;
 }
 
 // Shortest path: wrap the target to the nearest equivalent of where we are.
@@ -241,20 +253,16 @@ void startWifi() {
   server.onNotFound([]() { cors(); server.send(204); });
   server.begin();
   Serial.println();
-  Serial.printf("WiFi AP up:  SSID \"%s\"  pass \"%s\"
-", AP_SSID, AP_PASS);
-  Serial.printf("  join it, then point the simulator at  http://%s
-",
+  Serial.printf("WiFi AP up:  SSID \"%s\"  pass \"%s\"\n", AP_SSID, AP_PASS);
+  Serial.printf("  join it, then point the simulator at  http://%s\n",
                 WiFi.softAPIP().toString().c_str());
 }
 
 class BleServerCB : public BLEServerCallbacks {
-  void onConnect(BLEServer* s) override { bleConnected = true;  Serial.println("
-BLE connected"); }
+  void onConnect(BLEServer* s) override { bleConnected = true;  Serial.println("\nBLE connected"); }
   void onDisconnect(BLEServer* s) override {
     bleConnected = false;
-    Serial.println("
-BLE disconnected");
+    Serial.println("\nBLE disconnected");
     BLEDevice::startAdvertising();      // otherwise it is invisible after one use
   }
 };
@@ -289,9 +297,7 @@ void startBle() {
   adv->addServiceUUID(NUS_SERVICE);      // the browser filters on this; without
   adv->setScanResponse(true);            // it the device never appears in the picker
   BLEDevice::startAdvertising();
-  Serial.printf("
-BLE up: look for \"%s\" in the simulator
-", BLE_NAME);
+  Serial.printf("\nBLE up: look for \"%s\" in the simulator\n", BLE_NAME);
 }
 
 void help() {
@@ -373,8 +379,7 @@ void handleLine(String line, bool echo) {
 void loop() {
   if (USE_WIFI) server.handleClient();
   if (!Serial.available()) return;
-  String line = Serial.readStringUntil('
-');
+  String line = Serial.readStringUntil('\n');
   handleLine(line, true);
   Serial.print("> ");
 }

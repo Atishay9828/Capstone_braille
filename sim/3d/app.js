@@ -48,9 +48,22 @@ const PUNCT = {
 
 let P, CAM, STACK, D2B, STATES, SLICE, RAMP, PIN_LIFT, CAM_FLAT, Z_SIGN, STEPS_PER_POS;
 
+// Must match use_gray_order in cad/scad/braille_cam.scad and USE_GRAY_ORDER in
+// firmware/braille_cell/braille_cell.ino. All three or none.
+const GRAY_ORDER = true;
+const grayToBinary = g => { let b = g; while (g >>= 1) b ^= g; return b; };
+
 // ---------------------------------------------------------------- cam maths
 // Direct port of get_height_at_angle() in cad/scad/braille_cam.scad.
-const patternBit = (state, track) => (state >> (CAM.dots - 1 - track)) & 1;
+// v8.2: mirrors get_pattern_bit() in braille_cam.scad, which now carries the
+// pattern gray(i) at slice i. This models the cam SURFACE; camAngleForState
+// below does the inverse, turning a wanted pattern into the slice that holds it.
+const bitOf = (v, b) => (v >> b) & 1;
+const grayBit = (i, b) => bitOf(i, b) ^ bitOf(i, b + 1);
+const patternBit = (slice, track) => {
+  const b = CAM.dots - 1 - track;
+  return GRAY_ORDER ? grayBit(slice, b) : bitOf(slice, b);
+};
 const sCurve = t => (1 - Math.cos(t * Math.PI)) / 2;
 
 function heightFactor(aEff, track) {
@@ -70,7 +83,11 @@ function heightFactor(aEff, track) {
 // mid-ramp and every dot sits halfway up — at state 0 all six read exactly 0.5.
 // The firmware has this bug today (breadboard_test.ino targets pos*4096/64 with no
 // +32). Half a slice further along is the middle of the flat dwell.
-const camAngleForState = pos => Z_SIGN * (pos + 0.5) * SLICE;
+// v8.2: the cam carries pattern gray(i) at slice i, so a pattern's angle is the
+// slice whose Gray value is that pattern — grayToBinary(pattern). Must match
+// use_gray_order in cad/scad/braille_cam.scad and USE_GRAY_ORDER in the firmware.
+const stateToSlice = pos => GRAY_ORDER ? grayToBinary(pos) : pos;
+const camAngleForState = pos => Z_SIGN * (stateToSlice(pos) + 0.5) * SLICE;
 
 // A foot fixed at world angle dot_phase sits over disc-local (phase - rotation);
 // the carving already bakes in track_phase, so a_eff collapses to -rotation.
@@ -470,7 +487,7 @@ function updateReadout(item, pos) {
   $('e_char').textContent = isSpace ? '(space)' : isSign ? label.toLowerCase() : ch;
   $('e_dots').textContent = cell.length ? cell.join(' · ') : 'none';
   $('e_pos').textContent = pos + ' / 63';
-  $('e_step').textContent = (pos * STEPS_PER_POS + STEPS_PER_POS / 2) + ' / 4096';
+  $('e_step').textContent = (stateToSlice(pos) * STEPS_PER_POS + STEPS_PER_POS / 2) + ' / 4096';
   $('e_ang').textContent = (Math.abs(camAngleForState(pos)) % 360).toFixed(2) + '°';
   $('bits').textContent = pos.toString(2).padStart(6, '0');
 }

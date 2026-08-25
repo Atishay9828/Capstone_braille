@@ -173,6 +173,30 @@ hall_floor_t, or move the sensor outboard of the cam pocket and re-site the magn
 assert(!stack_option_a || hall_island_h >= 0.5,
        "Option A Hall island is too low to preserve a printable roof and cam gap");
 
+// --- COMB LOCATING PEGS (v8.2) ---
+// linkage_comb.scad drops over these four pegs. They stop it turning; the
+// spigot on its underside, which sits in the cam pocket, centres it.
+//
+// Position: (+/-17.5, +/-17.5) puts them at r=24.75, clear of the Ø46 cam
+// pocket and clear of the corner standoffs at (26, 21). They rise from the
+// plate's top face into a 2.2mm hole in a comb 2.3mm thick, so 2.0mm of peg
+// is full engagement without bottoming out.
+comb_peg_xy     = 17.5;
+comb_peg_d      = 2.0;      // 0.2mm clearance in the comb's 2.2mm hole
+comb_peg_h      = 2.0;
+
+assert(comb_peg_xy * sqrt(2) > cam_pocket_diameter / 2 + 1,
+       "comb pegs fall inside the cam pocket");
+assert(norm([standoff_x - comb_peg_xy, standoff_y - comb_peg_xy])
+       > (standoff_diameter + comb_peg_d) / 2 + 0.5,
+       "comb pegs clash with the corner standoffs");
+
+module comb_pegs() {
+    for (sx = [-1, 1], sy = [-1, 1])
+        translate([sx * comb_peg_xy, sy * comb_peg_xy, base_thickness - 0.01])
+            cylinder(d = comb_peg_d, h = comb_peg_h + 0.01, $fn = 24);
+}
+
 module standoffs() {
     // 4 corner posts — support top plate 8mm above base plate top
     // M2.5 clearance thru-bore (Ø2.9) through standoff AND plate body
@@ -202,6 +226,7 @@ module base_plate() {
             hall_sensor_pocket(stack_repair_raise, base_thickness, base_width);
         }
         standoffs();
+        comb_pegs();
     }
 }
 
