@@ -44,21 +44,22 @@ carries one of the 64 dot patterns.
 A **linkage** rests on each track. The linkage is a rigid crank. Its **foot** sits
 on the track. Its other end carries the braille dot.
 
-    side view of one linkage
+![The mechanism](docs/img/mechanism.png)
 
-           o   <- braille dot
-           |
-      _____|       the arm
-     |
-     |_
-     |_|  <- foot, on the cam track
-    ===============  cam disc surface
+*The cam disc below, the six linkages above it, and the reading surface on top.
+One linkage is orange. Its foot stands on a high section of its track, so its dot
+is raised. The other five are down.*
 
 When the foot meets a high section, the linkage moves up. The dot rises above the
 reading surface. When the foot meets a low section, the linkage moves down. The
 dot becomes flush with the surface.
 
 A return spring holds each linkage down against the disc.
+
+![A foot on the cam track](docs/img/foot_on_track.png)
+
+*A close view of the same orange linkage. Its foot rests on a raised section of
+the track. The grey linkage behind it sits on a low section.*
 
 ### One motor for six dots
 
@@ -98,18 +99,59 @@ angle is position zero. The controller counts steps from there.
 
 ## Repository layout
 
-| Directory | Contents |
-|---|---|
-| `cad/scad/` | OpenSCAD source for every part. This is the design. |
-| `cad/stl/` | Meshes exported from `cad/scad/`. Send these to a printer. |
-| `docs/` | Engineering notes, measurements, print plans and audits. |
-| `firmware/` | ESP32 sketch, and Python helpers for braille conversion. |
-| `sim/` | The 3D simulator, and the shared parameter file. |
-| `printing/` | Slicer profiles and generated G-code. |
-| `tools/` | Scripts that check the printable files before release. |
-| `renders/` | Images, and the Blender export script. |
-| `print_batch/` | Files prepared for a print shop. |
-| `_archive/` | Superseded work. Kept for history. |
+    Capstone/
+    |
+    +-- cad/                        the design
+    |   +-- scad/                   OpenSCAD source, 35 files. This IS the design.
+    |   |   +-- mech_layout.scad        every shared dimension lives here
+    |   |   +-- braille_cam.scad        the cam disc and its six tracks
+    |   |   +-- linkage.scad            the six followers
+    |   |   +-- linkage_comb.scad       the guide that stops them turning
+    |   |   +-- outer_box.scad          the enclosure
+    |   |   +-- base_plate.scad         holds the motor and the cam
+    |   |   +-- mid_plate.scad          the motor shelf
+    |   |   +-- top_plate.scad          the reading surface
+    |   |   +-- dot_insert.scad         resin tile, six dot holes
+    |   |   +-- esp32_pod_*.scad        housing for the controller
+    |   +-- stl/                    meshes exported from scad/. Print these.
+    |   +-- dxf/                    2D outlines
+    |   +-- models/                 third-party component models
+    |
+    +-- firmware/                   what runs on the board
+    |   +-- braille_cell/
+    |   |   +-- braille_cell.ino        the current sketch
+    |   +-- breadboard_test/            earlier bring-up sketch
+    |   +-- braille_mapping.py          text to dot patterns
+    |   +-- braille_converter.py
+    |
+    +-- sim/                        the simulator
+    |   +-- 3d/
+    |   |   +-- index.html              the page
+    |   |   +-- app.js                  cam maths and animation
+    |   |   +-- braillix.glb            the 3D model
+    |   |   +-- vendor/                 a local copy of Three.js
+    |   +-- braillix_params.json        the CAD-to-software bridge
+    |   +-- extract_params.py           writes that file from the OpenSCAD source
+    |
+    +-- printing/                   getting parts made
+    |   +-- orca/                       slicer profiles and the slice script
+    |   +-- gcode_kobra_neo_checked/    released G-code
+    |   +-- gcode_HOLD_*/               G-code held back, fit not yet proven
+    |
+    +-- docs/                       the engineering record, 32 notes
+    |   +-- BRAILLE_READABILITY.md      measured against braille standards
+    |   +-- MEASUREMENTS_NEEDED.md      every measurement, in plain words
+    |   +-- BREADBOARD_STEP_BY_STEP.md  the wiring, one wire at a time
+    |   +-- PRINT_DAY_MONDAY.md         the print procedure
+    |   +-- MULTICELL_ARCHITECTURE.md   how to reach more than one cell
+    |   +-- img/                        images used by this README
+    |
+    +-- tools/
+    |   +-- validate_print_assets.py    checks meshes and G-code before release
+    |
+    +-- renders/                    images, and the scripts that make them
+    +-- print_batch/                files prepared for a print shop
+    +-- _archive/                   superseded work, kept for history
 
 ---
 
@@ -117,18 +159,17 @@ angle is position zero. The controller counts steps from there.
 
 ### Design
 
-- **`cad/scad/mech_layout.scad`** holds every shared dimension. Dot positions, the
-  vertical stack, spring sizes and arm geometry live here. Other files include it.
-  Change a number here, and every part follows.
-- **`cad/scad/braille_cam.scad`** builds the cam disc and its six tracks.
-- **`cad/scad/linkage.scad`** builds the six followers. Each one has a different
-  arm length, because each foot sits on a different track.
-- **`cad/scad/linkage_comb.scad`** builds the guide that stops the linkages turning.
-- **`cad/scad/outer_box.scad`**, **`base_plate.scad`**, **`mid_plate.scad`** and
-  **`top_plate.scad`** build the enclosure and the internal shelves.
+The tree above names each part. Three of them need a word of explanation.
+
+- **`cad/scad/mech_layout.scad`** is the single source of truth. Dot positions, the
+  vertical stack, spring sizes and arm geometry live here, and every other file
+  includes it. Change a number here, and every part follows. A dimension copied
+  into a second file has caused real errors in this project, so nothing is copied.
+- **`cad/scad/linkage.scad`** builds all six followers at once. Each one has a
+  different arm length, because each foot sits on a different track.
 - **`cad/scad/dot_insert.scad`** builds a small resin tile. It carries the six dot
-  holes and the six spring pockets. These features are too fine for an FDM printer.
-- **`cad/scad/esp32_pod_*.scad`** build a separate housing for the controller.
+  holes and the six spring pockets. Those features are too fine for an FDM printer,
+  so they move out of the top plate and into one small part.
 
 ### Firmware
 
