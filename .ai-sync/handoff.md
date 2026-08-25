@@ -1,6 +1,114 @@
 # Active Handoff
-> Last updated by: Codex (AJ workspace)
-> Timestamp: 2026-08-19T20:10:56+05:30
+> Last updated by: Claude Code (Mridul's fork)
+> Timestamp: 2026-08-26
+
+---
+
+## 2026-08-26 - CAM/COMB PASS, AND ONE DECISION NEEDED
+
+### Done and committed
+
+**The comb is back.** It was deleted 2026-06-04 with the note "linkages are
+constrained at BOTH ends ... a separate comb guide is unnecessary". That is wrong,
+and Mridul disproved it by hand on 2026-08-24: the foot only RESTS on the cam, so
+nothing resists tangential load, and on a ramp the cam drags the whole linkage
+round the disc instead of lifting it. `cad/scad/linkage_comb.scad` is rebuilt -
+square 48x48, a closed pocket per foot at track radius, corner scallops for the
+four standoffs, four locating pegs (matching pegs added to `base_plate.scad`), and
+a raised dot marking the top-left corner.
+
+**Cam is now GRAY ORDER.** Slice i carries pattern gray(i), so exactly one dot
+moves per step instead of up to six. "hello world" drops from 359 to 171 dot
+movements and peak torque falls about 6x, which matters with one motor.
+`use_gray_order` in `braille_cam.scad`, `USE_GRAY_ORDER` in the sketch,
+`GRAY_ORDER` in `app.js` - **all three must agree, or every letter shows the wrong
+pattern.** Round trip verified for all 64 states.
+
+**Cam bore fixed.** The Double-D cut used cube(center=true) inside a translate, so
+it was centred on the translated origin: the intersection ended at z=-0.5, a BLIND
+hole 3.5mm deep that never reached the disc floor, against the 8mm
+`shaft_bore_depth` claims. Rebuilt as an extruded 2D profile. This confirms Codex's
+2026-08-19 finding independently.
+
+**Pod standardised on M2.5** (handoff item 4). The pod is not printed, which was
+the condition attached to that request. The motor stays M4 - the 28BYJ-48 ears are
+drilled 4.2mm.
+
+**`foot_len`, `arm_y` and `foot_w` moved into `mech_layout.scad`.** They were
+private to `linkage.scad`, so the comb read them as undef and OpenSCAD silently
+rendered a 1mm-tall ring instead of 6mm. The rebuilt `linkage.stl` is
+vertex-identical, so the move changed no geometry.
+
+### Corrected - an error of mine
+
+I claimed slice ORDERING buys ramp room. **It does not.** A state's angle is the
+CENTRE of its slice and the foot must be flat there, so a ramp always has one slice
+minus the foot to finish in, however long the track then holds its value. Gray
+order is still worth having for chatter and torque, but it does not touch R-07.
+
+Ramp room comes from radius, foot width, lift and ramp fraction. Measured at the
+current inner track with a 0.6mm foot:
+
+```
+angular_ramp_fraction 0.2 (today)     72.6 deg   sideways push 3.19x lift
+ramp widened to the whole slice       50.6 deg
+  + inner_radius 12 -> 14.4           42.8 deg
+  + pin_lift 0.8 -> 0.5               30.1 deg   sideways push 0.58x
+```
+
+**30 degrees is reachable with all 64 states on a 44.9mm disc. The current disc is
+44.4mm.** The ramp was deliberately narrowed to maximise dwell, and that is what
+made it a wall. This pass is NOT yet applied.
+
+### DECISION NEEDED - the motor sits 4mm too high, and there are two ways out
+
+Verified from source, not from comments:
+
+```
+floor            0.0 ..  4.0
+elec pocket      4.0 .. 18.0
+mid-plate ledge 18.0 .. 20.0
+mid-plate       20.0 .. 22.0
+motor can       22.0 .. 41.0    -> motor face 41.0 = base_plate_z
+collar (9x2)    41.0 .. 43.0    <- the cam hub must land HERE
+cam disc        43.0 .. 45.0
+cam HUB bottom  39.0            (hub_h = 4)
+
+INTERFERENCE 4.0mm
+```
+
+**Option A (Codex, 2026-08-19):** raise the upper stack +4mm. Already implemented
+behind `stack_repair_raise` in `stack_options.scad`, default off. Cost: the box
+gets 4mm taller. Mridul does not want this.
+
+**Option B (Mridul, 2026-08-26):** drop the MOTOR 4mm instead. The mid-plate is
+2mm and its ledge is 2mm, so removing both is exactly the 4mm needed, with no
+change to box height and no change to the 14mm electronics pocket.
+
+```
+floor            0.0 ..  4.0
+elec pocket      4.0 .. 18.0
+motor can       18.0 .. 37.0    -> motor face 37.0
+collar          37.0 .. 39.0    = hub bottom 39.0   MATCHES, hub_h stays 4
+shaft tip       46.5            = 1.5mm above the cam flat, clear of arms at 48.5
+```
+
+**What Option B costs:** the motor currently bolts UP into `base_plate` at z=41 and
+is located laterally by the mid-plate's 29.5mm x 8mm collar. Drop it 4mm and
+neither works. It needs a new seat - most likely a collar plus two ear bosses on
+the base plate's UNDERSIDE, spanning the new 4mm gap. That is a real base-plate
+change, not a parameter tweak.
+
+**Not yet applied. Mridul is choosing. Do not implement either half of this.**
+
+### On screwing the motor ears
+
+The spring load is DOWNWARD, through the linkages into the cam and onto the shaft,
+so nothing lifts the motor in service. A seat plus a collar that captures the can
+carries the torque reaction and is sufficient for the mechanism. Screws earn their
+place for handling, for transport, and for the moment the cam is pulled off the
+shaft. Recommendation: keep the collar as the anti-rotation feature and treat the
+two M4 ear screws as retention, not as the primary mount.
 
 ---
 
