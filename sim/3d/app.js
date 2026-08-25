@@ -100,7 +100,7 @@ function linkageLift(dot, camDeg) {
 const cellToPos = cell => cell.reduce((v, d) => v | (1 << D2B[d]), 0);
 
 // ---------------------------------------------------------------- scene
-const XRAY_PARTS = ['outer_box', 'top_plate', 'dot_insert'];
+const XRAY_PARTS = ['outer_box', 'top_plate', 'dot_insert', 'comb'];
 let renderer, scene, camera, controls, parts = {}, linkages = [];
 let pod = null, cellElec = null, glbMotor = [], podShells = [];
 let running = true, xray = false, elec = false, speed = 1;
@@ -299,16 +299,22 @@ async function buildElectronics(glbScene) {
     if (o) { o.visible = false; glbMotor.push(o); }
   }
 
-  pod.visible = cellElec.visible = false;   // off until asked for
+  cellElec.visible = false;                 // the cell's innards start hidden
+  pod.visible = true;                       // the pod itself never hides
   buildHotspots();
 }
 
 function setElectronics(on) {
   elec = on;
-  pod.visible = cellElec.visible = on;
+  // The pod is a brick sitting next to the cell, not something buried inside it,
+  // so it stays on screen whatever this toggle says. Only the cell's own innards
+  // are hidden behind it.
+  cellElec.visible = on;
   glbMotor.forEach(o => o.visible = false);       // never show the placeholder again
   $('btnElec').classList.toggle('on', on);
-  if (on && !xray) setXray(true);                 // pointless to hide them behind walls
+  // Deliberately does NOT force X-ray on. Two buttons reaching into each other
+  // makes the state unpredictable — if you want to see through the walls, press
+  // X-Ray yourself.
 }
 
 // ---------------------------------------------------------------- hotspots

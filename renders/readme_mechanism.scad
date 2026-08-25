@@ -34,6 +34,12 @@ show_comb      = true;
 show_top_plate = true;
 show_insert    = true;
 
+// Export one component at a time, so Blender can give each its own material:
+//   openscad -D only=\"cam\" -o cam.stl readme_mechanism.scad
+// "all" renders the assembled scene, which is what the OpenSCAD preview uses.
+only = "all";
+function want(x) = (only == "all") || (only == x);
+
 // braille_cam() puts the hub bottom at z=0, so the flat cam surface lands at
 // hub_h + disk_base_thickness. Drop the disc by that much to put the flat at z=0.
 cam_drop = 4 + 2;
@@ -53,26 +59,28 @@ module linkage_at(d, lift) {
 }
 
 // --- the cam disc ---------------------------------------------------------
-color([0.20, 0.22, 0.26])
-    translate([0, 0, -cam_drop])
-        braille_cam();
+if (want("cam"))
+    color([0.20, 0.22, 0.26])
+        translate([0, 0, -cam_drop])
+            braille_cam();
 
 // --- the six linkages -----------------------------------------------------
 // The raised one is warm and bright; the rest are cool grey and sit down.
 for (d = [1:6])
-    color(d == raised_dot ? [0.95, 0.62, 0.25] : [0.72, 0.75, 0.80])
-        linkage_at(d, d == raised_dot ? pin_lift : 0);
+    if ((want("linkages_down") && d != raised_dot) || (want("linkage_up") && d == raised_dot))
+        color(d == raised_dot ? [0.95, 0.62, 0.25] : [0.72, 0.75, 0.80])
+            linkage_at(d, d == raised_dot ? pin_lift : 0);
 
 // --- the guide ------------------------------------------------------------
 // Kept faint. It sits directly over the cam, and any more opacity than this
 // hides the track profile underneath, which is the thing worth seeing.
-if (show_comb)
+if (show_comb && want("comb"))
     color([0.35, 0.55, 0.75, 0.16])
         linkage_comb();
 
 // --- the reading surface --------------------------------------------------
 // Ghosted, so the raised dome is visible through it rather than hidden by it.
-if (show_top_plate)
+if (show_top_plate && want("plate"))
     color([0.85, 0.87, 0.90, 0.13])
         translate([0, 0, plate_under_y])
             top_plate();
@@ -85,7 +93,7 @@ if (show_top_plate)
 // It sits AT plate_under_y. An earlier version added (4 - 3.2) and lifted the tile
 // 0.8mm, which put the reading surface level with the plate rim instead of inside
 // the finger recess, and hid the lift.
-if (show_insert)
+if (show_insert && want("insert"))
     color([0.88, 0.89, 0.92])
         translate([0, 0, plate_under_y])
             dot_insert();
