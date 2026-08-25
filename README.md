@@ -57,12 +57,6 @@ dot becomes flush with the surface.
 
 A return spring holds each linkage down against the disc.
 
-![One dot raised above the reading surface](docs/img/dot_raised.png)
-
-*The reading surface, seen close. Five dots are down and sit below the surface, so
-a finger feels only the recesses. The sixth dot stands 0.8 mm proud. A reader
-feels that difference, and that difference is the character.*
-
 ### One motor for six dots
 
 The six tracks turn together, because they are on one disc. One rotation of the

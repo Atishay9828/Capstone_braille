@@ -142,7 +142,7 @@ sw_snap_nib      = 0.8;    // retention nib overhang (v6.1: 0.4→0.8, was sub-l
 // — the precise floating-boss bug this comment block was written about the first
 // time. Tie it to the wall so it can never drift again.
 lid_screw_x      = pod_int_length/2 - 0.5;   // 29.5 — boss still embeds 2mm
-lid_screw_d      = 2.8;    // v6.2: 2.4→2.8 M2 clearance in lid (print tolerance)
+lid_screw_d      = 2.9;    // v8.3: M2 -> M2.5 clearance in lid (was 2.8 for M2)
 
 // v8.0: BRASS HEAT-SET INSERTS here too, so the lid can be opened repeatedly
 // without stripping the plastic thread.
@@ -151,9 +151,21 @@ lid_screw_d      = 2.8;    // v6.2: 2.4→2.8 M2 clearance in lid (print toleran
 // 1.65mm. The boss still embeds ~2.7mm into the pod wall at lid_screw_x, so it is
 // not floating (see the note above about that exact failure).
 lid_boss_d       = 6.5;    // Boss OD in shell
-lid_boss_tap     = 2.0;    // narrow pilot BELOW the insert, catches the screw tip
-insert_m2_dia    = 3.2;    // MEASURE the inserts you buy (typical M2: 3.2)
-insert_m2_depth  = 4.5;    // insert length + 0.5mm
+lid_boss_tap     = 2.5;    // narrow pilot BELOW the insert, catches the screw tip
+// v8.3 STANDARDISED ON M2.5. Requested in .ai-sync/handoff.md ("CAD REQUESTS FROM
+// THE ELECTRONICS FORK", item 4) and in docs/BUILD_PACK.md 7.3, so the project buys
+// ONE structural insert size instead of two. The pod is not printed yet, which is
+// the condition that request attached to.
+//
+// Post wall goes 1.65 -> 1.50mm around the hot brass. Still fine: the cell box uses
+// the same 3.5mm insert in a 7.8mm boss, which is 2.15mm, and 1.5mm is the figure
+// the request itself checked.
+//
+// NOT everything becomes M2.5. The motor keeps M4, because the 28BYJ-48's own ears
+// are drilled 4.2mm and an M2.5 would leave 1.7mm of slop that walks the cam off
+// centre. Two sizes is the answer, not one.
+insert_m2_dia    = 3.5;    // MEASURE the inserts you buy (typical M2.5: 3.5-3.6)
+insert_m2_depth  = 5.5;    // insert length + 0.5mm
 
 $fn = 60;
 
