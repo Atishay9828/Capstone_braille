@@ -36,12 +36,40 @@ def read(path):
         return f.read()
 
 
+def _option_default(name):
+    """Resolve a build option like `x = is_undef(x) ? 0 : x;` to its default."""
+    try:
+        with open(os.path.join(ROOT, "cad", "scad", "stack_options.scad"),
+                  encoding="utf-8") as fh:
+            opts = fh.read()
+    except OSError:
+        return None
+    m = re.search(rf"^\s*{re.escape(name)}\s*=\s*is_undef\([^)]*\)\s*\?\s*"
+                  rf"(-?[\d.]+)\s*:", opts, re.M)
+    return float(m.group(1)) if m else None
+
+
 def scalar(src, name, where):
-    """Parse `name = <number>;`, ignoring anything inside comments."""
-    m = re.search(rf"^\s*{re.escape(name)}\s*=\s*(-?[\d.]+)\s*;", src, re.M)
+    """Parse `name = <number>;`, ignoring anything inside comments.
+
+    v8.2 made several stack values `45.0 + stack_repair_raise` — a -D build
+    option. A bare-number regex silently stopped matching, which would have left
+    braillix_params.json frozen at pre-repair values while the CAD moved on.
+    That is precisely the drift this extractor exists to prevent, so resolve the
+    option to its default instead of failing or guessing.
+    """
+    m = re.search(rf"^\s*{re.escape(name)}\s*=\s*(-?[\d.]+)\s*"
+                  rf"(?:\+\s*([A-Za-z_]\w*)\s*)?;", src, re.M)
     if not m:
         sys.exit(f"FAIL: could not find scalar '{name}' in {where}")
-    return float(m.group(1))
+    value = float(m.group(1))
+    if m.group(2):
+        extra = _option_default(m.group(2))
+        if extra is None:
+            sys.exit(f"FAIL: '{name}' depends on '{m.group(2)}', "
+                     f"whose default is not declared in stack_options.scad")
+        value += extra
+    return value
 
 
 def int_array(src, name, where):

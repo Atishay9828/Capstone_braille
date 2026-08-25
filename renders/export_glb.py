@@ -48,8 +48,14 @@ PARTS = {
     "braille_cam": (43.0,         "E94560", 1.00, 0.35, 0.35),  # local z=2 -> flat at 45
     "top_plate":   (54.0,         "EDE6D6", 1.00, 0.05, 0.70),
     "dot_insert":  (54.0,         "FAFAFA", 1.00, 0.05, 0.35),
+    # v8.2: linkage_comb.scad measures rest_z RELATIVE to cam flat, so the STL
+    # exports flat for printing and has to be lifted by cam_flat_z here. Its base
+    # then lands on the base-plate top at 46, which is what it rests on.
+    # It closes a pocket round every linkage foot, which is what stops the feet
+    # sliding tangentially now that they only REST on the cam.
+    "linkage_comb": (45.0,        "9AA3B2", 1.00, 0.05, 0.60),
 }
-RENAME = {"braille_cam": "cam"}
+RENAME = {"braille_cam": "cam", "linkage_comb": "comb"}
 LINKAGE_MAT = ("C8CDD4", 1.00, 0.90, 0.25)   # shiny metal, as specified
 
 # 28BYJ-48. M1/M2/M6 are Codex's researched values (docs/MEASUREMENT_RESEARCH.md);
