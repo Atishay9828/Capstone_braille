@@ -47,9 +47,9 @@ on the track. Its other end carries the braille dot.
 ![The mechanism](docs/img/mechanism.png)
 
 *The cam disc below, the six linkages above it, and the reading surface on top.
-One linkage is orange. Its foot stands on a high section of its track, so its dot
-is raised. The other five are down. The comb is left out of this view, and the
-enclosure is ghosted.*
+One linkage is gold. Its foot stands on a high section of its track, so its dot is
+raised. The other five are down. The comb and the enclosure are left out of this
+view.*
 
 When the foot meets a high section, the linkage moves up. The dot rises above the
 reading surface. When the foot meets a low section, the linkage moves down. The
@@ -59,9 +59,9 @@ A return spring holds each linkage down against the disc.
 
 ![One dot raised above the reading surface](docs/img/dot_raised.png)
 
-*The reading surface, seen close. Five dots are down and sit flush, so a finger
-feels only the holes. The sixth dot stands 0.8 mm proud. A reader feels that
-difference, and that difference is the character.*
+*The reading surface, seen close. Five dots are down and sit below the surface, so
+a finger feels only the recesses. The sixth dot stands 0.8 mm proud. A reader
+feels that difference, and that difference is the character.*
 
 ### One motor for six dots
 
@@ -317,6 +317,23 @@ Install OpenSCAD to change the design. Then export a part:
 Check every printable file:
 
     python tools/validate_print_assets.py --skip-gcode
+
+### 6b. Rebuild the images in this file
+
+Both pictures come from the CAD, not from a drawing program. Regenerate them after
+any change to the mechanism, or they become wrong without any warning.
+
+    cd renders
+    openscad -D only=\"cam\"           -o /tmp/b/cam.stl           readme_mechanism.scad
+    openscad -D only=\"linkages_down\" -o /tmp/b/linkages_down.stl readme_mechanism.scad
+    openscad -D only=\"linkage_up\"    -o /tmp/b/linkage_up.stl    readme_mechanism.scad
+    openscad -D only=\"insert\"        -o /tmp/b/insert.stl        readme_mechanism.scad
+
+    blender -b -P blender_mechanism.py -- /tmp/b ../docs/img/mechanism.png 220 0 hero
+    blender -b -P blender_mechanism.py -- /tmp/b ../docs/img/dot_raised.png 220 0 dot
+
+The Blender step uses the GPU if one is present. It falls back to the processor
+otherwise, and takes longer.
 
 ### 7. Run the simulator on your own machine
 

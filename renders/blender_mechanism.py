@@ -30,6 +30,9 @@ SAMPLES = int(argv[2]) if len(argv) > 2 else 192
 # rough PETG scatters enough to bury the mechanism, and the mechanism is the
 # subject. Pass 1 to include it.
 WITH_PLATE = bool(int(argv[3])) if len(argv) > 3 else False
+# "hero" frames the whole mechanism. "dot" comes in close on the reading surface,
+# where the point is the height difference between a raised dot and a flush one.
+VIEW = argv[4] if len(argv) > 4 else "hero" 
 
 MM_TO_M = 0.01          # 68mm cell -> 0.68m object
 
@@ -146,14 +149,22 @@ cam = bpy.data.objects.new("cam", cam_data)
 scene.collection.objects.link(cam)
 scene.camera = cam
 
-# Looking down at about 35 degrees: high enough to see the cam face and the six
-# arms fanning out, low enough that the raised dome still breaks the skyline.
-eye = mid + Vector((0.90, -1.25, 1.00)) * size
+if VIEW == "dot":
+    # The reading surface, not the mechanism. Aim at the tile's top face and use a
+    # longer lens, so the 0.8mm the dot stands proud is the whole subject.
+    cam_data.lens = 110
+    look_at = Vector((0.0, 0.0, 0.122))          # tile top: plate_under_y + insert_h
+    eye = look_at + Vector((0.34, -0.52, 0.30)) * size
+else:
+    # Looking down at about 35 degrees: high enough to see the cam face and the six
+    # arms fanning out, low enough that the raised dome still breaks the skyline.
+    look_at = mid
+    eye = mid + Vector((0.90, -1.25, 1.00)) * size
 cam.location = eye
-cam.rotation_euler = (mid - eye).to_track_quat('-Z', 'Y').to_euler()
+cam.rotation_euler = (look_at - eye).to_track_quat('-Z', 'Y').to_euler()
 
 cam_data.dof.use_dof = True
-cam_data.dof.focus_distance = (mid - eye).length
+cam_data.dof.focus_distance = (look_at - eye).length
 cam_data.dof.aperture_fstop = 9.0     # f/4 blurred the far arms into mush
 
 # --- render settings -----------------------------------------------------
