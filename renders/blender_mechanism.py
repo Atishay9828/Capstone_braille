@@ -73,9 +73,9 @@ PARTS = [
     # The real cam is printed in dark resin, not metal. Metallic 0.85 made it
     # mirror the area lights and come out white, which is the opposite of the part.
     ("cam.stl",           "cam",     (0.022, 0.024, 0.030), 0.00, 0.45, 0.0),
-    ("linkages_down.stl", "steel",   (0.560, 0.590, 0.640), 0.95, 0.22, 0.0),
+    ("linkages_down.stl", "steel",   (0.480, 0.505, 0.550), 0.80, 0.30, 0.0),
     ("linkage_up.stl",    "brass",   (0.780, 0.480, 0.130), 0.95, 0.20, 0.0),
-    ("insert.stl",        "resin",   (0.760, 0.765, 0.780), 0.00, 0.45, 0.0),
+    ("insert.stl",        "resin",   (0.520, 0.525, 0.545), 0.00, 0.50, 0.0),
     ("plate.stl",         "petg",    (0.700, 0.760, 0.820), 0.00, 0.10, 0.92),
 ]
 
@@ -135,9 +135,9 @@ def area_light(name, loc, power, radius, target):
 
 # Cut to roughly a third of the first attempt. With AgX below, the earlier powers
 # rolled every surface into the top of the curve and the dark cam came out white.
-area_light("key",  ( 1.5, -1.8,  1.9), 70, size * 1.6, mid)
+area_light("key",  ( 1.5, -1.8,  1.9), 48, size * 1.6, mid)
 area_light("fill", (-2.0, -1.1,  0.7), 18, size * 2.2, mid)
-area_light("rim",  (-0.7,  1.9,  1.4), 38, size * 1.4, mid)
+area_light("rim",  (-0.7,  1.9,  1.4), 26, size * 1.4, mid)
 
 # --- camera --------------------------------------------------------------
 cam_data = bpy.data.cameras.new("cam")
@@ -164,8 +164,17 @@ scene.render.resolution_x = 1600
 scene.render.resolution_y = 1100
 scene.render.film_transparent = False
 scene.render.filepath = OUT
-scene.view_settings.look = 'AgX - Medium High Contrast' if 'AgX - Medium High Contrast' in \
-    [i.name for i in scene.view_settings.bl_rna.properties['look'].enum_items] else 'None'
+# Blender defaults to AgX, which rolls highlights off instead of clipping them.
+# Keep it, and pull exposure down: the white tile and the chrome arms bounce a lot
+# of light back onto the cam, and the real cam is dark resin, not metal.
+looks = [it.identifier for it in scene.view_settings.bl_rna.properties['look'].enum_items]
+for l in ('AgX - Medium High Contrast', 'Medium High Contrast', 'None'):
+    if l in looks:
+        scene.view_settings.look = l
+        break
+scene.view_settings.exposure = -0.9
+print('view transform', scene.view_settings.view_transform, '| look', scene.view_settings.look,
+      '| exposure', scene.view_settings.exposure)
 
 # --- GPU -----------------------------------------------------------------
 prefs = bpy.context.preferences.addons['cycles'].preferences
