@@ -64,8 +64,10 @@ for (d = [1:6])
         linkage_at(d, d == raised_dot ? pin_lift : 0);
 
 // --- the guide ------------------------------------------------------------
+// Kept faint. It sits directly over the cam, and any more opacity than this
+// hides the track profile underneath, which is the thing worth seeing.
 if (show_comb)
-    color([0.35, 0.55, 0.75, 0.30])
+    color([0.35, 0.55, 0.75, 0.16])
         linkage_comb();
 
 // --- the reading surface --------------------------------------------------
@@ -75,7 +77,15 @@ if (show_top_plate)
         translate([0, 0, plate_under_y])
             top_plate();
 
+// The resin tile is OPAQUE and is the reading surface itself: insert_h is defined
+// as the reading-surface height above the plate underside, so its top face IS the
+// surface a finger touches. With it solid, a lowered dome is flush and invisible,
+// and the raised dome clearly stands proud. That contrast is the whole picture.
+//
+// It sits AT plate_under_y. An earlier version added (4 - 3.2) and lifted the tile
+// 0.8mm, which put the reading surface level with the plate rim instead of inside
+// the finger recess, and hid the lift.
 if (show_insert)
-    color([0.90, 0.90, 0.95, 0.22])
-        translate([0, 0, plate_under_y + (4 - 3.2)])
+    color([0.88, 0.89, 0.92])
+        translate([0, 0, plate_under_y])
             dot_insert();

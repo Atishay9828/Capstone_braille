@@ -48,7 +48,8 @@ on the track. Its other end carries the braille dot.
 
 *The cam disc below, the six linkages above it, and the reading surface on top.
 One linkage is orange. Its foot stands on a high section of its track, so its dot
-is raised. The other five are down.*
+is raised. The other five are down. The comb is left out of this view, and the
+enclosure is ghosted.*
 
 When the foot meets a high section, the linkage moves up. The dot rises above the
 reading surface. When the foot meets a low section, the linkage moves down. The
@@ -56,10 +57,11 @@ dot becomes flush with the surface.
 
 A return spring holds each linkage down against the disc.
 
-![A foot on the cam track](docs/img/foot_on_track.png)
+![One dot raised above the reading surface](docs/img/dot_raised.png)
 
-*A close view of the same orange linkage. Its foot rests on a raised section of
-the track. The grey linkage behind it sits on a low section.*
+*The reading surface, seen close. Five dots are down and sit flush, so a finger
+feels only the holes. The sixth dot stands 0.8 mm proud. A reader feels that
+difference, and that difference is the character.*
 
 ### One motor for six dots
 
