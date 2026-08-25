@@ -79,8 +79,10 @@ issues but never changes `cad/scad/*`. Source of truth: **`docs/ELECTRONICS_PLAN
   architectural rule, not a nicety.
 - 🔴 **I²C pull-ups: 2× 4.7kΩ at the BRAIN end ONLY, once, ever.** Repeating them per brick is
   the classic failure — 8 × 4.7k parallel = 590Ω, beyond what an I²C device can sink.
-- **Multi-cell forces hall sensors from AO to DO** (expanders have no ADC), which means a
-  per-cell trimmer calibration pass. Budgeted, not a redesign.
+- **Multi-cell forces hall sensors from AO to DO** (expanders have no ADC). ⚠️ **Superseded
+  2026-08-21:** rather than calibrate a trimmer per cell, the sensor changes to a bare **A3144
+  unipolar digital switch (TO-92)** — threshold and hysteresis are inside the chip, so there is
+  **nothing to calibrate at all**, and it fits the existing 4.5×3.5×1.6mm pocket unchanged.
 - **Plan: build both muscle boards WITH the expander** even though 2 cells don't need it — that
   makes the N-cell claim demonstrable to the panel rather than theoretical. Breadboard bring-up
   stays direct-GPIO.
@@ -131,6 +133,135 @@ can stop the ESP32 booting. An expander only earns its place at roughly 4 cells.
 **Still open (electronics):** buy the soldering station + solder + breadboard + strippers
 (~₹1,900); build the breadboard circuit (no soldering needed); the `+32` mid-dwell firmware fix
 is deferred because it is tied to the mechanical re-derivation.
+
+---
+
+## 🔧 CAD REQUESTS FROM THE ELECTRONICS FORK - 2026-08-21
+
+Raised while sourcing parts. **Electronics fork does not touch `cad/scad/*`** - these are
+requests, not changes. Ordered by how much they block a purchase.
+
+### 1. 🔴 DECIDE NOW - homing magnet goes to 8mm
+
+Mridul **cannot source 3x1mm magnets**. The only 3mm stock available is **3x3mm**, which is
+disqualified by the cam's own assert:
+
+```
+disk_base_thickness      2.0mm
+assert magnet_depth  <   1.5mm
+3x3mm magnet needs       3.2mm   -> cuts clean through the floor
+8x1mm magnet needs       1.2mm   -> fits, 0.8mm floor remains
+```
+
+3x3mm is the same failure the old 3x2mm BOM entry caused. He already owns 8x1mm.
+
+**Requested change:**
+```
+mech_layout.scad
+  homing_mag_dia   3.0  ->  8.0
+  homing_mag_thk   1.0      unchanged
+```
+
+Pocket becomes 8.4 x 1.2mm at r=17.35, spanning r 13.15..21.55 inside a 22.2mm disc. Fits
+radially, still passes the depth assert. Flex was checked and is a non-issue - 0.8mm of resin
+over an 8.4mm span deflects ~0.003mm under 1N, before the bonded magnet stiffens it.
+
+### 2. 🔴 CONSEQUENCE OF #1 - motor screws must be non-magnetic
+
+An 8mm magnet orbiting at r=17.35 passes **~8mm from the steel M4 screw at x=+9.85**, once per
+revolution. Estimated 0.2-0.5N attraction, about **5 mN*m of torque ripple - roughly 10% of the
+28BYJ-48's output**. With R-07 open, that margin is not available.
+
+**Fix is a purchase, not a CAD change: the M4 motor screws must be BRASS.** Recorded here so
+nobody later "helpfully" substitutes steel.
+
+**Length: following your `MASTER_BOM.md` line - M4 x 5mm thread-forming, and NOT x6 or x10 until
+the coupon proves >=0.5mm cam clearance.** The electronics fork had been quoting the stale M4x10
+from an older doc; your row is correct and this fork now defers to it.
+
+**The only thing this fork adds is the material: BRASS, not steel.** That is new information from
+the 8mm magnet decision above and is not yet reflected in `MASTER_BOM.md`. Please carry it across
+when the coupon fixes the length.
+
+### 3. Motor ear pilot depth - free thread engagement being discarded
+
+`base_plate.scad` gives both ears `motor_mount_pilot_depth = base_thickness - cam_pocket_depth`
+= **2mm**. But the two ears do not have the same material above them:
+
+| Ear | x | Material available | Pilot given |
+|---|---|---|---|
+| Left | -24.85 | **5mm** (clear of the cam pocket) | 2mm |
+| Right | +9.85 | 2mm (cam pocket floor above) | 2mm |
+
+The right ear is genuinely capped at 2mm. **The left one is not, and is the ear worth deepening**
+- M4 at 2mm engagement is 0.5x diameter and will strip under repeated reassembly. Load is fine
+(~2N); reassembly life is the concern.
+
+### 4. Pod lid fastener - M2 or M2.5? Still undecided, and it gates a print
+
+`BUILD_PACK.md` 7.3 proposed standardising the pod lid **M2 -> M2.5** so the whole project buys
+one insert size. It was flagged for this fork and never actioned. CAD is still M2
+(`insert_m2_dia = 3.2`, `lid_boss_tap = 2.0`).
+
+```
+esp32_pod_params.scad   (only if the pod is NOT yet printed)
+  insert_m2_dia    3.2  ->  3.5
+  insert_m2_depth  4.5  ->  5.5
+  lid clearance    2.2  ->  2.9
+```
+
+Post wall goes 1.65 -> 1.5mm, still fine for hot brass. **If the pod is already printed, do
+nothing** - two M2 screws beat a reprint. Mridul is buying an assorted M2/M2.5/M3 insert kit so
+he is covered either way. Confirmed pod lid is **2 screws**, not 4.
+
+### 5. Dock window 10 x 8mm caps the architecture at 6 conductors
+
+Worth knowing because it constrains more than the connector:
+
+```
+2x3 header (2.54mm)  =  7.62 x 5.08mm  ->  fits, 6 conductors
+2x4 header           = 10.16 x 5.08mm  ->  0.16mm too wide
+```
+
+**Direct-GPIO two-cell needs 7 conductors** (5V, GND, IN1-4, hall) - it does not fit through the
+existing window with *any* connector, pogo included. The MCP23017-per-brick plan drops it to 4
+(5V, GND, SDA, SCL), which is what makes the dock viable at all. A 5-pin pogo has been sourced
+and fits that budget with one spare.
+
+For 24 Aug the inter-cell link is a **loose wire bundle through the window** - no connector, no
+CAD change needed.
+
+### 6. Idea, not a request: 4 magnets per dock face
+
+If the dock is ever revisited - **4 magnets per face = 4 conductors = exactly the I2C bus**, using
+the magnets themselves as contacts (nickel plating conducts; wire clamped under the magnet, never
+soldered - neodymium degrades above ~80C).
+
+Geometry allows it: the centre is blocked (an 8.4mm pocket at y=0 collides with the 10mm window,
+which is why the 5th was dropped) but `y=+/-24` clears both the window and the corner bosses.
+
+⚠️ If you do this, **pockets to 1.5mm deep, not 1.2**. That recesses the magnet 0.5mm so a flat
+metal surface cannot bridge 5V to GND across an undocked cell face. At 1.2mm they sit 0.2mm proud
+of shorting.
+
+### 7. Hall sensor is changing to a bare A3144 - pocket is already correct
+
+Moving off the analog MH module (trimmer calibration per cell, and expanders have no ADC) to a
+bare **A3144 unipolar digital switch in TO-92**.
+
+```
+CAD pocket   4.5 x 3.5 x 1.6mm
+A3144 TO-92  4.1 x 3.0 x 1.5mm   -> fits, no change needed
+```
+
+**No action required** - recorded so the pocket is not "optimised" for the old module later.
+
+### 8. ⚠️ Contradiction inside `BUILD_PACK.md` Part 0
+
+The release-gate header now marks **Actuation as HOLD** (cam socket cannot install), but the prose
+two lines below still reads *"Three of four layers are real hardware."* Those disagree, and it is
+the section aimed at the 24 Aug panel. **Yours to resolve - it is a status claim about the
+mechanism, not about electronics.**
 
 ---
 

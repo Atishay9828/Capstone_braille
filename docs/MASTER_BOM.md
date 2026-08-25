@@ -46,7 +46,7 @@
 | Component | Qty | Status | Serves / Action |
 |---|---|---|---|
 | **M2.5 × 25mm bolts** | 4 | ❌ NEED TO BUY | `top_plate` counterbores → `base_plate` standoffs → `outer_box` corner bosses. Verified: 25mm gives ~9.5mm engagement. ~₹60 |
-| **M4 × 5mm thread-forming screws** | 2 | ⏸️ SELECT AFTER COUPON | Motor ears into the Ø3.3/3.4/3.5 coupon-selected through pilots. **Do not use M4×6 or M4×10** until the real ear and screw point prove ≥0.5mm cam clearance. No nuts. |
+| **M4 × 5mm thread-forming screws — BRASS** | 2 | ⏸️ SELECT AFTER COUPON | Motor ears into the Ø3.3/3.4/3.5 coupon-selected through pilots. **Do not use M4×6 or M4×10** until the real ear and screw point prove ≥0.5mm cam clearance. No nuts. ⚠️ **BRASS, not steel** (added 2026-08-21): the homing magnet is now 8×1mm and the screw at x=+9.85 sits ~8mm from its orbit — a steel screw adds ~5 mN·m of cogging, about 10% of motor output, which R-07 leaves no margin for. |
 | **M2 × 8mm self-tap** | 2 | ❌ NEED TO BUY | Pod lid → shell bosses. 🔴 **NOT M2×6** — through a 4mm lid that leaves only **2mm** of thread; 8mm gives 4mm. Verified. ~₹40 |
 | M2 × 6mm self-tap | 4 | ⏸️ DEFERRED | Muscle-board bosses. Not used in the prototype (ULN2003 sits on the pocket floor). |
 | **2mm OD micro compression springs** | 6 + spares | ❌ NEED TO BUY | 🔴 **CRITICAL, no substitute.** 2.0mm OD, ~0.3mm stainless wire, ~4mm free length. Pen springs (4mm) **cannot** work — braille rows are 2.6mm apart. Buy an **assortment kit** (200–400pcs) so you're not betting on one guess. ~₹500 |
