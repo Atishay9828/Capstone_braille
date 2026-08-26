@@ -1,3 +1,26 @@
+// =========================================================
+// SUPERSEDED 2026-08-26 - THIS PART IS NO LONGER IN THE ASSEMBLY
+//
+// The mid-plate was a 2mm shelf resting on a 2mm ledge in the outer box, and the
+// motor stood on it. Together those 4mm were exactly what stopped the cam seating:
+// the cam hub is a 4mm tube that can only reach the TOP of the motor's own 2mm
+// shaft boss, never the mounting face, so the hub finished 4mm short.
+//
+// Both are gone. The motor now sits directly on a cup moulded into the outer box
+// floor - see motor_cup in outer_box.scad. The can rests at z=18 exactly as it
+// would have on this plate, so nothing above it moved.
+//
+// Kept only for reference. Two things in here were wrong and should NOT be copied:
+//   * the wire-block notch was cut on +Y. The shaft is offset to +X of the can
+//     centre, so the block points -X. The motor would not have dropped in.
+//   * the collar ID was a guess (29.5 for an assumed 28mm can). The real can is
+//     28.1mm - see motor_spec.scad, which now owns every motor dimension.
+//
+// It is still in the release G-code manifest and in tools/validate_print_assets.py.
+// Removing it from there is a release-tooling change and belongs in one
+// coordinated pass, not here.
+// =========================================================
+
 // mid_plate_v1.scad
 plate_l = 59.0;  // 0.5mm clearance per side in the 60mm cavity
 plate_w = 59.0;

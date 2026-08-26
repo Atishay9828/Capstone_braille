@@ -60,6 +60,18 @@ motor_mount_spacing  = 34.7;   // MEASURED M8: owned motor ear spacing
 // coupon-proven screw that fully engages the through pilot and stays >=0.5mm below
 // the cam. The current production stack remains HOLD.
 motor_mount_pilot    = 3.3;    // M4 thread-forming pilot (drill to 3.4 if it binds)
+// 2026-08-26: THESE NO LONGER LINE UP WITH THE MOTOR.
+// The motor dropped 4mm when the mid-plate went, so its ears are now at z=37 while
+// this plate's underside is at z=41. The pilots below are 4mm away from the ears.
+//
+// That is deliberate and not yet a defect, because the mount no longer relies on
+// them: every force in the mechanism points DOWN, so the cup's seat carries the
+// load and the wire block in its notch carries the torque. Screws were retention,
+// not structure.
+//
+// If retention screws are wanted back, they need 4mm-tall bosses on this plate's
+// underside - which print in mid-air unless the plate is run upside down. Decide
+// that with the R-07 pass, not before.
 motor_mount_pilot_depth = stack_option_a ? base_thickness + 0.1
                                          : base_thickness - cam_pocket_depth;
 

@@ -1,5 +1,6 @@
 // outer_box v6.1 — Physical-reality fixes after PETG fit-test (Kobra Neo, 0.4mm nozzle)
 include <stack_options.scad>
+include <motor_spec.scad>
 include <dock_interface.scad>
 
 shell_length      = 68;
@@ -30,6 +31,17 @@ internal_width    = 60;
 // Cost: 2mm of electronics headroom. ULN2003 with wires soldered flat is ~12mm,
 // so 14mm still clears it, plus the mid-plate relief slot adds 2mm at one corner.
 elec_pocket_h     = 14;
+
+// --- MOTOR CUP (v8.4) ---
+// Sizes come from motor_spec.scad. The cup stands on the box floor, so it prints
+// vertically with no supports - the reason it is here and not hanging off the
+// base plate, which would print in mid-air.
+motor_seat_z      = floor_thickness + elec_pocket_h;   // 18 - the can bottom sits here
+motor_cup_bore    = motor_can_dia + 1.4;               // 0.7mm/side around the can
+motor_cup_od      = motor_cup_bore + 5.0;              // 2.5mm wall
+motor_cup_top     = motor_seat_z + 8;                  // 8mm of grip on the can
+motor_seat_bore   = motor_cup_bore - 3.5;              // leaves a 1.75mm rest ring
+motor_wire_notch_w = motor_wire_block_w + 2.0;
 // THE STACK CLOSES EXACTLY. Verified by reading the live values, not the comments:
 //     floor            0 .. 4     floor_thickness
 //     elec pocket      4 .. 18    elec_pocket_h = 14
@@ -277,17 +289,45 @@ union() {
         front_chevron_groove();
     }
 
-    // 2mm Ledge at Z=20 for Mid-Plate
-    // Outer 0.2mm wider than cavity to extend into walls (avoids CGAL coplanar face)
-    // Inner cutout 57×57 to clear Ø8 bosses at (±26,±21)
-    translate([0, 0, floor_thickness + elec_pocket_h]) difference() {
-        rounded_box(internal_length + 0.2, internal_width + 0.2, 2, 1.0);
-        translate([0,0,-1]) rounded_box(internal_length - 3, internal_width - 3, 4, 1.0);
-        // Real passages through the ledge, aligned to the mid-plate's ±X pogo
-        // and +Y Hall notches. Previously the continuous ring sealed all three.
-        translate([-internal_length/2 - 1, -3, -1]) cube([7, 6, 4]);
-        translate([ internal_length/2 - 6, -3, -1]) cube([7, 6, 4]);
-        translate([-3, internal_width/2 - 6, -1]) cube([6, 7, 4]);
+    // --- MOTOR CUP (v8.4) — replaces the mid-plate and its ledge ---
+    //
+    // WHY THE MID-PLATE IS GONE. The cam hub is a 4mm tube under the disc, and it
+    // can only reach down to the TOP of the motor's own 2mm shaft boss, never to
+    // the mounting face. With the motor standing on a 2mm shelf that sat on a 2mm
+    // ledge, the hub finished 4mm short and the cam could not seat at all.
+    //
+    // Shelf 2mm + ledge 2mm = exactly the 4mm needed. Drop both, and the motor
+    // sits 4mm lower with no change to box height and no change to the 14mm
+    // electronics bay:
+    //
+    //     floor         0.0 ..  4.0
+    //     elec bay      4.0 .. 18.0
+    //     motor can    18.0 .. 37.0     <- rests on this cup's seat at 18.0
+    //     shaft boss   37.0 .. 39.0
+    //     cam hub      39.0 .. 43.0     <- now lands exactly on the boss
+    //     cam disc     43.0 .. 45.0     <- cam_flat_z, unchanged
+    //
+    // NO SCREWS ARE NEEDED. Every force in this mechanism points DOWN: the springs
+    // push the linkages onto the cam, the cam onto the shaft, the shaft onto the
+    // motor. Nothing lifts it. The seat carries that load and the wire block sitting
+    // in its notch carries the torque reaction. The two M4 ear screws become
+    // retention for handling, not the mount.
+    translate([-motor_shaft_off, 0, 0]) difference() {
+        cylinder(d = motor_cup_od, h = motor_cup_top, $fn = 80);
+
+        // bore that holds the can, from the seat upward
+        translate([0, 0, motor_seat_z])
+            cylinder(d = motor_cup_bore, h = motor_cup_top - motor_seat_z + 1, $fn = 80);
+
+        // lighten below the seat, leaving a shoulder ring for the can to rest on
+        translate([0, 0, -1])
+            cylinder(d = motor_seat_bore, h = motor_seat_z + 1, $fn = 80);
+
+        // WIRE BLOCK NOTCH, on -X.
+        // The shaft is offset to +X of the can centre, so the block points -X.
+        // The old mid-plate collar cut this on +Y, which is 90 degrees wrong.
+        translate([-motor_cup_od, -motor_wire_notch_w / 2, motor_seat_z])
+            cube([motor_cup_od, motor_wire_notch_w, motor_cup_top - motor_seat_z + 1]);
     }
 
     // Corner Bosses — M2.5 tap pilot for through-bolt
