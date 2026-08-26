@@ -5,7 +5,26 @@ include <dock_interface.scad>
 
 shell_length      = 68;
 shell_width       = 68;
-shell_height      = 58 + stack_repair_raise;
+// =========================================================
+// v8.5 - THE MOTOR NOW SITS ON THE BOX FLOOR. STACK DROPPED 14mm.
+//
+// It used to stand on a 2mm mid-plate on a 2mm ledge, above a 14mm electronics
+// bay. The bay is gone: the driver board now stands on edge against the +X wall,
+// which frees the whole floor. Nothing else was holding the motor up.
+//
+//     floor        0.0 ..  4.0
+//     motor can    4.0 .. 23.0     19mm, MEASURED
+//     shaft boss  23.0 .. 25.0     2mm, part of the motor
+//     cam hub     25.0 .. 29.0     4mm tube under the disc
+//     cam disc    29.0 .. 31.0     -> cam_flat_z = 31
+//     base plate  27.0 .. 32.0     5mm, 3mm cam pocket from its top
+//     standoffs   32.0 .. 40.0     8mm
+//     top plate   40.0 .. 44.0     -> shell_height = 44
+//
+// Every gap above the motor is unchanged, so the tower simply translated down.
+// link_total_h stays 12.2mm and the already-ordered resin linkages stay valid.
+// =========================================================
+shell_height      = 44 + stack_repair_raise;
 // v6.2: total height stays 58 = 54mm walls + 4mm over-cap (top_plate) sitting on top.
 // Only the OUTER shell extrusion is shortened to wall_top_h; every other feature
 // (mag_z, chevron at shell_height-22, ledge, bosses, cavity) still references
@@ -36,11 +55,10 @@ elec_pocket_h     = 14;
 // Sizes come from motor_spec.scad. The cup stands on the box floor, so it prints
 // vertically with no supports - the reason it is here and not hanging off the
 // base plate, which would print in mid-air.
-motor_seat_z      = floor_thickness + elec_pocket_h;   // 18 - the can bottom sits here
+motor_seat_z      = floor_thickness;   // 4 - the can bottom rests on the floor itself
 motor_cup_bore    = motor_can_dia + 1.4;               // 0.7mm/side around the can
 motor_cup_od      = motor_cup_bore + 5.0;              // 2.5mm wall
 motor_cup_top     = motor_seat_z + 8;                  // 8mm of grip on the can
-motor_seat_bore   = motor_cup_bore - 3.5;              // leaves a 1.75mm rest ring
 motor_wire_notch_w = motor_wire_block_w + 2.0;
 // THE STACK CLOSES EXACTLY. Verified by reading the live values, not the comments:
 //     floor            0 .. 4     floor_thickness
@@ -58,8 +76,8 @@ motor_wire_notch_w = motor_wire_block_w + 2.0;
 // analysis script that HARD-CODED elec_pocket_h = 16 instead of reading the file.
 // Ironic, given how much of this project's history is duplicated-constant bugs.
 // If you re-derive this stack, read every value from source. Do not trust prose.
-base_plate_z      = 41;    // 4(floor) + 14(elec) + 2(ledge) + 2(midplate) + 19(motor, M2 measured)
-boss_height       = 37;    // boss top = z41 = base_plate bottom
+base_plate_z      = 27;    // 4(floor) + 19(motor) + 2(boss) + 4(hub) + 2(disc) - 3(pocket) - 5 + 5
+boss_height       = 23;    // boss top = z27 = base_plate bottom
 
 // Magnetic snap — NeFeB disc glue-in pockets
 // v6.1: real magnets measured 8mm dia × 1mm thick (CAD previously assumed 3×2).
@@ -72,7 +90,7 @@ mag_depth         = 1.2;   // 1mm magnet + glue gap (4mm wall keeps 2.8mm behind
 // Keep the proven dock interface at its existing absolute height. Option A adds
 // 4mm only above the mechanism; moving the magnets would needlessly invalidate
 // mating parts and the existing pogo wire route.
-mag_z             = 29;
+mag_z             = 13.5;  // v8.5: kept 2mm under dock_center_z, both dropped 14
 mag_y_pos         = [-14, 14];
 
 // Pogo carrier pocket params (behind each ±X window)
@@ -319,9 +337,8 @@ union() {
         translate([0, 0, motor_seat_z])
             cylinder(d = motor_cup_bore, h = motor_cup_top - motor_seat_z + 1, $fn = 80);
 
-        // lighten below the seat, leaving a shoulder ring for the can to rest on
-        translate([0, 0, -1])
-            cylinder(d = motor_seat_bore, h = motor_seat_z + 1, $fn = 80);
+        // No lightening below the seat any more. The seat IS the floor, so there is
+        // nothing to hollow out; the cup is simply a locating ring standing on it.
 
         // WIRE BLOCK NOTCH, on -X.
         // The shaft is offset to +X of the can centre, so the block points -X.

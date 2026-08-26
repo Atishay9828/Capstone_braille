@@ -113,10 +113,10 @@ homing_mag_r     = 17.35;  // radius of the magnet centre on the disc
 homing_mag_angle = 90;     // +Y axis
 
 // --- SHARED VERTICAL STACK (world z, mm from outer-box floor) ---
-cam_flat_z    = 45.0 + stack_repair_raise;  // cam surface, dot DOWN
+cam_flat_z    = 31.0 + stack_repair_raise;   // v8.5: was 45, motor now on the floor  // cam surface, dot DOWN
 pin_lift      = 0.8;   // cam bump height = how far a dot rises
-plate_under_z = 54.0 + stack_repair_raise;  // top plate underside
-plate_top_z   = 58.0 + stack_repair_raise;  // top plate OUTER top surface
+plate_under_z = 40.0 + stack_repair_raise;   // v8.5: was 54  // top plate underside
+plate_top_z   = 44.0 + stack_repair_raise;   // v8.5: was 58  // top plate OUTER top surface
 
 // The plate has a shallow finger-pad recess over its middle, so the surface the
 // dots actually emerge through is 0.8mm BELOW the rim. v7.2 bug fix: link_total_h
