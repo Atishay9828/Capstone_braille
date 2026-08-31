@@ -19,7 +19,7 @@ conversion. Nothing is rendered here, so the usual "work in metres" advice does 
 apply.
 
 OBJECT NAMES ARE AN API. The web app looks parts up by name — outer_box, top_plate,
-dot_insert, mid_plate, base_plate, cam, linkage_1..6, motor_body, motor_shaft,
+dot_insert, base_plate, cam, linkage_1..6, motor_body, motor_shaft,
 motor_ear_l, motor_ear_r. Renaming anything here breaks sim/3d/app.js.
 """
 import bpy
@@ -35,26 +35,38 @@ OUT = os.path.join(OUT_DIR, "braillix.glb")
 
 P = json.load(open(os.path.join(ROOT, "sim", "braillix_params.json")))
 CAM_FLAT = P["stack"]["cam_flat_z"]          # 45.0
-BASE_PLATE_Z = 41.0                          # base-plate underside == motor face
 
 # name -> (z offset, hex colour, alpha, metallic, roughness)
 # Z values are the NOMINAL INTENDED stack. Two 2mm errors in the real stack are still
 # being re-derived (see .ai-sync/handoff.md); this model shows design intent and the
 # narration says so.
+# Z offsets are DERIVED, never typed. v8.5 dropped the whole tower 14mm (motor
+# straight onto the box floor, mid-plate deleted) and every literal here would
+# have been silently wrong — which is exactly the failure this project keeps
+# hitting. Read the stack from the same JSON the simulator reads.
+with open(os.path.join(ROOT, "sim", "braillix_params.json"), encoding="utf-8") as _f:
+    _P = json.load(_f)
+CAM_FLAT_Z = _P["stack"]["cam_flat_z"]          # 31.0  cam surface, dot DOWN
+PLATE_UNDER_Z = _P["stack"]["plate_under_z"]    # 40.0  top plate underside
+DISC_THK = _P["cam"]["disk_base_thickness"]     # 2.0
+BASE_THK, CAM_POCKET = 5.0, 3.0                 # base_plate.scad:34,39
+
+BASE_PLATE_TOP = CAM_FLAT_Z + CAM_POCKET - DISC_THK   # 32.0
+BASE_PLATE_Z = BASE_PLATE_TOP - BASE_THK              # 27.0 == motor face
+CAM_Z = BASE_PLATE_TOP - CAM_POCKET                   # 29.0 disc underside
+
 PARTS = {
-    "outer_box":   (0.0,          "5A6B7C", 1.00, 0.05, 0.75),
-    "mid_plate":   (20.0,         "8A8A8A", 1.00, 0.10, 0.85),
-    "base_plate":  (BASE_PLATE_Z, "6E6E6E", 1.00, 0.10, 0.85),
-    "braille_cam": (43.0,         "E94560", 1.00, 0.35, 0.35),  # local z=2 -> flat at 45
-    "top_plate":   (54.0,         "EDE6D6", 1.00, 0.05, 0.70),
-    "dot_insert":  (54.0,         "FAFAFA", 1.00, 0.05, 0.35),
-    # v8.2: linkage_comb.scad measures rest_z RELATIVE to cam flat, so the STL
-    # exports flat for printing and has to be lifted by cam_flat_z here. Its base
-    # then lands on the base-plate top at 46, which is what it rests on.
-    # It closes a pocket round every linkage foot, which is what stops the feet
-    # sliding tangentially now that they only REST on the cam.
-    "linkage_comb": (45.0,        "9AA3B2", 1.00, 0.05, 0.60),
+    "outer_box":   (0.0,            "5A6B7C", 1.00, 0.05, 0.75),
+    "base_plate":  (BASE_PLATE_Z,   "6E6E6E", 1.00, 0.10, 0.85),
+    "braille_cam": (CAM_Z,          "E94560", 1.00, 0.35, 0.35),
+    "top_plate":   (PLATE_UNDER_Z,  "EDE6D6", 1.00, 0.05, 0.70),
+    "dot_insert":  (PLATE_UNDER_Z,  "FAFAFA", 1.00, 0.05, 0.35),
+    # linkage_comb.scad measures rest_z RELATIVE to cam flat, so the STL exports
+    # flat for printing and is lifted by cam_flat_z here.
+    "linkage_comb": (CAM_FLAT_Z,    "9AA3B2", 1.00, 0.05, 0.60),
 }
+# mid_plate is GONE as of 2026-08-26 (dc42248). The motor stands on a cup in the
+# box floor; the plate and its ledge were the 4mm that stopped the cam seating.
 RENAME = {"braille_cam": "cam", "linkage_comb": "comb"}
 LINKAGE_MAT = ("C8CDD4", 1.00, 0.90, 0.25)   # shiny metal, as specified
 
@@ -186,7 +198,7 @@ def main():
     print(f"  size     {os.path.getsize(OUT)/1e6:.2f} MB")
     print(f"  output   {OUT}\n")
 
-    required = {"outer_box", "top_plate", "dot_insert", "mid_plate", "base_plate",
+    required = {"outer_box", "top_plate", "dot_insert", "base_plate", "comb",
                 "cam", "motor_body", "motor_shaft"} | {f"linkage_{d}" for d in range(1, 7)}
     missing = required - set(names)
     if missing:

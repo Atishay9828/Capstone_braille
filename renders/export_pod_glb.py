@@ -20,7 +20,7 @@ STL = os.path.join(ROOT, "cad", "stl")
 OUT = os.path.join(ROOT, "sim", "3d", "pod.glb")
 
 # from cad/scad/esp32_pod_params.scad
-POD_HEIGHT, LID_H = 58.0, 4.0
+POD_HEIGHT, LID_H = 44.0, 4.0   # v8.5: pod_height tracks the cell shell, 58 -> 44
 
 PARTS = {                      # name: (z offset, hex colour, metal, rough)
     "esp32_pod_shell": (0.0, "5A6B7C", 0.05, 0.75),

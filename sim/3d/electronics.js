@@ -12,25 +12,29 @@
 import * as THREE from 'three';
 
 // ---- dimensions, all from the CAD ------------------------------------
+// v8.5 (2026-08-26) dropped the whole tower 14mm: the motor now stands on a cup in
+// the box floor and the mid-plate is gone. Every z in this file moved with it.
 export const POD = {
-  length: 68, width: 68, height: 58,   // esp32_pod_params.scad:21-23
+  length: 68, width: 68, height: 44,   // esp32_pod_params.scad — 58 -> 44
   wall: 4, floor: 3,
   devkit: { l: 51.5, w: 28.0, t: 1.6, xOffset: -2 },   // :44-45, :57
   hdr: { pitch: 25.6, w: 2.7, h: 8.5, len: 40.0 },     // :49-52
   boardUnderZ: 10.5,                                   // :81 pod_floor+hdr_strip_h-channel
   usb: { w: 14, h: 9, z: 9.5 },                        // :78-82
   jack: { dia: 11.5, x: -20, y: 18 },                  // :66-71
-  pogo: { w: 10, h: 8, z: 31, recess: 1 },              // :87-90
+  pogo: { w: 10, h: 8, z: 15.5, recess: 1 },            // dock_interface.scad dock_center_z
   mag: { dia: 8.4, ys: [-14, 14], z: 29 },             // :96-99
 };
-const CELL = { length: 68, width: 68, height: 58 };
+const CELL = { length: 68, width: 68, height: 44 };   // outer_box shell_height
 
 // 28BYJ-48, 5V geared stepper. The shaft is OFFSET from the body centre by 8mm —
 // this is the single most commonly wrong detail in models of this motor.
+// All MEASURED, from cad/scad/motor_spec.scad — which now owns every motor number.
 export const MOTOR = {
-  dia: 28.0, height: 19.0, xOffset: -8.0,
-  shaftDia: 5.0, shaftLen: 9.5, earSpan: 35.0, earW: 7.0, earT: 1.0,
-  faceZ: 41.0,                                          // base-plate underside
+  dia: 28.1, height: 19.0, xOffset: -7.5,
+  shaftDia: 5.0, shaftLen: 9.5, earSpan: 34.7, earW: 7.0, earT: 1.0,
+  seatZ: 4.0,             // can bottom sits on the box floor (floor_thickness)
+  faceZ: 23.0,            // 4 + 19 — the mounting face, was 41
 };
 
 // ---- shared materials -------------------------------------------------
@@ -307,7 +311,7 @@ const pogoY = i => -3.81 + i * 2.54;
 // yet, and pretending otherwise is why several wires used to stop in mid-air: SDA,
 // SCL and the four IN lines have nothing on a ULN2003 to land on. They terminate
 // here instead, on a real footprint, which is the honest picture.
-const EXPANDER = [-20, -4, 5.2];
+const EXPANDER = [-20, -4, 4.6];   // on the box floor (4mm) now the bay is gone
 function expanderSlot() {
   const m = mats(), g = new THREE.Group();
   g.name = 'expander_slot';
@@ -326,19 +330,18 @@ function podHarness() {
   const cols = [W.red, W.black, W.blue, W.yellow];
   const hdrY = POD.hdr.pitch / 2;                       // +Y header row
   const hdrZ = POD.boardUnderZ - 2.5;                   // just under the pins
-  // Hug the floor, then climb the +X/+Y corner. Sparse control points made
-  // Catmull-Rom bow up through the middle of the cavity like a skipping rope.
   const pinX = POD.length / 2 - POD.pogo.recess - 2.5;
+  // v8.5: the dock centre dropped to 15.5, barely above the board, so these no
+  // longer climb a wall — they run out along the floor and lift at the end.
   for (let i = 0; i < 4; i++) {
     const x0 = POD.devkit.xOffset + 8 + i * 2.54;
     const o = (i - 1.5) * 1.1;
     g.add(wire([
       [x0, hdrY, hdrZ],
       [x0 + 3, hdrY + 3 + o, POD.floor + 2],
-      [10, 18 + o, POD.floor + 1.5],                    // along the floor
-      [20, 19 + o, POD.floor + 3],
-      [26, 16 + o, 14],                                 // up the corner
-      [27.5, 9 + o, 24],
+      [12, 18 + o, POD.floor + 1.5],
+      [22, 15 + o, POD.floor + 3],
+      [27, 8 + o, 11],
       [pinX, pogoY(i), POD.pogo.z],
     ], cols[i], 0.85));
   }
@@ -353,19 +356,20 @@ function cellHarness() {
   g.name = 'cell_wiring';
   const cols = [W.red, W.black, W.blue, W.yellow];
   const FACE = -CELL.length / 2;                        // -34, the dock face
+  const FLOOR = 4.6;                                    // box floor top
 
-  // 5V and GND land on the driver's own power header; SDA and SCL have nothing on a
-  // ULN2003 to connect to, so they run to the expander footprint.
-  const pwrPin = i => [-8.5, -1.3 + i * 2.54, 9.3];
+  // pads -> across the open floor to the expander footprint. There is no 14mm
+  // bay any more, so nothing has to thread down a pocket wall.
   const exPin = i => [EXPANDER[0] - 8.9 + i * 2.54, EXPANDER[1] + 6.5, EXPANDER[2] + 0.6];
+  const drvPwr = [26.6, -4, 14];                        // driver's power header, on edge
   for (let i = 0; i < 4; i++) {
     const y = pogoY(i);
-    const end = i < 2 ? pwrPin(i) : exPin(i + 2);
+    const end = i < 2 ? drvPwr : exPin(i + 2);
     g.add(wire([
-      [FACE + 4, y, POD.pogo.z],           // the pad's inner face, not inside the wall
-      [FACE + 6, y * 1.6, 26],
-      [FACE + 9, y * 2.0, 15],
-      [end[0] - 8, end[1] + (i < 2 ? -3 : 4), end[2] + 4],
+      [FACE + 4, y, POD.pogo.z],
+      [FACE + 8, y * 1.8, 12],
+      [-18, y * 2.2, FLOOR + 2],
+      [end[0] - 10, end[1] + (i < 2 ? -4 : 4), FLOOR + 2],
       end,
     ], cols[i], 0.85));
   }
@@ -373,38 +377,32 @@ function cellHarness() {
   // driver IN1..IN4 -> the expander that will drive them
   for (let i = 0; i < 4; i++)
     g.add(wire([
-      [-8.5, -18.8 + i * 2.54, 9.3],
-      [-12, -17 + i * 1.4, 12],
-      [-17, -13 + i * 1.0, 11],
+      [26.6, -12 + i * 2.54, 14],
+      [22, -14 + i * 1.4, FLOOR + 3],
+      [4, -14 + i * 1.2, FLOOR + 1.5],
       exPin(i),
     ], [W.green, W.orange, W.purple, W.white][i], 0.8));
 
-  // Driver's white plug -> the motor. Up through the +X mid-plate wire notch, then
-  // round to the can. Held below z=40 so it never enters the base plate (41..46) or
-  // the cam pocket, which is what the old route cut straight through.
-  const socket = [15, -15, 10.3];
+  // driver's white plug -> the motor. Both are on the floor now, so this is a
+  // short hop across it rather than a climb through a mid-plate notch.
   const CAN = [MOTOR.xOffset, 0], R = MOTOR.dia / 2;
   for (let i = 0; i < 5; i++) {
     const o = (i - 2) * 1.2;
     g.add(wire([
-      [socket[0] - 5 + i * 2.54, socket[1], socket[2] + 4],
-      [socket[0] + 6, socket[1] - 3 + o, 14],
-      [27, -17 + o, 18.5],                               // +X notch through the plate
-      [24, -14 + o, 24],                                 // hug the plate, then straight
-      [12, -13 + o, 28],
-      [CAN[0] + R * 0.62, -11 + o, 29],                  // onto the can's near side
+      [26.6, -18 + i * 2.0, 10],
+      [22, -20 + o, FLOOR + 2],
+      [8, -19 + o, FLOOR + 2],
+      [CAN[0] + R * 0.7, -13 + o, 9 + o * 0.4],          // onto the can's near side
     ], [W.blue, W.purple, W.yellow, W.orange, W.red][i], 0.8));
   }
 
-  // hall legs -> the expander, hugging the underside of the base plate and staying
-  // outside the can's 14mm radius the whole way
+  // hall legs -> the expander, hugging the underside of the base plate (27)
   for (const [c, dy, i] of [[W.red, -1.27, 5], [W.black, 0, 6], [W.white, 1.27, 7]])
     g.add(wire([
-      [dy, 17.35, 38.5],
-      [dy - 4, 21, 35],
-      [-24, 22, 28],
-      [-30, 14, 21],                                     // -X notch
-      [-29, 2, 13],
+      [dy, 17.35, 25.5],
+      [dy - 4, 21, 23],
+      [-26, 22, 16],
+      [-30, 12, 9],
       exPin(i),
     ], c, 0.8));
   return g;
@@ -476,9 +474,12 @@ export function buildCellElectronics(realMotor) {
   const m = mats(), g = new THREE.Group();
   g.name = 'cell_electronics';
 
+  // The 14mm electronics bay no longer exists. outer_box.scad:12 — "the driver
+  // board now stands on edge against the +X wall, which frees the whole floor".
   const drv = uln2003();
   drv.name = 'uln2003';
-  drv.position.set(6, -6, 5.0);              // in the 14mm electronics pocket
+  drv.rotation.set(0, Math.PI / 2, 0);       // PCB plane -> vertical, facing -X
+  drv.position.set(29, -4, 20);
   g.add(drv);
 
   const mot = realMotor || stepper28byj();
@@ -487,11 +488,11 @@ export function buildCellElectronics(realMotor) {
   mot.position.set(realMotor ? 0 : MOTOR.xOffset, 0, MOTOR.faceZ - MOTOR.height);
   g.add(mot);
 
-  // base plate spans 41..46; the cam pocket floor is at 43 and the hall pocket sits
-  // 0.4mm under it, so the sensor body occupies 41.0..42.6 — well clear of the cam.
+  // base plate now spans 27..32; the cam pocket floor is at 29 and the hall pocket
+  // sits 0.4mm under it, so the sensor body occupies 27.0..28.6 — clear of the cam.
   const hall = hallSensor();
   hall.name = 'hall';
-  hall.position.set(0, 17.35, 41.8);
+  hall.position.set(0, 17.35, 27.8);
   g.add(hall);
 
   const pads = pogoPads();
