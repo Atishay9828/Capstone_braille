@@ -112,6 +112,75 @@ two M4 ear screws as retention, not as the primary mount.
 
 ---
 
+---
+
+## 2026-08-26 - TWO NOTES FOR THE OTHER FORKS
+
+### FOR THE ELECTRONICS FORK - the driver board no longer fits, and the fix is a cut
+
+The stack dropped 14mm (cell and pod are both 44mm now, see the section above), and
+that removed the flat electronics bay under the motor. The board was going to stand
+on edge against the +X wall instead. It does not fit:
+
+```
+cavity floor top ............. 4.0
+base plate ................... 27.0 .. 32.0    <- cuts across
+clear height for a board ..... 23.0 mm
+
+ULN2003 module ............... 35 x 32 mm
+standing on its long edge .... 32 mm
+                               needs 32, has 23
+```
+
+It cannot poke past the plate either: the base plate is 58 x 50 in a 60 x 60
+cavity, leaving 5mm of gap in Y and 1mm in X. Lying flat does not work either -
+beside the motor can there is only 23.4mm of width against a 32mm board.
+
+**The module is 35 x 32 almost entirely because of the white JST socket, the four
+LEDs and the header.** The driver itself is a ULN2003AN in DIP-16: 20 x 7 x 4mm.
+
+Options, best first:
+
+1. **Cut the board.** Remove the LED strip and trim past it. That gets roughly
+   35 x 22, which stands in the 23mm with 1mm to spare. The LEDs are indicators in
+   series with the outputs, so losing them costs nothing electrically.
+2. **Bare ULN2003AN on a scrap of perfboard**, about 25 x 15mm. Fits anywhere,
+   roughly Rs 20. Preferred if the cut goes wrong.
+3. Do NOT desolder the DIP-16 off the module without hot air - it lifts pads.
+
+**Measure the real board first.** Some of these are 42 x 31 rather than 35 x 32,
+and if one edge already clears 23mm none of this matters.
+
+Also still true and unchanged: the driver cannot move into the pod. The dock window
+is 10 x 8mm, which caps the interface at six conductors, and four coils plus 5V and
+GND already uses all six with nothing left for the Hall sensor.
+
+### FOR THE SIMULATION FORK - one stale warning, one cosmetic point
+
+**`sim/3d/electronics.js:529` is out of date and should be deleted.** It reads:
+
+> "the shaft is 10mm long but only 4.8mm of it fits inside the cam hub, so 5.2mm
+> currently stands proud of the base plate and into the linkage space. That is a
+> real unresolved clash, not a drawing error."
+
+Neither the numbers nor the conclusion hold any more. The shaft is 9.5mm, not 10,
+and the first 2mm is the shaft boss. The bore is now a BLIND 8.1mm socket reaching
+up into a boss on the disc centre, so the shaft is fully swallowed with 0.5mm of
+roof over its tip and nothing projects through the cam face at all. Leaving that
+text in reports a fixed defect as live.
+
+**`sim/3d/electronics.js:231`** draws the output shaft as a plain 5mm cylinder for
+its whole 9.5mm. The real first 2mm is the 9mm shaft boss. The tip lands in the
+right place so nothing downstream is wrong; the base just looks thinner than the
+part. Worth fixing when that file is next open.
+
+Worth knowing while you are in there: `braille_cam.scad` carries its geometry
+TWICE, once at top level and once in `module braille_cam()`. They had silently
+diverged - the top level kept the original broken 3.5mm bore while the module had
+the repaired one. Both are correct as of 2026-08-26, but anything reading that file
+should be aware the duplication exists until it is collapsed.
+
+
 ## 2026-08-19 PRINT RELEASE AUDIT - CURRENT SOURCE OF TRUTH
 
 **Full product remains NO-GO.** Use `docs/PRINT_RELEASE_2026-08-19.md` and
