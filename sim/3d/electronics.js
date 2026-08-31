@@ -33,6 +33,7 @@ const CELL = { length: 68, width: 68, height: 44 };   // outer_box shell_height
 export const MOTOR = {
   dia: 28.1, height: 19.0, xOffset: -7.5,
   shaftDia: 5.0, shaftLen: 9.5, earSpan: 34.7, earW: 7.0, earT: 1.0,
+  bossDia: 9.0, bossH: 2.0,   // raised ring at the shaft base; the hub stops on it
   seatZ: 4.0,             // can bottom sits on the box floor (floor_thickness)
   faceZ: 23.0,            // 4 + 19 — the mounting face, was 41
 };
@@ -223,12 +224,15 @@ function uln2003() {
 // bulge and the connector are what make it recognisable as this exact motor.
 function stepper28byj() {
   const m = mats(), g = new THREE.Group();
-  const { dia, height, xOffset, shaftDia, shaftLen, earSpan, earW, earT } = MOTOR;
+  const { dia, height, xOffset, shaftDia, shaftLen, earSpan, earW, earT,
+          bossDia, bossH } = MOTOR;
   g.add(cyl(dia, height, m.motorCan, [0, 0, height / 2], 'motor_can', 32));
   g.add(cyl(dia - 1.5, 0.8, m.motorCan, [0, 0, height - 0.4], null, 32));   // crimped lid
-  // gearbox boss and the offset output shaft
-  g.add(cyl(9.0, 1.5, m.motorCan, [-xOffset, 0, height + 0.75], null, 20));
-  g.add(cyl(shaftDia, shaftLen, m.tin, [-xOffset, 0, height + shaftLen / 2], 'shaft', 16));
+  // The shaft boss, then the shaft. shaftLen is measured face-to-tip, so the
+  // 5mm cylinder only covers what is left above the boss.
+  g.add(cyl(bossDia, bossH, m.motorCan, [-xOffset, 0, height + bossH / 2], null, 20));
+  const stub = shaftLen - bossH;
+  g.add(cyl(shaftDia, stub, m.tin, [-xOffset, 0, height + bossH + stub / 2], 'shaft', 16));
   // mounting ears
   for (const s of [-1, 1])
     g.add(box(earW, earT, earW, m.tin, [s * earSpan / 2 - 0, 0, height - earW / 2]));
@@ -526,7 +530,7 @@ export const PART_INFO = [
   ['pod_shell', 'POD SHELL (PETG)',
    'The real printed part, straight from esp32_pod_shell.scad - 4mm walls, the USB service opening, the pogo recess, the magnet pockets and the slotted grille that keeps the WiFi antenna out of solid plastic.'],
   ['stepper', '28BYJ-48 STEPPER  (model: NandouTech, CC-BY)',
-   'The only moving actuator. 28mm can, 19mm tall, 4096 steps per turn. Its output shaft is offset 8mm from the body centre, and that offset drives the whole in-box layout. WARNING: the shaft is 10mm long but only 4.8mm of it fits inside the cam hub, so 5.2mm currently stands proud of the base plate and into the linkage space. That is a real unresolved clash, not a drawing error.'],
+   'The only moving actuator. 28mm can, 19mm tall, 4096 steps per turn. Its output shaft is offset 7.5mm from the body centre, and that offset drives the whole in-box layout. The shaft stands 9.5mm above the mounting face, and its first 2mm is a 9mm boss the cam hub stops against, leaving 7.5mm of grabbable shaft.'],
   ['expander_slot', 'I/O EXPANDER FOOTPRINT (empty)',
    'Where the per-cell MCP23017 goes in the multi-cell product. Nothing is fitted yet, which is why SDA, SCL and the four IN lines terminate here rather than on the driver - a ULN2003 has no pins for them.'],
   ['uln2003', 'ULN2003 DRIVER BOARD',

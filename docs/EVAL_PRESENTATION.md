@@ -78,19 +78,19 @@ anything that reads as clutter invites a question that eats your time.
 Separate them so you can show boards first, then add the wiring when you choose to talk about
 it. **1 hour.**
 
-### 5. Decide the shaft story now
+### 5. The shaft story — RESOLVED 2026-08-26, and it is now an asset
 
-**5.2mm of motor shaft stands proud of the base plate.** It is visible. Someone on that panel
-will point at it.
+**This section is kept because the answer changed.** The simulator showed motor shaft standing
+proud of the base plate. The measurement behind it was wrong and the CAD has since fixed it.
 
-Two acceptable answers, and you must pick one before the day:
+Current, correct numbers: the shaft is **9.5mm** from the mounting face, and its first **2mm**
+is a 9mm boss, so **7.5mm** is grabbable. The cam bore is a **blind 8.1mm socket** reaching up
+into a boss on the disc centre, with 0.5mm of roof over the shaft tip. **Nothing projects
+through the cam face.**
 
-- **Present it.** *"The simulator caught this — the shaft is 10mm, only 4.8mm fits in the cam
-  hub, so either the hub grows or the shaft gets cut."* This is the strongest possible answer:
-  it proves the simulator does real work rather than being a pretty picture.
-- **Hide it** with a flag in the code and do not raise it.
-
-The failure mode is neither: being surprised by it and improvising. **Pick one this week.**
+Say this if asked: *"The simulator flagged a shaft clash. We re-measured, found the shaft was
+9.5mm and not 10, and closed it by taking the bore blind into a boss on the disc."* That is
+stronger than the old answer — it is a defect found and closed, not a defect being explained.
 
 ---
 
