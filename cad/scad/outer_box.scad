@@ -85,12 +85,12 @@ boss_height       = 23;    // boss top = z27 = base_plate bottom
 // y=0 would collide with the pogo window. Teardrop tops so the horizontal pockets
 // print without fusing closed (the 3.2mm round ones fused on the fit-test).
 // -X face: N/S polarity; +X face: S/N → attract when docked
-mag_dia           = 8.4;   // 8mm magnet + 0.4mm FDM clearance
+mag_dia           = dock_mag_dia;   // v8.6: shared, see dock_interface.scad
 mag_depth         = 1.2;   // 1mm magnet + glue gap (4mm wall keeps 2.8mm behind)
 // Keep the proven dock interface at its existing absolute height. Option A adds
 // 4mm only above the mechanism; moving the magnets would needlessly invalidate
 // mating parts and the existing pogo wire route.
-mag_z             = 13.5;  // v8.5: kept 2mm under dock_center_z, both dropped 14
+mag_z             = dock_mag_z;     // v8.6: shared, was a hand-copied 13.5
 mag_y_pos         = [-14, 14];
 
 // Pogo carrier pocket params (behind each ±X window)

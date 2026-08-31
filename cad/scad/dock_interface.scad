@@ -9,4 +9,14 @@ dock_receiver_h = 8.0;
 // spanning 11.5..19.5 with 7.5mm clear above and below.
 // The pod uses this same number, which is what keeps the two dock faces aligned.
 dock_center_z   = 15.5;
+
+// v8.6: THE DOCK MAGNETS NOW LIVE HERE TOO.
+// They used to be declared separately in outer_box.scad and esp32_pod_params.scad,
+// both commented "matches cell". When the stack dropped 14mm the cell was updated
+// to 13.5 and the pod was not, so the two faces sat 15.5mm apart in Z - the pogo
+// pins would have mated and the magnets would have fought them. Same duplicated-
+// constant bug this project keeps shipping. One declaration now, derived.
+dock_mag_dia    = 8.4;                  // 8mm magnet + 0.4mm FDM clearance
+dock_mag_z      = dock_center_z - 2.0;  // 13.5 - magnets sit just under the pogos
+dock_mag_depth  = 1.2;                  // 1mm magnet + glue gap
 dock_wall_t     = 4.0;

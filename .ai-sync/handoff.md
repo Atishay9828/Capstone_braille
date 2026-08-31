@@ -4,6 +4,205 @@
 
 ---
 
+## CURRENT STATE - 2026-08-31 (latest, read this first)
+
+### 1. THE DRIVER IS NOW A BARE IC. Everything about it is in a new spec file.
+
+Mridul's call: the off-the-shelf ULN2003 breakout is DROPPED. The cell carries a
+bare **ULN2003AN in DIP-16 on cut perfboard**. All numbers now live in
+**`cad/scad/electronics_spec.scad`** - read them from there, do not re-copy them.
+
+Why the module had to go: it is 35 x 32mm, and almost all of that is the JST
+socket, four indicator LEDs and the header. Flat it needs 32mm of width and there
+is 12.35mm. On edge it needs 32mm of height and there is 23mm. Neither fits.
+
+**HEIGHTS** (this is what the simulator asked for):
+
+```
+                          socketed    soldered direct
+  trimmed pin tails          1.5           1.5
+  perfboard (FR4)            1.6           1.6
+  DIP-16 socket              3.4            -
+  ULN2003AN body             4.5           4.5
+                          --------      --------
+  OVERALL                   11.0           7.6      <- elec_overall_h
+```
+
+A DIP socket is assumed and recommended: a ULN2003 dies shorted on coil kickback,
+and desoldering 16 pins inside a glued box is not a repair.
+
+**BOARD**: 28 (Y) x 18 (Z) x 1.6mm FR4, 11 x 7 holes off a 10x4cm protoboard.
+**CHIP**: body 19.5 x 6.4mm, 2.54 pitch, 7.62mm between pin rows, 4.5mm tall.
+
+**POSITION** - it STANDS ON EDGE against the +X wall, it does not lie flat:
+
+```
+    y=+30 +-------------------------------------------+
+          |          (26,21) corner boss O            |
+          |     ___________                  +--+     |
+          |    /           \                 |  |     |
+    y=0   |   (  motor cup  )                |PCB|    |  x=+30
+          |    \___________/                 |  |     |
+          |          ^ can centre (-7.5, 0)  +--+     |
+          |          (26,-21) corner boss O           |
+    y=-30 +-------------------------------------------+
+                                             ^ x=+16
+```
+
+```
+  elec_pcb_x = 16.0      board mid-plane
+  elec_pcb_y =  0.0
+  elec_pcb_z =  4.0      stands on the box floor
+  orientation: 28mm along Y, 18mm along Z, 11mm along X
+```
+
+The gap it lives in, and why it is the ONLY one: the can is offset to -X because
+the SHAFT has to land on the cavity centreline and the shaft is 7.5mm off the
+can's own centre.
+
+```
+  motor cup outer edge ..... x = +9.75    (centre -7.5, od 34.5)
+  corner boss inner edge ... x = +22.10   (bosses at x=26, dia 7.8)
+  USABLE GAP ............... 12.35mm wide, y = -17.1 .. +17.1, 23mm tall
+  driver assembly .......... 11.0mm       -> 1.35mm spare
+```
+
+Flat does not fit anywhere: flat needs 18mm of width and the widest clear strip
+beside the cup is 12.35mm.
+
+Not modelled yet: any retainer. The board is held by wire stiffness and hot glue.
+If it needs a real one, the cheap version is two 1.8mm slots in the box floor at
+x = 16 +/- 5.5, which print vertically with no supports. `elec_retainer_modelled`
+is the flag.
+
+Wiring unchanged and still binding: the pigtail leaves the can on -X and the board
+is on +X, so the five leads route round the can (the pigtail is ~200mm, fine).
+Six conductors cross the dock - IN1..IN4, 5V, GND - which is exactly the 10 x 8mm
+dock window's limit. **The Hall sensor has no spare conductor and must be read in
+the CELL, not the pod.**
+
+### 2. A DEFECT THE 14mm DROP CREATED, NOW FIXED
+
+**The pod and cell dock magnets were 15.5mm apart in Z.** `outer_box.scad` was
+updated to `mag_z = 13.5` when the stack dropped; `esp32_pod_params.scad` still
+said `mag_z = 29` under a comment reading "matches cell", which had quietly
+stopped being true. The pogo pins would have mated and the magnets would have
+fought them.
+
+Both now derive from one declaration in `dock_interface.scad`:
+
+```
+  dock_mag_z     = dock_center_z - 2.0;   // 13.5
+  dock_mag_dia   = 8.4;
+  dock_mag_depth = 1.2;
+```
+
+This is the same duplicated-constant bug the project keeps shipping. Anything that
+hand-copies a shared dimension should be treated as a defect waiting to happen.
+
+### 3. R-07 IS SOLVED ON PAPER. The numbers changed, because I had one wrong.
+
+Mridul proposed widening the ramp and exploiting the flat plateaus that Gray order
+creates. Both halves of that were checked properly. Result:
+
+**His premise is correct and is already realised in the geometry.** Gray order cut
+the total ramps on the disc from **126 to 64**, and the outermost track from 64 to
+32 - exactly the "the dip between two highs is gone" he described. The cam code
+already merges plateaus automatically, because the profile lerps `val_prev` to
+`val_curr` and that is flat when they are equal.
+
+**But it does not buy ramp room, and one number settles it: all 64 boundaries
+carry at least one ramp, under BOTH orderings.** Gray guarantees exactly one bit
+changes per step, so every single boundary is busy and no ramp can borrow angle
+from its neighbour. Equal slice widths are already optimal. A ramp gets one slice
+minus the follower footprint, always.
+
+**Variable speed does not help either** - pressure angle is geometric. And fast
+through the ramp is backwards: steppers lose torque with speed and the ramp is
+exactly where torque is needed. If the motion profile is ever shaped, go SLOW on
+the ramp and fast on the dwell.
+
+**MY ERROR, which made the problem look worse than it is.** Earlier R-07 notes
+computed ramp room using `foot_w = 1.4`. That is the width ACROSS the track. The
+follower is a roll of radius `foot_roll_r = 0.5` lying across the track, so in the
+DIRECTION OF TRAVEL the contact is a point, not a 1.4mm flat. The flat actually
+needed each side is rho*tan(alpha/2) plus positioning tolerance - about 0.28mm,
+not 0.7mm. Every earlier pressure-angle figure was pessimistic.
+
+Corrected, with the disc exactly as it is today (`inner_radius` 12, dia 44.4):
+
+```
+  track   r      as built (fraction 0.2)    ramp widened to max
+    0   12.80          72.6 deg              impossible at lift 0.8
+    1   14.50          70.4                   51.1
+    2   16.20          68.3                   41.2
+    3   17.90          66.3                   35.0
+    4   19.60          64.3                   30.6
+    5   21.30          62.4                   27.3
+```
+
+So **widening `angular_ramp_fraction` from 0.2 to its geometric maximum is free
+and fixes most of the disc.** That is Mridul's "make the ramp big", and it was
+always available - it was just never taken. 0.2 was chosen to maximise dwell.
+
+The innermost track is the only real problem and ramp fraction cannot fix it: at
+r=12.8 one slice of arc is 1.26mm and it has to contain the whole 0.8mm lift.
+
+**The lever that actually works is `pin_lift`, not the disc diameter.** Innermost
+track, pressure angle vs the two variables:
+
+```
+  inner_r   disc      plate wall*   lift .8   .6    .5    .4
+     12    44.4mm        2.3mm        --    52.0  40.3  30.2
+     13    46.4           1.3        57.9   41.7  33.6  25.9
+     14    48.4           0.3        48.9   35.9  29.3  22.8
+     15    50.4          -0.7        43.0   31.8  26.1  20.5
+
+  * spare material each side in Y on the 58 x 50 base plate, after 1mm clearance
+```
+
+**The disc can barely grow** - the base plate is only 50mm wide in Y, so dia 48.4
+already leaves 0.3mm of plate. Growing the disc means widening the base plate too
+(the cavity is 60, so 54 is available and the standoffs at y=+/-21 stay inside).
+
+**`pin_lift` 0.8 is above the braille standard anyway.** The standard dot height
+is 0.46-0.50mm. **The linkage is a rigid slider, not a lever** - foot on the cam,
+dot on top, `link_total_h` 12.2 - so cam lift translates 1:1 into dot rise. 0.8mm
+was simply generous. Dropping it to 0.5 is standards-correct on its own merits.
+
+**RECOMMENDED R-07, still NOT APPLIED:**
+
+```
+  angular_ramp_fraction   0.2  -> geometric max (whole slice less the footprint)
+  pin_lift                0.8  -> 0.5      (braille standard, and 1:1 to the dot)
+  inner_radius           12.0  -> 14.0
+  base_plate Y             50  -> 54       (REQUIRED by the above, cavity is 60)
+  -> 29.3 deg on the worst track, 14.4 deg on the best. Under 30 everywhere.
+```
+
+The cheap alternative, if reprinting the base plate is unwelcome: widen the ramp
+fraction and take `pin_lift` to 0.5, change nothing else. Five tracks pass, the
+innermost sits at 40 deg. Zero size change, zero new parts.
+
+### 4. Still true from the previous session
+
+The 14mm drop, the mid-plate removal, the blind cam bore, the restored comb and
+Gray order in all three places are all unchanged - see the 2026-08-26 section
+below. **Every G-code file is still stale** and the release validator will fail
+its STL hash check, correctly. Re-slice AFTER R-07 so it happens once.
+`braille_cam.scad` still carries its geometry TWICE and that duplication is still
+the real defect behind the bore bug.
+
+**Nothing has been physically assembled. No dot has moved.**
+
+### 5. Waiting on Mridul
+
+- **The blue wire block** on the motor - width and height. The cup notch is a
+  guessed 16 x 8mm, flagged SPEC in `motor_spec.scad`.
+- **A DIP-16 socket and a ULN2003AN**, plus a scrap of perfboard.
+
+---
+
 ## CURRENT STATE - 2026-08-26 (latest, read this first)
 
 ### Where the design is
@@ -60,6 +259,13 @@ standardised on M2.5; `motor_spec.scad` now owns every 28BYJ-48 dimension.
 ### In progress / not started
 
 - **R-07 is still open and is the next CAD job.** Not applied. The numbers:
+
+> **SUPERSEDED 2026-08-31. The numbers in this bullet are wrong** - they were
+> computed using `foot_w` (1.4mm, the width ACROSS the track) as the flat the
+> follower needs, but the follower is a 0.5mm roll and along the direction of
+> travel it is a point contact. See section 3 at the top of this file for the
+> corrected figures and the recommended change. R-07 is still not applied.
+
   `angular_ramp_fraction` 0.2 was deliberately narrowed to maximise dwell, and that
   is what made the ramp a 72.6 degree wall. Widen it to the whole slice, move
   `inner_radius` 12 -> 14.4 and `pin_lift` 0.8 -> 0.5, and it reaches **30 degrees
@@ -214,6 +420,14 @@ two M4 ear screws as retention, not as the primary mount.
 ## 2026-08-26 - TWO NOTES FOR THE OTHER FORKS
 
 ### FOR THE ELECTRONICS FORK - the driver board no longer fits, and the fix is a cut
+
+> **RESOLVED 2026-08-31. Mridul chose the bare IC (option 2), not the cut (option 1).**
+> The cell now carries a bare ULN2003AN in DIP-16 on a 28 x 18mm scrap of perfboard,
+> 11mm overall with a socket. Dimensions, position and clearances are in
+> `cad/scad/electronics_spec.scad`; the summary is in section 1 at the top of this
+> file. The analysis below is kept for the reasoning, but the numbers for the
+> off-the-shelf module no longer describe what is being built.
+
 
 The stack dropped 14mm (cell and pod are both 44mm now, see the section above), and
 that removed the flat electronics bay under the motor. The board was going to stand

@@ -96,11 +96,13 @@ pogo_z_from_bot  = dock_center_z;
 // v6.1: real magnets are 8mm dia × 1mm thick (was 3×2). 2 per face at y=±14,
 // matching the cell exactly so docked magnets align. Teardrop tops (FDM).
 // Cell -X face = N/S; pod +X face = S/N → attract, repel reversed
-mag_dia          = 8.4;   // 8mm magnet + 0.4mm FDM clearance
+mag_dia          = dock_mag_dia;  // v8.6: shared, see dock_interface.scad
 mag_depth        = 1.2;   // 1mm magnet + glue gap (4mm wall keeps 2.8mm)
 mag_y_positions  = [-14, 14];
 // Dock features stay at the same absolute height when Option A adds headroom.
-mag_z            = 29;   // matches cell
+// v8.6: WAS 29 AND WRONG. The comment said "matches cell" and stopped being true
+// the moment the cell dropped 14mm; the two magnet rings were 15.5mm apart.
+mag_z            = dock_mag_z;    // 13.5, derived - do not hand-copy this
 
 // --- WIFI ANTENNA GRILLE (+X end, near dock) ---
 antenna_wall     = 1.5;
