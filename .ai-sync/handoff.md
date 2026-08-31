@@ -4,6 +4,115 @@
 
 ---
 
+## CURRENT STATE - 2026-09-01 LATE (latest, read this first)
+
+### The stack went UP 2.5mm instead of cutting the motor, and the arms got thick
+
+Two decisions since the R-07 commit, both Mridul's:
+
+**1. NO ONE CUTS THE MOTOR.** The shaft ending above the cam face needed either a
+2.5mm cut or a taller hub. A cut is irreversible and has to be repeated perfectly
+on every unit ever built; a hub is a number in a file. `hub_h` 4 -> 6.5 and the
+whole tower above the disc translates up with it.
+
+```
+  floor        0.0 ..  4.0
+  motor can    4.0 .. 23.0
+  shaft boss  23.0 .. 25.0
+  cam hub     25.0 .. 31.5     hub_h 6.5, was 4
+  cam disc    31.5 .. 33.5     cam_flat_z = 33.5, was 31
+  base plate  29.5 .. 34.5     base_plate_z = 29.5, was 27
+  standoffs   34.5 .. 42.5
+  top plate   42.5 .. 46.5     shell_height = 46.5, was 44
+```
+
+Cell and pod are both **46.5mm**. Still 11.5mm shorter than the 58mm they were
+before the motor moved onto the floor.
+
+**IT IS 2.5mm, NOT 2.0.** 2.0 puts the bore at exactly 7.5mm against a 7.5mm
+shaft - zero slack, so any plus tolerance on shaft length and the cam hangs on
+the shaft tip instead of seating on the boss, which tilts the disc. 2.5 buys
+0.5mm of air over the tip and keeps the 0.5mm roof. There is a
+`shaft_air_gap` assert now so this cannot be quietly tuned away.
+
+```
+  bore depth 8.0   shaft 7.5   air 0.5   roof 0.5
+  hub bottom lands on the boss top at z=25 exactly
+```
+
+Bonus: the electronics bay grew with it, 23 -> **25.5mm** of clear height. The
+11mm driver assembly now has 14.5mm spare instead of 12.
+
+**2. THE ARMS ARE 2.0 x 3.0mm, WAS 1.0 x 1.0.** This was the real blocker and it
+had been open since the linkage was drawn:
+
+```
+  section     I(mm4)     0.1N      0.3N      0.5N    tip deflection, 19.86mm arm
+  1.0 x 1.0    0.083    1.57mm    4.70mm    7.83mm   <- as designed
+  2.0 x 2.0    1.333    0.10mm    0.29mm    0.49mm
+  2.0 x 3.0    4.500    0.03mm    0.09mm    0.15mm   <- chosen
+```
+
+The dot is 0.50mm tall. **The old arm bent three times the entire dot height
+under the lightest touch a reader would use** - a finger would fold it flat and
+feel nothing back. 54x stiffer now, and deflection stays under a third of the
+dot even at a heavy 0.5N press.
+
+Two couplings had to be broken first, and both would have quietly undone R-07:
+
+- **`riser_w` is new.** The lower riser used to take its RADIAL width from
+  `link_thickness`, which is a TANGENTIAL dimension. Thickening the arm to 2.0
+  would have put a 2.0mm-wide foot on a 1.6mm track, straddling the neighbour.
+  The riser and foot are now sized by the track at 1.4mm, independently.
+- **`foot_roll_r` no longer equals `link_thickness/2`.** It would have gone to
+  1.0, which feeds straight into `foot_flat_arc` and the ramp sizing, and would
+  have handed back about a third of the ramp room R-07 just won. Pinned at 0.5,
+  centred in the arm's width.
+
+Pressure angles are unchanged by the thickening - verified, still 29.5 / 25.4 /
+22.3 / 19.8 / 17.9 / 16.2 degrees.
+
+### Verified, not assumed
+
+- All 37 files evaluate clean **through geometry export**, not `--export-format
+  echo`, which does not run top-level asserts.
+- `braille_cam.stl` bbox Z **-6.50 to 2.50** - a 6.5mm hub, and nothing above the
+  cam face except the 0.5mm dot lift. No boss, no shaft tip.
+- Cell and pod shells both export Z 0..42.5 (46.5 less the 4mm cap recess), so
+  the two dock faces are still level.
+- **All 15 linkage pairs tested for interference by rendering the actual
+  intersection. Zero clashes.** 2.0mm arms on 2.60mm centres leave 0.60mm.
+- Every mesh manifold, zero non-manifold edges.
+- `arm top when raised 7.0 vs plate underside 9.0` - 2.0mm clear.
+- `comb pocket radial 1.7 vs riser 1.4` - fits, with an assert.
+
+### What has to be reprinted
+
+Everything in the mechanism, and both enclosures:
+
+```
+  PETG   outer_box, base_plate, top_plate, esp32_pod_shell, esp32_pod_lid
+  resin  braille_cam, linkage x6, linkage_comb, dot_insert
+```
+
+The resin linkages that were already ordered are dead twice over - the arms grew
+2.0-2.4mm with the disc, and the section changed.
+
+### Still open
+
+- **Every G-code file is stale.** Re-slice now; the design should be still for a
+  while.
+- **`braille_cell.ino` has no edge-latching homing** - the 8mm magnet spans 4.7
+  states so the field centre is meaningless. Home in a fixed direction, latch the
+  first edge, budget about +/-9 steps.
+- **`braille_cam.scad` still holds its disc and track geometry twice.** The bore
+  duplication is gone; this is not.
+- **Nothing has ever been physically assembled.**
+- Waiting on Mridul: the blue wire block dimensions, and a ULN2003AN + DIP-16
+  socket + perfboard.
+
+---
+
 ## CURRENT STATE - 2026-09-01 (latest, read this first)
 
 ### R-07 IS APPLIED. The disc grew, the dot shrank, the shaft got cut.
@@ -39,6 +148,12 @@ lift, and **nothing above it**. Comb +/-27.0. Base plate 58 x 56. All three
 manifold, zero non-manifold edges.
 
 ### THE SHAFT. v8.6 was wrong and is now actually fixed.
+
+> **SUPERSEDED 2026-09-01. THE SHAFT IS NOT CUT.** Mridul chose to raise the
+> stack instead. `hub_h` 4 -> 6.5, everything above the disc moves up 2.5mm, and
+> the shaft is used at full length. See the CURRENT STATE section at the top.
+> The reasoning below still explains why one of the two had to happen.
+
 
 v8.6 claimed to make the bore blind. It did not do what was asked. It added a
 2.6mm boss ON TOP of the disc and ran the bore up into it, so the shaft tip
@@ -774,6 +889,57 @@ can stop the ESP32 booting. An expander only earns its place at roughly 4 cells.
 **Still open (electronics):** buy the soldering station + solder + breadboard + strippers
 (~₹1,900); build the breadboard circuit (no soldering needed); the `+32` mid-dwell firmware fix
 is deferred because it is tied to the mechanical re-derivation.
+
+---
+
+## 🔴 ELECTRONICS/BOM FORK - THE RETURN SPRING IS ~6x TOO STIFF (2026-09-01)
+
+`mech_layout.scad:212  spring_wire = 0.3` is wrong by a wide margin, and it is a
+bigger torque problem than R-07. Found while sizing Mridul's purchased springs
+(2mm OD, 40mm free, 50 coils, 0.3mm wire - confirmed, cuts into ten 4mm pieces
+at exactly the specified 5 coils).
+
+Using your own installed geometry (`mech_layout.scad:293-295`, 3.0mm gap dot-down,
+2.2mm dot-up, 4.0mm free length) and G = 69 GPa for 304 stainless:
+
+```
+wire    rate        F dot-down   F dot-up
+0.30mm  2.844 N/mm    2.84 N       5.12 N     <- as specified today
+0.20mm  0.473 N/mm    0.47 N       0.85 N
+0.18mm  0.300 N/mm    0.30 N       0.54 N
+```
+
+A braille dot only resists a fingertip: 0.05-0.15 N. The current spec is ~20x that,
+and all six load the cam simultaneously:
+
+```
+six springs on the cam ........ 17.1 N
+friction torque, mu=0.3, r=17    87 mN*m
+28BYJ-48 output .................~30 mN*m     -> 2.9x SHORT ON FRICTION ALONE
+```
+
+That is before lifting anything. Rate goes as wire diameter^4, so this is entirely
+a wire-gauge error, not a geometry error - **no CAD dimension needs to move except
+the constant itself.** The 1.4mm bore only gains clearance with thinner wire, the
+spring still never goes solid, and `flange_dia` 2.2 still exceeds the ID.
+
+**Requested change:**
+```
+mech_layout.scad
+  spring_wire   0.3  ->  0.2      (0.18 is optimal; 0.2 is what is sourceable)
+  spring_id     recomputes 1.4 -> 1.6, still > nub_width 1.0
+```
+
+⚠️ **This does not stand alone - it needs R-07 in the same pass.** With 0.2mm springs
+at today's 72 degree pressure angle, lifting one dot still needs ~44 mN*m. At the
+30 degrees your R-07 numbers reach, it falls to ~9 mN*m and the full cycle lands
+near 24 of the motor's 30 mN*m. Fixing either one alone leaves the mechanism
+immobile; fixing both gives roughly 20% margin.
+
+**Assumptions stated so they can be challenged:** G = 69 GPa (conservative - music
+wire would be worse), resin-on-resin mu = 0.3 (never measured), motor 30 mN*m.
+Mridul is putting a cut spring on a kitchen scale to measure the real rate; if it
+does not read ~290g at 3mm compression, this whole entry is wrong and I will redo it.
 
 ---
 

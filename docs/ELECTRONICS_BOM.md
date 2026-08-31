@@ -172,3 +172,18 @@ Not needed now, but for the record — it's `pcb/braillix_muscle_board.kicad_pcb
 
 **Recommendation: order it fully assembled (PCBA) or don't build it.** 0402 passives and a
 TQFP-32 are not a beginner job, and none of it is needed for a working demo.
+
+---
+
+## 🔴 SPRING CORRECTION - 2026-09-01
+
+**Owned:** 2mm OD, 40mm free length, 50 coils, **0.3mm** stainless, set of 10.
+Cuts into ten 4mm / 5-coil pieces each - only 12 pieces are needed for two cells.
+
+**These are ~6x too stiff and must not be fitted.** At the installed geometry they
+give 2.84 N per dot at rest against a 0.05-0.15 N braille reading force, and load
+the cam with 17.1 N - about 87 mN*m of friction against a ~30 mN*m motor.
+
+**Order instead: 2mm OD, 4mm free length, 0.20mm wire** (0.18mm ideal). Roughly
+0.47 N per dot. No other dimension changes. See the handoff entry of the same date
+for the full derivation and the paired R-07 dependency.
