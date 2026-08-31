@@ -51,9 +51,9 @@ PLATE_UNDER_Z = _P["stack"]["plate_under_z"]    # 40.0  top plate underside
 DISC_THK = _P["cam"]["disk_base_thickness"]     # 2.0
 BASE_THK, CAM_POCKET = 5.0, 3.0                 # base_plate.scad:34,39
 
-BASE_PLATE_TOP = CAM_FLAT_Z + CAM_POCKET - DISC_THK   # 32.0
-BASE_PLATE_Z = BASE_PLATE_TOP - BASE_THK              # 27.0 == motor face
-CAM_Z = BASE_PLATE_TOP - CAM_POCKET                   # 29.0 disc underside
+BASE_PLATE_TOP = CAM_FLAT_Z + CAM_POCKET - DISC_THK   # 34.5
+BASE_PLATE_Z = BASE_PLATE_TOP - BASE_THK              # 29.5, v8.8
+CAM_Z = BASE_PLATE_TOP - CAM_POCKET                   # 31.5 disc underside
 
 PARTS = {
     "outer_box":   (0.0,            "5A6B7C", 1.00, 0.05, 0.75),

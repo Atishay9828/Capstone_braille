@@ -79,10 +79,10 @@
     ]
   },
   "stack": {
-    "cam_flat_z": 31.0,
-    "plate_under_z": 40.0,
-    "plate_top_z": 44.0,
-    "reading_surface_z": 43.2,
+    "cam_flat_z": 33.5,
+    "plate_under_z": 42.5,
+    "plate_top_z": 46.5,
+    "reading_surface_z": 45.7,
     "link_total_h": 12.200000000000003
   },
   "encoding": {

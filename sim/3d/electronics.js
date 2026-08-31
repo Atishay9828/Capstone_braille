@@ -15,7 +15,7 @@ import * as THREE from 'three';
 // v8.5 (2026-08-26) dropped the whole tower 14mm: the motor now stands on a cup in
 // the box floor and the mid-plate is gone. Every z in this file moved with it.
 export const POD = {
-  length: 68, width: 68, height: 44,   // esp32_pod_params.scad — 58 -> 44
+  length: 68, width: 68, height: 46.5,  // esp32_pod_params.scad — v8.8, 44 -> 46.5
   wall: 4, floor: 3,
   devkit: { l: 51.5, w: 28.0, t: 1.6, xOffset: -2 },   // :44-45, :57
   hdr: { pitch: 25.6, w: 2.7, h: 8.5, len: 40.0 },     // :49-52
@@ -23,9 +23,9 @@ export const POD = {
   usb: { w: 14, h: 9, z: 9.5 },                        // :78-82
   jack: { dia: 11.5, x: -20, y: 18 },                  // :66-71
   pogo: { w: 10, h: 8, z: 15.5, recess: 1 },            // dock_interface.scad dock_center_z
-  mag: { dia: 8.4, ys: [-14, 14], z: 29 },             // :96-99
+  mag: { dia: 8.4, ys: [-14, 14], z: 13.5 },           // dock_interface.scad dock_mag_z
 };
-const CELL = { length: 68, width: 68, height: 44 };   // outer_box shell_height
+const CELL = { length: 68, width: 68, height: 46.5 };  // outer_box shell_height
 
 // 28BYJ-48, 5V geared stepper. The shaft is OFFSET from the body centre by 8mm —
 // this is the single most commonly wrong detail in models of this motor.
@@ -496,7 +496,7 @@ export function buildCellElectronics(realMotor) {
   // sits 0.4mm under it, so the sensor body occupies 27.0..28.6 — clear of the cam.
   const hall = hallSensor();
   hall.name = 'hall';
-  hall.position.set(0, 17.35, 27.8);
+  hall.position.set(0, 17.35, 30.3);
   g.add(hall);
 
   const pads = pogoPads();
