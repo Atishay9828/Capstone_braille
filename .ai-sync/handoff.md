@@ -4,6 +4,97 @@
 
 ---
 
+## CURRENT STATE - 2026-08-26 (latest, read this first)
+
+### Where the design is
+
+**The stack dropped 14mm. Cell and pod are both 44mm, were 58.** The motor was the
+only thing setting the height, and the 14mm electronics bay beneath it existed only
+because the driver board lay flat. The board moves to standing on edge, the motor
+goes onto the box floor, and the whole tower above it translates down.
+
+```
+floor        0.0 ..  4.0
+motor can    4.0 .. 23.0
+shaft boss  23.0 .. 25.0
+cam hub     25.0 .. 29.0
+cam disc    29.0 .. 31.0     cam_flat_z, was 45
+base plate  27.0 .. 32.0
+standoffs   32.0 .. 40.0
+top plate   40.0 .. 44.0     shell_height, was 58
+```
+
+Every gap above the motor is unchanged, so `link_total_h` is still 12.2mm and the
+already-ordered resin linkages stay valid. Re-rendered and confirmed: only the two
+enclosures changed size. Cam, linkages, comb, dot insert, top plate and base plate
+are identical.
+
+**The mid-plate and its ledge are gone.** A cup moulded into the box floor locates
+the motor instead, with its wire-block notch on -X (the old collar had it on +Y,
+which is 90 degrees wrong and the motor would not have dropped in). No screws are
+needed: every force here points down, so the seat carries it and the wire block in
+its notch carries the torque reaction.
+
+**The cam bore is BLIND again.** A 2.6mm boss on the disc centre takes the bore to
+8.1mm with a 0.5mm roof over the shaft tip. Nothing projects through the cam face.
+Bounded by the arms at 3.5mm above and the 7.5mm of shaft to swallow below.
+
+**Also landed:** the comb is restored and has corner scallops for the standoffs;
+Gray order is live in the cam, the firmware and the simulator; the pod is
+standardised on M2.5; `motor_spec.scad` now owns every 28BYJ-48 dimension.
+
+### Two defects found this session, both mine
+
+1. **The earlier cam bore fix only reached half the file.** `braille_cam.scad`
+   carries its geometry TWICE, at top level and in `module braille_cam()`. Commit
+   e762b7e repaired the `cube(center=true)` bore in the module and left the top
+   level alone, so `cad/stl/braille_cam.stl` carried the original 3.5mm bug for a
+   week while the commit said it was fixed. Both paths now call the same modules.
+   **The duplication itself is still there and is the real defect.**
+
+2. **I claimed slice ORDERING buys ramp room. It does not.** A state's angle is the
+   CENTRE of its slice, so a ramp always has one slice minus the foot to finish in.
+   Gray order is still worth having for chatter and torque, but it does not touch
+   R-07.
+
+### In progress / not started
+
+- **R-07 is still open and is the next CAD job.** Not applied. The numbers:
+  `angular_ramp_fraction` 0.2 was deliberately narrowed to maximise dwell, and that
+  is what made the ramp a 72.6 degree wall. Widen it to the whole slice, move
+  `inner_radius` 12 -> 14.4 and `pin_lift` 0.8 -> 0.5, and it reaches **30 degrees
+  with all 64 states on a 44.9mm disc** - the current disc is 44.4mm.
+- **Every G-code file is stale** and `tools/validate_print_assets.py` will fail its
+  STL hash check, correctly. Re-slice AFTER R-07 so it happens once.
+- **Nothing has been physically assembled.** No dot has moved. The breadboard
+  circuit still has not been built.
+
+### Next steps, in order
+
+1. Push. Several commits are local only, and the other forks read this file.
+2. Apply R-07 in one pass: ramp fraction, `inner_radius`, `pin_lift`, foot width.
+3. Re-slice everything and re-run the validator.
+4. Reprint: box, base plate and comb in PETG; cam and linkages in resin.
+5. Assemble and run the hand-turn test that has been outstanding since 4 Aug.
+
+### Waiting on Mridul (both five-minute jobs with the calipers)
+
+- **The blue wire block** on the motor - width and height. The cup notch is sized
+  16 x 8mm as a guess and is flagged SPEC in `motor_spec.scad`.
+- **The driver board** once cut down - it has to clear 23mm standing on edge.
+
+### Key files this session
+
+`cad/scad/` - NEW `motor_spec.scad`, NEW `linkage_comb.scad`; `outer_box.scad`,
+`mech_layout.scad`, `braille_cam.scad`, `base_plate.scad`, `dock_interface.scad`,
+`esp32_pod_params.scad`, `mid_plate.scad` (superseded), `linkage.scad`,
+`top_plate.scad`, `esp32_pod_lid.scad`.
+`firmware/braille_cell/braille_cell.ino`, `sim/3d/app.js`,
+`sim/braillix_params.json`, NEW `README.md`, NEW `renders/blender_mechanism.py`,
+NEW `renders/readme_mechanism.scad`.
+
+---
+
 ## 2026-08-26 - CAM/COMB PASS, AND ONE DECISION NEEDED
 
 ### Done and committed
@@ -61,6 +152,12 @@ ramp widened to the whole slice       50.6 deg
 made it a wall. This pass is NOT yet applied.
 
 ### DECISION NEEDED - the motor sits 4mm too high, and there are two ways out
+
+> **RESOLVED 2026-08-26, and then some.** Mridul chose Option B, and went further:
+> the motor now sits on the box FLOOR, not on a cup seat. See the CURRENT STATE
+> section at the top of this file. Everything below in this section is the analysis
+> that led there, kept for the reasoning.
+
 
 Verified from source, not from comments:
 
