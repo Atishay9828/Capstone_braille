@@ -168,13 +168,57 @@ module option_a_socket_cut() {
 // proud — exactly what the printed resin part does.
 //
 // Extruding the 2D profile has no centring to get wrong.
+//
+// v8.6: the bore is now BLIND. It stops cam_cap_roof below the top of the central
+// cap, so the shaft is fully swallowed and nothing projects through the face the
+// linkages run on.
 module legacy_shaft_bore() {
     translate([0, 0, -hub_h - 0.01])
-        linear_extrude(height = hub_h + disk_base_thickness + 0.02)
+        linear_extrude(height = legacy_bore_depth + 0.01)
             intersection() {
                 circle(r = 2.6, $fn = 50);
                 square([10, 3.2], center = true);
             }
+}
+
+// --- BLIND BORE (v8.6) - the shaft must NOT break through the cam face ---
+//
+// The through-bore left the shaft standing 1.5mm proud of the cam surface. It
+// cleared the arms by 2mm so it was not a clash, but a shaft sticking up through
+// the working face is something for a linkage to catch on during assembly, and it
+// gave only 6mm of Double-D engagement to carry the motor's torque through resin.
+//
+// The fix is a small boss on the disc's CENTRE, below the arms, that the bore
+// reaches up into. No stack change, no box change.
+//
+//   shaft above its boss ......... 7.5mm   (9.5 from the face, first 2 is the boss)
+//   hub 4 + disc floor 2 ......... 6.0mm   not enough on its own
+//   + cap 2.6 less a 0.5 roof .... 8.1mm   enough, with 0.6mm to spare
+//
+// Cap height is bounded on both sides. It must be tall enough to swallow the
+// shaft, and short enough to stay under the linkage arms, which start at
+// arm_y = 3.5mm above the cam face:
+//     2.2mm <= cam_cap_h <= 3.0mm      2.6 sits in the middle
+cam_cap_h    = 2.6;    // above the cam face
+cam_cap_r    = 3.6;    // 1.0mm of wall around the Ø5.2 bore
+cam_cap_roof = 0.5;    // solid material left over the shaft tip
+
+legacy_bore_depth = hub_h + disk_base_thickness + cam_cap_h - cam_cap_roof;
+
+assert(legacy_bore_depth >= 7.5 + 0.2,
+       str("blind bore is only ", legacy_bore_depth,
+           "mm; the shaft presents 7.5mm above its boss"));
+assert(cam_cap_h <= 3.5 - 0.5,
+       str("cam cap is ", cam_cap_h, "mm tall and would foul the arms at 3.5mm"));
+assert(cam_cap_r > 2.6 + 0.8,
+       "cam cap wall is thinner than 0.8mm around the bore");
+
+// Sits on the disc's top face, at the centre. The arms converge no closer than
+// r=2.4 and start 3.5mm up, so this is under them, not through them.
+module cam_central_cap() {
+    if (!stack_option_a)
+        translate([0, 0, disk_base_thickness - 0.01])
+            cylinder(h = cam_cap_h + 0.01, r = cam_cap_r, $fn = 50);
 }
 
 // Calculated Variables
@@ -336,6 +380,9 @@ union() {
     // Option A only: material above the measured shaft tip creates a real roof.
     option_a_central_cap();
 
+    // Default path: the boss the blind bore reaches up into.
+    cam_central_cap();
+
     // 2. Generate Tracks
     for(t = [0 : dots-1]) {
         color( (t%2==0) ? [0.2, 0.6, 1] : [0.3, 0.7, 1] )
@@ -352,16 +399,14 @@ union() {
     }
 } // end union
 
-// Preserve the audited legacy mesh by default. Option A replaces the accidental
-// 3.5mm blind cut with the measured 7.7mm socket above.
+// v8.6: this used to carry its own copy of the bore, and an earlier repair only
+// reached the copy inside module braille_cam() below - so the file rendered the
+// fixed bore from the module and the BROKEN 3.5mm one from here, which is what the
+// exported STL had. Both paths now call the same module. Do not inline it again.
 if (stack_option_a) {
     option_a_socket_cut();
 } else {
-    translate([0, 0, -hub_h - 1])
-    intersection() {
-        cylinder(h=shaft_bore_depth + 1, r=2.6, $fn=50);
-        cube([10, 3.2, shaft_bore_depth + 1], center=true);
-    }
+    legacy_shaft_bore();
 }
 
 // Homing magnet pocket (subtracted from disc underside)
@@ -393,6 +438,7 @@ module braille_cam() {
                 }
             }
             option_a_central_cap();
+            cam_central_cap();
             // All 6 cam tracks
             for(t=[0:dots-1]) build_track_polyhedron(t);
         }
