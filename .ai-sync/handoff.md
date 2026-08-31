@@ -4,6 +4,159 @@
 
 ---
 
+## CURRENT STATE - 2026-09-01 (latest, read this first)
+
+### R-07 IS APPLIED. The disc grew, the dot shrank, the shaft got cut.
+
+```
+  inner_radius            12.0 -> 14.0      disc Ø44.4 -> Ø48.4
+  pin_lift                 0.8 -> 0.5       braille standard dot height
+  angular_ramp_fraction    0.2 -> per-track, geometric max
+  base_plate Y              50 -> 56
+  cam pocket                46 -> 50
+  comb_side                 48 -> 54
+  comb_peg_xy             17.5 -> 19.0
+  motor shaft              9.5 -> 7.0       CUT 2.5mm OFF THE MOTOR
+  homing magnet            3mm -> 8mm dia
+```
+
+Pressure angle, which is the whole point - **every track is now under the
+30 degree limit**, from 62-73 degrees as built:
+
+```
+  track   r       was      now
+    0   14.80   72.6     29.5
+    1   16.50   70.4     25.4
+    2   18.20   68.3     22.3
+    3   19.90   66.3     19.8
+    4   21.60   64.3     17.9
+    5   23.30   62.4     16.2
+```
+
+Verified from the exported meshes, not from the source: cam bbox is
+X/Y +/-24.20 (Ø48.4), Z -4.00 to **2.50** - the disc face at 2.0 plus the 0.5
+lift, and **nothing above it**. Comb +/-27.0. Base plate 58 x 56. All three
+manifold, zero non-manifold edges.
+
+### THE SHAFT. v8.6 was wrong and is now actually fixed.
+
+v8.6 claimed to make the bore blind. It did not do what was asked. It added a
+2.6mm boss ON TOP of the disc and ran the bore up into it, so the shaft tip
+finished 1.5mm **above** the cam's working face - concealed, but still above it,
+and with a tower standing in the middle of the face.
+
+The requirement was the shaft ending BELOW the cam. That is now what happens:
+
+```
+  hub bottom .......... -4.0     sits on the motor's shaft boss
+  disc underside ....... 0.0
+  shaft tip ............ 1.0     5.0mm of cut shaft above the boss
+  bore top ............. 1.5
+  cam face ............. 2.0     0.5mm of solid resin over the tip
+```
+
+**This requires cutting 2.5mm off the motor shaft** and there was no alternative
+that did not move something: the motor is already on the box floor, and the disc
+height is set by the base plate above it. Raising the stack instead would have
+cost 2mm back out of the 14mm the cell just lost, and reprinted the pod too to
+keep the two level. Cutting a soft steel stub was cheaper. `motor_spec.scad`
+carries `motor_shaft_cut = 2.5` and the method.
+
+Engagement drops 7.5mm -> 5.0mm of Double-D, which is still ~14x margin: 0.3Nm
+over a 2.6mm radius is 115N across two 3.2 x 5.0mm flats = 3.6MPa into a resin
+that yields near 50.
+
+### THE DUPLICATED CAM GEOMETRY IS PARTLY COLLAPSED
+
+`braille_cam.scad` held its hub bore inline TWICE - once at top level, once in
+`module braille_cam()` - both built with the `cube(center=true)` construction
+that shipped a 3.5mm bore for a week. Both inline copies are deleted. There is
+now exactly ONE definition of the shaft bore, `legacy_shaft_bore()`, called from
+both paths. The disc/track duplication between the two paths still exists.
+
+### THE FOOTPRINT HAS ONE OWNER NOW
+
+`standoff_x`/`standoff_y` were declared independently in base_plate.scad,
+linkage_comb.scad AND top_plate.scad; the comb also kept its own copy of the cam
+pocket diameter under a comment reading "from base_plate.scad", which is a
+comment, not a link. Growing the disc moves all of them at once. They now live
+in `mech_layout.scad` with asserts, and the three consumers assert they got them.
+
+Same treatment for `cam_pocket_diameter`, `cam_pocket_depth`, `base_length`,
+`base_width`, `comb_side`, `comb_peg_xy`, `standoff_diameter`, `foot_roll_r`.
+
+### A METHOD NOTE WORTH KEEPING
+
+`openscad --export-format echo` does NOT evaluate top-level asserts. A sweep of
+all 37 files "passed" while `braille_cam.scad` was missing an include and would
+not render at all. **Sweep by exporting geometry (`-o x.csg`), not echo.**
+
+### TWO THINGS THAT ARE NOW WORSE, AND ONE IS SERIOUS
+
+**1. THE RESIN LINKAGES ARE INVALIDATED.** Growing the disc lengthened every arm:
+
+```
+  dot | track |   r   | arm span was | now
+   1  |   2   | 18.20 |    12.77     | 14.77
+   2  |   3   | 19.90 |    15.50     | 17.50
+   3  |   4   | 21.60 |    16.17     | 18.17
+   4  |   1   | 16.50 |    11.08     | 13.07
+   5  |   0   | 14.80 |    10.40     | 12.40
+   6  |   5   | 23.30 |    17.87     | 19.86
+```
+
+`linkage.stl` changed. The set that was already ordered no longer reaches. They
+have to be reprinted with the cam, the plate and the comb.
+
+**2. AND THAT MAKES THE STIFFNESS PROBLEM URGENT.** The arm is 1.0 x 1.0mm and
+is now up to 19.86mm long - the longest it has ever been. Tip deflection under a
+fingertip, E=2000MPa:
+
+```
+  section        I(mm4)     0.1N      0.3N      0.5N
+  1.0 x 1.0       0.083    1.57mm    4.70mm    7.83mm    <- as designed
+  2.0 x 2.0       1.333    0.10mm    0.29mm    0.49mm
+  2.0 x 3.0       4.500    0.03mm    0.09mm    0.15mm
+```
+
+**The dot is 0.50mm tall. The current arm deflects three times that under the
+lightest touch a reader would use.** As drawn, a finger folds the linkage flat
+and feels nothing. This is not a tolerance issue, it is a section that is too
+small by a factor of ~50 in second moment.
+
+Arm-to-arm clearance is 2.60mm, so a 2.0mm-wide arm leaves 0.6mm between
+neighbours - tight but real. `foot_roll_r` must be DECOUPLED from
+`link_thickness` if the thickness grows, because the ramp sizing reads it and a
+1.0mm roll would take back some of the ramp room R-07 just won.
+
+**NOT APPLIED. This is the next decision and it should ride the same reprint.**
+
+### Unchanged and still true
+
+The bare ULN2003AN driver and its position (section below), the 44mm stack, the
+motor on the box floor, the unified dock magnets, Gray order in all three places.
+**Every G-code file is stale** - re-slice now that R-07 has landed. **Nothing has
+ever been physically assembled.**
+
+### Homing, which changed and needs firmware work
+
+The magnet is 8mm because that is what Mridul owns and 3mm is not sourceable. At
+r=17.35 it subtends 26.7 degrees = 4.7 states, so **homing on the centre of the
+field is meaningless**. Home by always rotating the SAME direction and latching
+the FIRST edge.
+
+The budget: one state is 64 steps of 4096, and the flat dwell is 27-45% of a
+state, so **homing must land within about +/-9 steps** of a state centre on the
+outermost track. A hall edge approached from a fixed direction at a fixed speed
+is repeatable well inside that, but it is worth measuring rather than assuming.
+`braille_cell.ino` has NOT been updated for this.
+
+Watch item: the magnet pocket leaves 0.8mm of disc floor under the tracks. If it
+proves fragile, the magnet can move to r=9 - now clear of the tracks entirely
+since inner_radius went to 14 - at the cost of moving the Hall sensor with it.
+
+---
+
 ## CURRENT STATE - 2026-08-31 (latest, read this first)
 
 ### 1. THE DRIVER IS NOW A BARE IC. Everything about it is in a new spec file.

@@ -50,26 +50,29 @@ comb_h     = comb_top - rest_z;
 
 // --- plan ----------------------------------------------------------------
 // Square, so it drops into the box one way up and reads unambiguously by hand.
-// 48mm keeps it inside the 58 x 50 base plate while still landing outside the
-// Ø46 cam pocket on all four edges.
-comb_side    = 48.0;
+// Sized in mech_layout.scad: 54mm sits inside the 58 x 56 base plate and still
+// lands 2mm outside the Ø50 cam pocket on all four edges.
+// comb_side, cam_pocket_diameter, standoff_* and comb_peg_xy are shared - see
+// mech_layout.scad. This file used to keep its own copies "from base_plate.scad",
+// which is a comment, not a link.
+assert(!is_undef(comb_side) && !is_undef(cam_pocket_diameter)
+       && !is_undef(standoff_x) && !is_undef(comb_peg_xy),
+       "linkage_comb needs the shared footprint from mech_layout.scad");
 corner_r     = 2.0;
-cam_pocket_d = 46.0;                    // from base_plate.scad
+cam_pocket_d = cam_pocket_diameter;
 spigot_r     = cam_pocket_d / 2 - 0.35; // centres the comb in that pocket
 bore_r       = min([for (d = [1:6]) norm(foot_pos(d))]) - 1.6;
 
 // Pegs sit on the diagonal, so what matters is their RADIUS, not their x/y.
-// At 17.5 they are r=24.7, clear of the Ø46 cam pocket, and far enough from the
+// At 19.0 they are r=26.9, clear of the Ø50 cam pocket, and far enough from the
 // chamfered corner that the mark does not cut into one.
-// The base-plate corner standoffs pass THROUGH the comb's corners. At (26, 21)
-// with Ø6 the standoff reaches inward to x=23, and the comb runs to x=24, so a
-// square corner fouls all four. Scallop them.
-standoff_x   = 26.0;    // from base_plate.scad
-standoff_y   = 21.0;
-standoff_d   = 6.0;
+// The base-plate corner standoffs pass THROUGH the comb. At (26, 21) with Ø6 the
+// standoff spans x 23..29 and y 18..24; the comb now runs to 27 in both, so the
+// clearance is a bite out of each corner rather than a nick. Scallop them.
+standoff_d   = standoff_diameter;
 standoff_fit = 0.8;     // 0.4/side, generous - this is clearance, not a fit
 
-peg_xy = 17.5;
+peg_xy = comb_peg_xy;
 peg_d  = 2.2;
 
 mark_d   = 1.6;    // orientation dot
@@ -125,7 +128,8 @@ assert(peg_xy * sqrt(2) > cam_pocket_d/2 + 1,
        str("peg holes at r=", peg_xy*sqrt(2), " fall inside the Ø", cam_pocket_d, " cam pocket"));
 assert(norm([comb_side/2 - mark_pos - peg_xy, comb_side/2 - mark_pos - peg_xy])
        > (mark_d + peg_d) / 2, "orientation dot overlaps the top-left peg hole");
-assert(comb_side <= 50, "comb overhangs the 58x50 base plate");
+assert(comb_side <= base_width - 1,
+       str("comb ", comb_side, " overhangs a ", base_width, "mm plate"));
 // The scallop must not eat so far in that it meets a foot pocket.
 scallop_gap = min([for (d = [1:6])
     norm([standoff_x, standoff_y] - foot_pos(d))]) - (standoff_d + standoff_fit)/2 - pocket_l/2;

@@ -77,8 +77,10 @@ corner_radius   = 3.0;    // matches box outer fillet
 // plate_width. The cap now sits flush on the box rim on all four sides.
 
 // Mounting — 4 corner holes at ±26,±21 matching base_plate standoffs
-standoff_x       = 26.0;
-standoff_y       = 21.0;
+// standoff_x / standoff_y come from mech_layout.scad - shared with the base
+// plate and the comb, which all four corners have to agree on.
+assert(!is_undef(standoff_x) && !is_undef(standoff_y),
+       "top_plate needs standoff_x/standoff_y from mech_layout.scad");
 screw_dia        = 3.2;   // v6.2: 2.8→3.2 M2.5 clearance for print tolerance
 counterbore_dia  = 5.6;   // v6.2: 5.0→5.6 M2.5 button-head
 counterbore_depth = 1.5 + finger_pad_depth; // 1.5mm below the recessed reading surface

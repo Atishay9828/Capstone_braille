@@ -172,12 +172,17 @@ for (d = [1 : 6])
 
 // --- 7. REFERENCE (computed live by mech_layout.scad — documentation only) ---
 // dot | track |  r    | foot@ | arm span | nub at
-//  1  |   2   | 16.20 | 120deg|  12.77   | (-2.4, +2.6)
-//  2  |   3   | 17.90 | 180deg|  15.50   | (-2.4,  0.0)
-//  3  |   4   | 19.60 | 240deg|  16.17   | (-2.4, -2.6)
-//  4  |   1   | 14.50 |  60deg|  11.08   | (+2.4, +2.6)
-//  5  |   0   | 12.80 |   0deg|  10.40   | (+2.4,  0.0)
-//  6  |   5   | 21.30 | 300deg|  17.87   | (+2.4, -2.6)
+//  1  |   2   | 18.20 | 120deg|  14.77   | (-2.4, +2.6)
+//  2  |   3   | 19.90 | 180deg|  17.50   | (-2.4,  0.0)
+//  3  |   4   | 21.60 | 240deg|  18.17   | (-2.4, -2.6)
+//  4  |   1   | 16.50 |  60deg|  13.07   | (+2.4, +2.6)
+//  5  |   0   | 14.80 |   0deg|  12.40   | (+2.4,  0.0)
+//  6  |   5   | 23.30 | 300deg|  19.86   | (+2.4, -2.6)
+//
+// R-07 (2026-09-01) moved inner_radius 12 -> 14, so every radius above is 2.0mm
+// larger and every arm 2.0-2.4mm longer than it was. The arms are now 12.4-19.9mm
+// on a 1.0 x 1.0mm section, which is the LONGEST they have ever been - see the
+// stiffness note in .ai-sync/handoff.md, still unresolved.
 //
 // Closest approach between any two arms: 2.60mm vs 1.0mm arm thickness,
 // so all six share arm_y = 3.5mm with margin to spare.

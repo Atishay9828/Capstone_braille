@@ -35,13 +35,58 @@ include <stack_options.scad>
 // ---------------------------------------------------------
 
 // --- CAM TRACK GEOMETRY ---
-inner_radius = 12.0;   // inner edge of track 0
+// R-07 part 2, 2026-09-01: 12.0 -> 14.0. THE DISC GROWS 4mm.
+// Ramp room is arc, and arc is radius. The innermost track had 1.26mm of arc per
+// state and could not hold a gentle ramp at any ramp fraction. At 14.0 it has
+// 1.45mm, which with pin_lift 0.5 brings it under the 30 degree limit and puts
+// the whole disc in range. Cost: cam, base plate and comb all get reprinted.
+inner_radius = 14.0;   // inner edge of track 0
 track_width  = 1.6;    // radial width of one track
 track_gap    = 0.1;    // gap between adjacent tracks
 
+tracks_n = 6;          // one per braille dot
+
 // Centre radius of track t (t = 0 innermost .. 5 outermost)
 function track_r(t) = inner_radius + t * (track_width + track_gap) + track_width / 2;
-//  t0=12.80  t1=14.50  t2=16.20  t3=17.90  t4=19.60  t5=21.30
+//  t0=14.80  t1=16.50  t2=18.20  t3=19.90  t4=21.60  t5=23.30
+
+// =========================================================
+// SHARED PLATE AND COMB FOOTPRINT
+//
+// base_plate.scad, linkage_comb.scad and top_plate.scad each used to declare
+// standoff_x/standoff_y for themselves, and the comb carried its own copy of the
+// cam pocket diameter under a comment reading "from base_plate.scad". Growing
+// the disc touches all of them at once, which is exactly the situation that has
+// twice shipped parts that do not fit. One owner now.
+// =========================================================
+cam_disc_dia        = 2 * (inner_radius + tracks_n * (track_width + track_gap));
+cam_pocket_diameter = cam_disc_dia + 1.6;   // 0.8mm clearance per side
+cam_pocket_depth    = 3;
+
+base_length = 58;      // X - set by the motor ear holes, unchanged
+// Y: must clear the cam pocket with real wall on both sides, and still fit the
+// 60mm cavity. (56 - 50)/2 = 3mm of plate either side of the pocket.
+base_width  = 56;
+
+standoff_x        = 26.0;
+standoff_y        = 21.0;
+standoff_diameter = 6.0;
+
+// The comb rests on the plate face OUTSIDE the cam pocket, so its half-side has
+// to beat the pocket radius. 54/2 = 27 against a pocket radius of 25 leaves 2mm
+// of bearing on all four edges, inside a 56mm-wide plate.
+comb_side   = 54.0;
+comb_peg_xy = 19.0;    // r=26.9, outside the Ø50 pocket, clear of the standoffs
+
+assert(cam_pocket_diameter + 4 <= base_width,
+       str("cam pocket Ø", cam_pocket_diameter, " leaves under 2mm of plate in Y"));
+assert(comb_side / 2 > cam_pocket_diameter / 2 + 1.5,
+       "comb does not reach far enough past the cam pocket to rest on the plate");
+assert(comb_side <= base_width - 1,
+       str("comb ", comb_side, " overhangs a ", base_width, "mm plate"));
+assert(comb_peg_xy * sqrt(2) > cam_pocket_diameter / 2 + 1,
+       "comb pegs fall inside the cam pocket");
+assert(base_width + 4 <= 60, "base plate does not fit the 60mm cavity");
 
 // --- BRAILLE CELL GEOMETRY ---
 // Standard dot numbering:   1 4

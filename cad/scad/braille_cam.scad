@@ -74,6 +74,7 @@
 // =========================================================
 
 include <mech_layout.scad>   // track geometry + track_phase(t) — SHARED, do not duplicate
+include <motor_spec.scad>    // motor_shaft_usable - the bore has to swallow it
 
 // --- 1. CONFIGURATION PARAMETERS ---
 states = 64;                // Total positions (6-bit binary)
@@ -213,9 +214,9 @@ module option_a_socket_cut() {
 //
 // Extruding the 2D profile has no centring to get wrong.
 //
-// v8.6: the bore is now BLIND. It stops cam_cap_roof below the top of the central
-// cap, so the shaft is fully swallowed and nothing projects through the face the
-// linkages run on.
+// v8.7: the bore is BLIND and stops cam_bore_roof below the CAM FACE itself.
+// The shaft is cut 2.5mm shorter to make that fit. Nothing stands proud of the
+// face - no boss, no shaft tip.
 module legacy_shaft_bore() {
     translate([0, 0, -hub_h - 0.01])
         linear_extrude(height = legacy_bore_depth + 0.01)
@@ -225,45 +226,33 @@ module legacy_shaft_bore() {
             }
 }
 
-// --- BLIND BORE (v8.6) - the shaft must NOT break through the cam face ---
+// --- BLIND BORE (v8.7) - THE SHAFT ENDS BELOW THE CAM FACE ---
 //
-// The through-bore left the shaft standing 1.5mm proud of the cam surface. It
-// cleared the arms by 2mm so it was not a clash, but a shaft sticking up through
-// the working face is something for a linkage to catch on during assembly, and it
-// gave only 6mm of Double-D engagement to carry the motor's torque through resin.
+// v8.6 got this wrong. It made the bore blind by adding a 2.6mm boss ON TOP of
+// the disc and running the bore up into it, so the shaft tip finished 1.5mm
+// ABOVE the cam's working face - hidden, but still above it, with a tower in the
+// middle of the face for the linkages to clear. That is not what was asked for
+// and it is not what the mechanism wants.
 //
-// The fix is a small boss on the disc's CENTRE, below the arms, that the bore
-// reaches up into. No stack change, no box change.
+// The shaft is cut down 2.5mm instead (see motor_spec.scad) and the bore is a
+// plain blind socket that stops inside the disc:
 //
-//   shaft above its boss ......... 7.5mm   (9.5 from the face, first 2 is the boss)
-//   hub 4 + disc floor 2 ......... 6.0mm   not enough on its own
-//   + cap 2.6 less a 0.5 roof .... 8.1mm   enough, with 0.6mm to spare
+//     hub bottom .............. -4.0    sits on the motor's shaft boss
+//     disc underside ........... 0.0
+//     shaft tip ................ 1.0    5.0mm of shaft from the hub bottom
+//     bore top ................. 1.5
+//     cam face ................. 2.0    <- 0.5mm of solid resin over the shaft
 //
-// Cap height is bounded on both sides. It must be tall enough to swallow the
-// shaft, and short enough to stay under the linkage arms, which start at
-// arm_y = 3.5mm above the cam face:
-//     2.2mm <= cam_cap_h <= 3.0mm      2.6 sits in the middle
-cam_cap_h    = 2.6;    // above the cam face
-cam_cap_r    = 3.6;    // 1.0mm of wall around the Ø5.2 bore
-cam_cap_roof = 0.5;    // solid material left over the shaft tip
+// Nothing stands proud of the cam face. The 0.5mm roof carries no load: the
+// tracks start at inner_radius and the centre is bare.
+cam_bore_roof = 0.5;    // solid disc material left over the shaft tip
 
-legacy_bore_depth = hub_h + disk_base_thickness + cam_cap_h - cam_cap_roof;
+legacy_bore_depth = hub_h + disk_base_thickness - cam_bore_roof;
 
-assert(legacy_bore_depth >= 7.5 + 0.2,
-       str("blind bore is only ", legacy_bore_depth,
-           "mm; the shaft presents 7.5mm above its boss"));
-assert(cam_cap_h <= 3.5 - 0.5,
-       str("cam cap is ", cam_cap_h, "mm tall and would foul the arms at 3.5mm"));
-assert(cam_cap_r > 2.6 + 0.8,
-       "cam cap wall is thinner than 0.8mm around the bore");
-
-// Sits on the disc's top face, at the centre. The arms converge no closer than
-// r=2.4 and start 3.5mm up, so this is under them, not through them.
-module cam_central_cap() {
-    if (!stack_option_a)
-        translate([0, 0, disk_base_thickness - 0.01])
-            cylinder(h = cam_cap_h + 0.01, r = cam_cap_r, $fn = 50);
-}
+assert(legacy_bore_depth >= motor_shaft_usable,
+       str("blind bore is ", legacy_bore_depth, "mm but the cut shaft presents ",
+           motor_shaft_usable, "mm - it would bottom out and lift the cam"));
+assert(cam_bore_roof >= 0.4, "roof over the shaft is thinner than one layer");
 
 // Calculated Variables
 slice_angle = 360 / states;
@@ -409,24 +398,16 @@ union() {
     //          on BOTH sides (double-D, not single-D)
     color("gray")
     translate([0, 0, -hub_h])
-    difference() {
-        // Hub body cylinder (below disc underside)
+        // NO BORE HERE. v8.7: this used to subtract its own inline Double-D,
+        // built with cube(center=true) - the exact construction that shipped a
+        // 3.5mm bore for a week. It was redundant anyway: legacy_shaft_bore()
+        // in the outer difference cuts the same hole, correctly, once. The file
+        // now has exactly ONE definition of the shaft bore. Do not inline it.
         cylinder(h=hub_h, r=4.5, $fn=50);
-
-        // Double-D shaft hole — through entire hub height
-        // M5 measured 3.0mm across flats; 3.2mm gives 0.2mm total resin clearance.
-        translate([0, 0, -1])
-        intersection() {
-            cylinder(h=hub_h + 2, r=2.6, $fn=50);     // 5.2mm clearance hole
-            cube([10, 3.2, hub_h + 2], center=true);   // 3.0mm measured + 0.2mm clearance
-        }
-    }
 
     // Option A only: material above the measured shaft tip creates a real roof.
     option_a_central_cap();
-
-    // Default path: the boss the blind bore reaches up into.
-    cam_central_cap();
+    // v8.7: no central cap on the default path. The roof is the disc itself.
 
     // 2. Generate Tracks
     for(t = [0 : dots-1]) {
@@ -474,16 +455,14 @@ module braille_cam() {
                      r=inner_radius + (dots*(track_width+track_gap)), $fn=100);
             // Hub — hangs below disc, now resting on build plate
             translate([0, 0, -hub_h])
-            difference() {
+        // NO BORE HERE. v8.7: this used to subtract its own inline Double-D,
+        // built with cube(center=true) - the exact construction that shipped a
+        // 3.5mm bore for a week. It was redundant anyway: legacy_shaft_bore()
+        // in the outer difference cuts the same hole, correctly, once. The file
+        // now has exactly ONE definition of the shaft bore. Do not inline it.
                 cylinder(h=hub_h, r=4.5, $fn=50);
-                translate([0, 0, -1])
-                intersection() {
-                    cylinder(h=hub_h+2, r=2.6, $fn=50);
-                    cube([10, 3.2, hub_h+2], center=true);  // Double-D
-                }
-            }
             option_a_central_cap();
-            cam_central_cap();
+            // v8.7: no central cap on the default path. The roof is the disc.
             // All 6 cam tracks
             for(t=[0:dots-1]) build_track_polyhedron(t);
         }

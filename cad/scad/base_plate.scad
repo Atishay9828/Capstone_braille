@@ -29,14 +29,17 @@ include <hall_interface.scad> // shared Hall geometry also includes mech_layout.
 //   2. The corner standoffs (x=+/-26, dia 6) spanned to x=29 and hung 1mm off a
 //      plate that ended at 28. Now flush.
 // 58 still clears the box: internal_length is 60, so 1.0mm per side.
-base_length     = 58;      // X
-base_width      = 50;      // Y — unchanged
+// base_length, base_width, cam_pocket_* , standoff_* and comb_peg_xy now come
+// from mech_layout.scad. They are shared with the comb and the top plate, and
+// keeping private copies here is what let the comb drift.
+assert(!is_undef(base_length) && !is_undef(base_width)
+       && !is_undef(cam_pocket_diameter) && !is_undef(standoff_x),
+       "base_plate needs the shared footprint from mech_layout.scad");
 base_thickness  = 5;       // Z
 
 // Cam Interface (matches braille_cam.scad). Declared before the motor pilot
 // calculation because OpenSCAD `use` callers evaluate these bindings eagerly.
-cam_pocket_diameter = 46;   // 44.4mm cam OD + 0.8mm clearance/side
-cam_pocket_depth    = 3;
+// (cam_pocket_diameter and cam_pocket_depth come from mech_layout.scad)
 
 // Motor Interface — CORRECTED for actual 28BYJ-48 measurements
 // Owned values: can Ø28.1, shaft offset 7.5, ear spacing 34.7; seat Ø29 retains 0.45mm/side
@@ -78,13 +81,12 @@ motor_mount_pilot_depth = stack_option_a ? base_thickness + 0.1
 // Standoffs — CRITICAL FIX: was 3.5mm, now 8mm
 // Stack above plate: 8mm standoff + 3mm top plate = 11mm
 // Linkage total height = 12mm, foot on cam bump (0.2mm below plate top) → nub at +0.8mm
-standoff_diameter = 6;
+// (standoff_diameter comes from mech_layout.scad)
 standoff_height   = 8 + stack_repair_raise;
 // Option A raises the cam/linkage/top datums together by 4mm while the motor and
 // base underside stay fixed. The top plate underside therefore moves from local
 // z=13 to z=17, requiring 12mm posts instead of 8mm.
-standoff_x = 26;
-standoff_y = 21;
+// (standoff_x, standoff_y come from mech_layout.scad)
 
 // --- SPRING CAVITY: DELETED IN v7.5. DO NOT ADD IT BACK. ---
 // It was a 22 x 16mm through-window at the plate centre, left over from the v6.x
@@ -189,11 +191,12 @@ assert(!stack_option_a || hall_island_h >= 0.5,
 // linkage_comb.scad drops over these four pegs. They stop it turning; the
 // spigot on its underside, which sits in the cam pocket, centres it.
 //
-// Position: (+/-17.5, +/-17.5) puts them at r=24.75, clear of the Ø46 cam
-// pocket and clear of the corner standoffs at (26, 21). They rise from the
+// Position: comb_peg_xy from mech_layout.scad. At (+/-19, +/-19) they are at
+// r=26.9, clear of the Ø50 cam pocket and 7.3mm from the corner standoffs at
+// (26, 21). They rise from the
 // plate's top face into a 2.2mm hole in a comb 2.3mm thick, so 2.0mm of peg
 // is full engagement without bottoming out.
-comb_peg_xy     = 17.5;
+// (comb_peg_xy comes from mech_layout.scad)
 comb_peg_d      = 2.0;      // 0.2mm clearance in the comb's 2.2mm hole
 comb_peg_h      = 2.0;
 
