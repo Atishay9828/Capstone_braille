@@ -15,7 +15,7 @@ you own**:
 | Motor flyback diodes | **Built into the ULN2003A.** The chip has internal freewheeling diodes on its COM pin — that is what COM is for. |
 | Motor driver transistors | **That IS the ULN2003.** Seven Darlington pairs, 500mA each. You need four. |
 | Button pull-up resistors | ESP32 has **internal** pull-ups. Firmware uses `INPUT_PULLUP`. |
-| Hall sensor pull-up / comparator | **On the blue MH module already** (that's the second IC and the trimmer pot). |
+| Hall sensor pull-up / comparator | ⚠️ **Superseded 2026-08-21.** The MH module is dropped. A bare **A3144** is an open-collector switch and needs one external **10k pull-up to 3.3V**. There is no comparator and nothing to trim. |
 | Voltage regulator + decoupling caps | **On the ESP32 DevKit already** (AMS1117 + caps). |
 | Reverse-polarity protection | ⚠️ **NOT present** in the circuit. Mitigated by measurement: the owned jack was tested and is correct. Measure any new connector before trusting it. |
 
@@ -32,7 +32,7 @@ you actually have the right thing.*
 | 1 | **ESP32 DevKit (USB-C)** | Black PCB ~51×28mm, silver square shield, USB-C at one end, 15 pins per side, BOOT + EN buttons | 1 | ✅ HAVE (₹350) |
 | 2 | **28BYJ-48 stepper motor** | Silver can ~28mm dia, blue plastic base, 5 coloured wires into a white plug | 1 | ✅ HAVE (₹160 w/ driver) |
 | 3 | **ULN2003 driver board** | Small **blue** PCB, 4 red LEDs, white 5-pin socket, black 16-pin chip, IN1–IN4 + `+`/`-` pins | 1 | ✅ HAVE — **this is your motor driver, no chip to buy** |
-| 4 | **Hall sensor module (MH-Sensor-Series)** | Small **blue** PCB, tiny black 3-pin sensor on one edge, blue trimmer pot, 1–2 LEDs, pins marked **AO DO GND VCC** | 1 | ✅ HAVE (₹50) — ⚠️ **must use AO (analog)**, and the pocket won't fit it (see note) |
+| 4 | **A3144 unipolar Hall switch, bare TO-92** | Black 3-pin transistor-shaped part, flat face marked A3144 | 10 | 🔴 **BUY (~₹80)** — replaces the MH module (2026-08-21). Digital, self-calibrating, and the CAD pocket already fits it: pocket 4.5×3.5mm vs body 4.1×3.0mm. Needs VCC ≥4.5V, so run it from **5V**, not 3.3V. |
 | 5 | **5V / 3A power adapter** | Wall plug, barrel connector on the lead, "5V 3A" on the label | 1 | ✅ HAVE (₹160 w/ jack) |
 | 6 | **Inline female DC pigtail jack** | Black cylindrical barrel socket with red/black wires; no thread or nut | 1 | ✅ HAVE / CURRENT POD CHOICE; body stays outside, leads pass through the selected lid slot, internal tie post carries pull load. ✅ Polarity measured correct 2026-08-01 (red = +). |
 | 6b | **5.5×2.1mm female panel-mount jack** | Threaded neck plus retaining nut | 0 | ⛔ NOT REQUIRED for the current inline-pigtail revision |
@@ -78,7 +78,7 @@ The soldering station is the bulk of it and is the one genuinely missing tool.
 | # | Component | Spec | Qty | Est. ₹ |
 |---|---|---|---|---|
 | 6 | **Micro compression springs** | **2.0mm OD**, ~0.3mm stainless wire, ~4mm free length. Buy an assortment kit. 🔴 Pen springs (4mm) **cannot** work — braille rows are 2.6mm apart. | 6 + spares | ~500 |
-| 7 | **Homing magnet** | 🔴 **3mm dia × 1mm thick** neodymium — **CHANGED from 3×2mm in v7.5.** The cam disc floor is only 2mm, so a 2mm magnet's pocket cut clean through it and punched a hole across three cam tracks. 1mm leaves 0.8mm of floor and couples just as well. Your 8×1mm ones are too wide. | 1 (buy 10) | ~120 |
+| 7 | **Homing magnet** | ⚠️ **CHANGED 2026-08-21 — now 8mm dia × 1mm thick.** 3×1mm cannot be sourced; the only 3mm stock is 3×3mm, which needs a 3.2mm pocket in a 2.0mm disc floor and fails the cam's own assert. 8×1mm needs 1.2mm and leaves 0.8mm of floor, exactly as 3×1 did. **You already own these.** 🔴 Blocked on CAD: `mech_layout.scad homing_mag_dia` is still 3.0. | 1 (own 10) | ₹0 |
 | 8 | **M2.5 × 25mm bolts** | Top plate → standoffs → box bosses | 4 | ~60 |
 | 9 | **M4 × 5mm or 6mm thread-forming screws** | Candidate range for the approved raised-stack design. Select the pilot with `base_interface_coupon`; measure the real ear and screw point; require ≥0.5mm clearance below the cam. **Never use M4×10.** No nuts. | 2 | ~30 |
 | 10 | **M2 × 8mm self-tap** | Pod lid. **NOT M2×6** — through a 4mm lid that leaves only 2mm of thread. | 2 | ~40 |

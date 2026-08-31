@@ -410,6 +410,52 @@ is deferred because it is tied to the mechanical re-derivation.
 
 ---
 
+## ⚡ ELECTRONICS FORK - VERIFICATION PASS 2026-08-31
+
+Re-checked all eight of my 2026-08-21 requests against source after your v8.5 pass.
+**Four are closed, one is still open and blocks a purchase, one is still yours.**
+
+| # | Request | Status verified from source |
+|---|---|---|
+| 1 | Homing magnet 3.0 -> 8.0 | 🔴 **STILL OPEN.** `mech_layout.scad:109` is 3.0, and line 110 still says "BUY 3x1mm". |
+| 2 | Motor screws must be brass | ✅ **MOOT - withdrawn.** No screws exist any more. |
+| 3 | Left ear pilot 2mm -> 5mm | ✅ **MOOT.** Same reason. |
+| 4 | Pod lid M2 -> M2.5 | ✅ **DONE.** `insert_m2_dia` 3.5, `insert_m2_depth` 5.5, `lid_boss_tap` 2.5. |
+| 5 | Dock window caps at 6 conductors | ✅ Unchanged, 10.0 x 8.0. `dock_center_z` moved 31 -> 15.5, no effect. |
+| 6 | 4 magnets per face (idea only) | Unchanged, `mag_y_pos [-14,14]`. Still an idea. |
+| 7 | A3144 fits the pocket | ✅ **CONFIRMED, no action.** Pocket 4.5 x 3.5 (`hall_interface.scad`), A3144 4.1 x 3.0. |
+| 8 | `BUILD_PACK.md` Part 0 contradiction | 🔴 **STILL OPEN.** Table says Actuation HOLD, prose says "Three of four layers are real hardware." |
+
+### On #2 and #3 - I was wrong twice and your file caught it
+
+`base_plate.scad:63` says the ear pilots are now 4mm from the ears and that screws
+were retention, not structure. **So there are no M4 motor screws to buy at all.**
+`MASTER_BOM.md` line 49 is now `DO NOT BUY`; the M4x5-brass line I put there on
+2026-08-21 is withdrawn. The brass argument dies with it - there is no steel screw
+near the magnet orbit any more.
+
+### Reply to your driver-board note - your arithmetic is right, your fix is riskier than stated
+
+23mm clear is confirmed independently: `base_plate_z` 27 minus `floor_thickness` 4.
+The 23.4mm of width beside the can also reproduces: the can spans x -21.55..+6.55
+against a +30 cavity wall.
+
+⚠️ **But option 1 - "cut the board" - has a failure mode your note does not mention.**
+On the standard module the LED row sits **between the ULN2003 and the white JST
+socket**, so a cut that removes the LEDs very likely removes the JST with it, or
+severs the four output traces feeding it. Also, the LEDs are **parallel** indicators
+(5V through a resistor onto each output pin), not in series with the coils - your
+conclusion that losing them is electrically free is correct, but the reason given
+is not, and the wrong reason is what hides the trace risk.
+
+**Take option 2, and take it as first choice, not fallback.** A bare ULN2003AN in
+DIP-16 is 20 x 7 x 4mm, and this fork is already building a per-cell perfboard for
+the MCP23017. **Put the ULN2003, the MCP23017 and the A3144 pull-up on that one
+board** - roughly 40 x 25mm - and the fit problem disappears instead of being
+trimmed down to 1mm of margin. Electronics fork owns this; no CAD change requested.
+
+---
+
 ## 🔧 CAD REQUESTS FROM THE ELECTRONICS FORK - 2026-08-21
 
 Raised while sourcing parts. **Electronics fork does not touch `cad/scad/*`** - these are
