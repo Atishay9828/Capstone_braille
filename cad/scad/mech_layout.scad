@@ -106,15 +106,30 @@ function track_phase(t) =
 // r > ~14 to clear it. Tracks start at r=12 and the disc ends at r=22.1 with
 // only 0.1mm gaps between tracks. There is nowhere outside a track to put it.
 // Keeping the floor intact is the only fix. Do not "tidy" this back to 2mm.
-homing_mag_dia   = 3.0;    // MEASURE the magnet you buy
-homing_mag_thk   = 1.0;    // BUY 3x1mm — NOT the 3x2mm in the old BOM
+// 2026-09-01: 3mm -> 8mm. Mridul does not own 3x1mm magnets and does own 8x1mm,
+// which are the same ones the dock uses. Buying a second size for one pocket is
+// not worth it.
+//
+// CONSEQUENCE FOR FIRMWARE, and it matters: an 8mm magnet at r=17.35 subtends
+// 26 degrees, which is 4.7 states wide. Homing on the CENTRE of that window is
+// useless. Home by always rotating the SAME direction and latching the FIRST
+// edge of the field; an edge is repeatable to about one step.
+homing_mag_dia   = 8.0;    // MEASURED - the 8x1mm discs already on hand
+homing_mag_thk   = 1.0;    // 8x1mm, same part as the dock magnets
 homing_mag_fit   = 0.2;    // glue/print clearance, added to dia and thickness
 homing_mag_r     = 17.35;  // radius of the magnet centre on the disc
 homing_mag_angle = 90;     // +Y axis
 
 // --- SHARED VERTICAL STACK (world z, mm from outer-box floor) ---
 cam_flat_z    = 31.0 + stack_repair_raise;   // v8.5: was 45, motor now on the floor  // cam surface, dot DOWN
-pin_lift      = 0.8;   // cam bump height = how far a dot rises
+// R-07, 2026-09-01: 0.8 -> 0.5. THE DOT WAS ALWAYS TOO TALL.
+// The linkage is a rigid push-rod, not a lever - foot on the cam, dome on top,
+// link_total_h between them - so cam lift goes 1:1 into dot rise. A braille dot
+// is 0.46-0.50mm tall (Library of Congress / ISO), so 0.8 was 60% over standard.
+// It also has to be lifted through a ramp that fits inside ONE state's arc, and
+// at the innermost track that arc is only 1.26mm. Every millimetre of lift is
+// paid for twice: once in the reader's fingertip, once in the pressure angle.
+pin_lift      = 0.5;   // cam bump height = how far a dot rises
 plate_under_z = 40.0 + stack_repair_raise;   // v8.5: was 54  // top plate underside
 plate_top_z   = 44.0 + stack_repair_raise;   // v8.5: was 58  // top plate OUTER top surface
 
@@ -171,6 +186,11 @@ foot_len = 2.5;
 // Height of the arm's underside above the cam. Shared for the same reason as
 // foot_len: linkage_comb.scad has to stop BELOW the arm, and reading this as
 // undef is how the first comb silently rendered 1mm tall.
+// R-07: the cam needs this to size its ramps, and linkage.scad used to own it
+// privately - the same trap that made the comb render 1mm tall when it read
+// foot_len as undef. Shared values live here.
+foot_roll_r = 0.5;   // radius of the rolled follower face, in the travel direction
+
 arm_y = 3.5;
 
 // Radial length of the foot. Shared because linkage_comb.scad sizes its pocket

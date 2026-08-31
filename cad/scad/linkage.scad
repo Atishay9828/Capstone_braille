@@ -39,7 +39,9 @@ thickness   = link_thickness;  // 1.0, from mech_layout.scad — the assembly
                      // flat dwell zone (see braille_cam.scad v6.3 header).
 // foot_w comes from mech_layout.scad — the comb pocket is sized from it
 // foot_len comes from mech_layout.scad — the comb needs the same number
-foot_roll_r = 0.5;   // radius of the rolled contact face (= thickness/2)
+// R-07: now declared in mech_layout.scad, because braille_cam.scad has to size
+// its ramps from it. Do not re-declare it here.
+assert(!is_undef(foot_roll_r), "linkage needs foot_roll_r from mech_layout.scad");
 
 arm_h       = 1.0;   // horizontal arm thickness
 // arm_y comes from mech_layout.scad — the comb needs the same number.

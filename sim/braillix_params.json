@@ -52,7 +52,7 @@
       21.3
     ],
     "disk_base_thickness": 2.0,
-    "pin_lift": 0.8,
+    "pin_lift": 0.5,
     "dot_track": [
       2,
       3,

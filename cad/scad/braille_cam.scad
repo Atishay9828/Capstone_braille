@@ -81,6 +81,50 @@ dots = 6;                   // Number of tracks
 disk_base_thickness = 2.0;  // Base thickness (mm)
 // pin_lift, track_width, track_gap and inner_radius now come from
 // mech_layout.scad so the cam, linkages and top plate cannot drift apart.
+// =========================================================
+// R-07, 2026-09-01: THE RAMP IS NOW SIZED PER TRACK, NOT GUESSED.
+//
+// angular_ramp_fraction was 0.2, meaning each ramp got 20% of a state's arc and
+// the other 80% sat flat. On the outer track that is 0.42mm of run for 0.8mm of
+// rise - a 62 degree face. On the inner track, 72 degrees. The follower does not
+// climb a face like that, it wedges into it, and the motor loses steps instead
+// of lifting the dot. 30 degrees is the textbook limit for a translating
+// follower.
+//
+// 0.2 was chosen to maximise dwell, which is a real concern - the dot must sit
+// still when the motor stops. But the flat actually needed is small, and it is
+// NOT foot_w. foot_w (1.4mm) is the width ACROSS the track. The follower is a
+// roll of radius foot_roll_r lying across the track, so in the DIRECTION OF
+// TRAVEL it is a point contact. A roller of radius rho leaves a flat only
+// rho*tan(alpha/2) wide as it rolls onto a ramp of angle alpha. At the 30 degree
+// limit that is 0.13mm, plus positioning tolerance for step error and backlash.
+//
+// So each track now gets the widest ramp its own arc allows. The inner tracks
+// have less arc per state and therefore steeper ramps; sizing them all from one
+// global fraction meant the outer tracks wasted room the inner ones needed.
+//
+// WHAT THIS DOES NOT DO, and what Mridul asked about: it does not let a ramp
+// borrow angle from its neighbour. Gray order means exactly one bit changes per
+// step, so ALL 64 state boundaries carry a ramp - every neighbour is busy. Long
+// flat plateaus exist (Gray cut total ramps on the disc from 126 to 64) but they
+// sit on the far side of a stop, and a stop must be flat. One state's arc is the
+// hard ceiling for one ramp, whatever the ordering.
+// =========================================================
+use_auto_ramp = true;
+
+dwell_tol = 0.15;   // arc left flat each side of a stop for step error/backlash
+
+// Flat consumed at each end of a ramp, evaluated at the 30 degree design limit.
+foot_flat_arc = 2 * (foot_roll_r * tan(15) + dwell_tol);
+
+function slice_arc(t) = 2 * PI * track_r(t) / states;
+function ramp_fraction_of(t) =
+    use_auto_ramp
+        ? max(0.05, min(0.98, (slice_arc(t) - foot_flat_arc) / slice_arc(t)))
+        : angular_ramp_fraction;
+function ramp_angle_of(t) = slice_angle * ramp_fraction_of(t);
+
+// Kept only as the manual fallback when use_auto_ramp is false.
 angular_ramp_fraction = 0.2;// v6.3: 0.3->0.2 — more flat dwell per slice, free (no size/cost change)
 subdivisions_per_slice = 4; // Smoothness (Higher = smoother, slower)
 preview_mode = false;       // Set FALSE for final high-quality render!
@@ -285,16 +329,17 @@ function get_height_at_angle(angle, track) =
         val_next = get_pattern_bit(next_k, track),
         
         // Ramp Logic
-        half_ramp = ramp_angle / 2,
+        this_ramp = ramp_angle_of(track),
+        half_ramp = this_ramp / 2,
         is_left_ramp = (angle_in_slice < half_ramp),
         is_right_ramp = (angle_in_slice > (slice_angle - half_ramp)),
         
         // Calculate Height Factor (0.0 to 1.0)
         h_factor = 
             is_left_ramp ? 
-                lerp(val_prev, val_curr, s_curve((angle_in_slice + half_ramp) / ramp_angle)) :
+                lerp(val_prev, val_curr, s_curve((angle_in_slice + half_ramp) / this_ramp)) :
             is_right_ramp ? 
-                lerp(val_curr, val_next, s_curve((angle_in_slice - (slice_angle - half_ramp)) / ramp_angle)) :
+                lerp(val_curr, val_next, s_curve((angle_in_slice - (slice_angle - half_ramp)) / this_ramp)) :
             val_curr // Stable Center Zone
     )
     disk_base_thickness + (h_factor * pin_lift);
