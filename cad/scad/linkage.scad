@@ -32,7 +32,7 @@ include <mech_layout.scad>
 
 // --- 1. PARAMETERS ---
 
-thickness   = link_thickness;  // 1.0, from mech_layout.scad — the assembly
+thickness   = link_thickness;  // 2.0, from mech_layout.scad — the assembly
                      // transform needs the same number, so it lives there.
                      // sheet thickness. Once assembled this is the foot's
                      // TANGENTIAL contact width — it must fit inside the cam's
@@ -43,10 +43,12 @@ thickness   = link_thickness;  // 1.0, from mech_layout.scad — the assembly
 // its ramps from it. Do not re-declare it here.
 assert(!is_undef(foot_roll_r), "linkage needs foot_roll_r from mech_layout.scad");
 
-arm_h       = 1.0;   // horizontal arm thickness
-// arm_y comes from mech_layout.scad — the comb needs the same number.
-             // COMMON to all six (v7.0). Arm top when a dot is raised =
-                     // 3.5+1.0+0.8 = 5.3mm, vs plate underside at 9.0mm -> 3.7mm clear.
+// arm_h and riser_w come from mech_layout.scad — the comb pocket and the cam
+// ramp sizing both depend on this section, so it is not private to this file.
+assert(!is_undef(arm_h) && !is_undef(riser_w),
+       "linkage needs arm_h and riser_w from mech_layout.scad");
+// Arm top when a dot is raised = 3.5 + 3.0 + 0.5 = 7.0mm,
+// vs plate underside at 9.0mm -> 2.0mm clear.
 
 // Dot end — all from mech_layout.scad so the plate cannot disagree
 nub_w       = nub_width;      // 1.0mm, slides inside the 1.4mm spring bore
@@ -66,9 +68,10 @@ $fn = 48;
 module body_profile_raw(dot) {
     span = arm_span(dot);
     union() {
-        // lower riser: foot top up to arm bottom, at the foot end
-        translate([span - thickness/2, foot_len - 0.1])
-            square([thickness, arm_y - foot_len + 0.1]);
+        // lower riser: foot top up to arm bottom, at the foot end.
+        // RADIAL width is riser_w, not thickness — see mech_layout.scad.
+        translate([span - riser_w/2, foot_len - 0.1])
+            square([riser_w, arm_y - foot_len + 0.1]);
         // horizontal arm
         translate([0, arm_y])
             square([span, arm_h]);
@@ -103,8 +106,8 @@ module foot_3d(dot) {
         translate([span - foot_w/2, foot_roll_r, thickness/2])
             rotate([0, 90, 0])
                 cylinder(r = foot_roll_r, h = foot_w);
-        translate([span - thickness/2, foot_len, 0])
-            cube([thickness, 0.01, thickness]);
+        translate([span - riser_w/2, foot_len, 0])
+            cube([riser_w, 0.01, thickness]);
     }
 }
 

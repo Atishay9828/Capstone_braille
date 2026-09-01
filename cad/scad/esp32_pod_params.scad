@@ -26,7 +26,7 @@ pod_width        = 68;     // Y — matches cell shell_width for uniform chain l
 // v8.5: 58 -> 44, following the cell. The pod was never full - floor 3, wire tail
 // 5, header 8.5, board 1.6, tallest component ~4, clearance 3 and a 4mm lid come to
 // about 29mm. At 44 there is still 15mm spare.
-pod_height       = 44 + stack_repair_raise; // Z — matches cell shell_height
+pod_height       = 46.5 + stack_repair_raise; // Z — matches cell shell_height
 pod_wall         = 4;      // Wall thickness
 pod_floor        = 3;      // Floor thickness
 pod_fillet       = 3.0;    // Outer corner radius — matches cell (was 2.0)

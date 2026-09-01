@@ -54,9 +54,10 @@ pcb_t            =  1.6;   // standard FR4
 //
 elec_pcb_stack_h = pcb_t + (use_dip_socket ? dip_socket_h : 0) + ic_seated_h;
 elec_overall_h   = ic_pin_tail + elec_pcb_stack_h;      // 11.0 socketed
-assert(elec_overall_h < 23.0,
+// v8.8: the stack rose 2.5mm, so the clear height went 23 -> 25.5mm.
+assert(elec_overall_h < 25.5,
        str("driver assembly is ", elec_overall_h,
-           "mm; only 23mm between the box floor and the base plate"));
+           "mm; only 25.5mm between the box floor and the base plate"));
 
 // --- WHERE IT SITS ---
 //
@@ -79,7 +80,7 @@ assert(elec_overall_h < 23.0,
 //
 //   motor cup outer edge .... x = +9.75   (centre -7.5, od 34.5)
 //   corner boss inner edge .. x = +22.1   (bosses at x=26, dia 7.8)
-//   USABLE GAP .............. 12.35mm wide, y = -17.1 .. +17.1, 23mm tall
+//   USABLE GAP .............. 12.35mm wide, y = -17.1 .. +17.1, 25.5mm tall
 //
 // The board therefore STANDS ON EDGE against the +X wall, 28mm along Y, 18mm
 // tall in Z, 11mm thick in X. It does not lie flat: flat needs 18mm of width and
@@ -95,7 +96,7 @@ elec_gap_outer   = 22.10;  // corner boss inner edge
 assert(elec_overall_h <= (elec_gap_outer - elec_gap_inner),
        "driver assembly is wider than the gap beside the motor cup");
 assert(pcb_len <= 34.0, "board is longer than the clear band between the bosses");
-assert(elec_pcb_z + pcb_w <= 27.0, "board top fouls the base plate at z=27");
+assert(elec_pcb_z + pcb_w <= 29.5, "board top fouls the base plate at z=29.5");
 
 // NOT MODELLED YET. The board is currently held by its own wire stiffness and a
 // blob of hot glue. If it needs a real retainer, the cheap version is two 1.8mm

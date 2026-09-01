@@ -166,7 +166,7 @@ homing_mag_r     = 17.35;  // radius of the magnet centre on the disc
 homing_mag_angle = 90;     // +Y axis
 
 // --- SHARED VERTICAL STACK (world z, mm from outer-box floor) ---
-cam_flat_z    = 31.0 + stack_repair_raise;   // v8.5: was 45, motor now on the floor  // cam surface, dot DOWN
+cam_flat_z    = 33.5 + stack_repair_raise;   // v8.8: +2.5, hub_h 4 -> 6.5 (was 45 pre-v8.5)
 // R-07, 2026-09-01: 0.8 -> 0.5. THE DOT WAS ALWAYS TOO TALL.
 // The linkage is a rigid push-rod, not a lever - foot on the cam, dome on top,
 // link_total_h between them - so cam lift goes 1:1 into dot rise. A braille dot
@@ -175,8 +175,8 @@ cam_flat_z    = 31.0 + stack_repair_raise;   // v8.5: was 45, motor now on the f
 // at the innermost track that arc is only 1.26mm. Every millimetre of lift is
 // paid for twice: once in the reader's fingertip, once in the pressure angle.
 pin_lift      = 0.5;   // cam bump height = how far a dot rises
-plate_under_z = 40.0 + stack_repair_raise;   // v8.5: was 54  // top plate underside
-plate_top_z   = 44.0 + stack_repair_raise;   // v8.5: was 58  // top plate OUTER top surface
+plate_under_z = 42.5 + stack_repair_raise;   // v8.8: +2.5  // top plate underside
+plate_top_z   = 46.5 + stack_repair_raise;   // v8.8: +2.5  // top plate OUTER top surface
 
 // The plate has a shallow finger-pad recess over its middle, so the surface the
 // dots actually emerge through is 0.8mm BELOW the rim. v7.2 bug fix: link_total_h
@@ -220,7 +220,38 @@ spring_free_l = 4.0;   // free length to order (~5 coils; 1.5mm solid)
 // position must shift by -link_thickness/2 first or every dot lands half a
 // thickness off its hole. (That is exactly what happened in the first version of
 // export_linkage_assembly.scad — all six dots were 0.500mm out.)
-link_thickness = 1.0;
+// =========================================================
+// THE ARM SECTION. 2026-09-01: 1.0 x 1.0 -> 2.0 x 3.0.
+//
+// The arm carries the reader's fingertip straight into the cam, as a beam with
+// the load at one end and the reaction at the other. At 1.0 x 1.0mm over the
+// 19.86mm longest span it is not a linkage, it is a spring:
+//
+//     section     I(mm4)     0.1N      0.3N      0.5N     tip deflection
+//     1.0 x 1.0    0.083    1.57mm    4.70mm    7.83mm    <- as designed
+//     2.0 x 2.0    1.333    0.10mm    0.29mm    0.49mm
+//     2.0 x 3.0    4.500    0.03mm    0.09mm    0.15mm    <- chosen
+//
+// The dot is 0.50mm tall. The old arm bent three times the whole dot height
+// under the lightest touch a reader would use, so a finger would fold it flat
+// and feel nothing. 2.0 x 3.0 is 54x stiffer and keeps deflection under a third
+// of the dot height even at a heavy 0.5N press.
+//
+// Two things bound it. Arm-to-arm clearance is 2.60mm, so 2.0mm of width leaves
+// 0.6mm between neighbours. And the arm sits between arm_y and the top plate
+// underside 9.0mm above the cam, so 3.5 + 3.0 + 0.5 lift = 7.0 leaves 2.0mm.
+//
+// R-07 got the disc into shape and this is what makes it mean anything - a
+// gentle ramp is pointless if the follower bends instead of lifting.
+// =========================================================
+link_thickness = 2.0;   // TANGENTIAL width - also the extrusion depth
+arm_h          = 3.0;   // VERTICAL depth of the horizontal arm
+
+// The lower riser and the foot are sized RADIALLY by the track, not by the arm.
+// They used to inherit link_thickness, which is tangential - so thickening the
+// arm would have pushed a 2.0mm-wide foot onto a 1.6mm track and straddled the
+// neighbour. Kept separate on purpose.
+riser_w = 1.4;          // radial width of the lower riser, = foot_w
 
 // Foot height, cam surface up to the underside of the arm. Lives here rather than
 // in linkage.scad because linkage_comb.scad needs it too: the comb has to start
@@ -234,6 +265,10 @@ foot_len = 2.5;
 // R-07: the cam needs this to size its ramps, and linkage.scad used to own it
 // privately - the same trap that made the comb render 1mm tall when it read
 // foot_len as undef. Shared values live here.
+// NOT link_thickness/2 any more. It used to be, and thickening the arm would
+// have taken it to 1.0 - which feeds straight back into the ramp sizing
+// (foot_flat_arc) and would have given back a third of the ramp room R-07 just
+// won. The roll now sits centred in the arm's width and keeps its own radius.
 foot_roll_r = 0.5;   // radius of the rolled follower face, in the travel direction
 
 arm_y = 3.5;

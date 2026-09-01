@@ -165,7 +165,22 @@ assert(magnet_depth < disk_base_thickness - 0.5,
 //     hub_h = (cam pocket floor z) - (measured shaft-boss top z)  - 0.3 clearance
 // and re-derive cam_flat_z in mech_layout.scad in the SAME pass, because
 // link_total_h is computed from it.
-hub_h = 4;             // <-- MEASURE (M6/M7). Provisional.
+// 2026-09-01: 4 -> 6.5. THIS IS THE 2.5mm STACK RAISE.
+// The hub is the only thing between the motor's shaft boss and the disc, so its
+// length sets how much shaft the bore can swallow. At 4mm the bore reached 5.5mm
+// against a 7.5mm shaft and the tip came out through the cam face. At 6.5mm the
+// bore reaches 8.0mm: the tip sits 0.5mm short of the bore top and 0.5mm of solid
+// disc covers it.
+//
+//   hub bottom ........ -6.5   on the motor's shaft boss
+//   shaft tip ......... +1.0   7.5mm of shaft from the hub bottom
+//   bore top .......... +1.5
+//   cam face .......... +2.0   <- nothing above this
+//
+// Everything above the disc moves up 2.5mm with it: cam_flat_z, the base plate,
+// the standoffs, the top plate, the shell, and the pod that has to stay level
+// with it. Nothing above the disc changes SIZE - the tower just translates.
+hub_h = 6.5;
 shaft_bore_depth = 8;  // total Double-D bore depth from hub bottom through disc floor
 
 // Option A shaft socket. The hub bottom sits on the measured Ø9 x 2mm collar;
@@ -214,9 +229,9 @@ module option_a_socket_cut() {
 //
 // Extruding the 2D profile has no centring to get wrong.
 //
-// v8.7: the bore is BLIND and stops cam_bore_roof below the CAM FACE itself.
-// The shaft is cut 2.5mm shorter to make that fit. Nothing stands proud of the
-// face - no boss, no shaft tip.
+// v8.8: the bore is BLIND and stops cam_bore_roof below the CAM FACE itself.
+// The hub is 2.5mm longer to make that fit, with the shaft at full length.
+// Nothing stands proud of the face - no boss, no shaft tip.
 module legacy_shaft_bore() {
     translate([0, 0, -hub_h - 0.01])
         linear_extrude(height = legacy_bore_depth + 0.01)
@@ -234,21 +249,27 @@ module legacy_shaft_bore() {
 // middle of the face for the linkages to clear. That is not what was asked for
 // and it is not what the mechanism wants.
 //
-// The shaft is cut down 2.5mm instead (see motor_spec.scad) and the bore is a
-// plain blind socket that stops inside the disc:
+// The hub is lengthened 4 -> 6.5mm instead (v8.8), raising the whole stack 2.5mm,
+// and the bore is a plain blind socket that stops inside the disc:
 //
-//     hub bottom .............. -4.0    sits on the motor's shaft boss
+//     hub bottom .............. -6.5    sits on the motor's shaft boss
 //     disc underside ........... 0.0
-//     shaft tip ................ 1.0    5.0mm of shaft from the hub bottom
+//     shaft tip ................ 1.0    7.5mm of uncut shaft from the hub bottom
 //     bore top ................. 1.5
 //     cam face ................. 2.0    <- 0.5mm of solid resin over the shaft
 //
 // Nothing stands proud of the cam face. The 0.5mm roof carries no load: the
 // tracks start at inner_radius and the centre is bare.
 cam_bore_roof = 0.5;    // solid disc material left over the shaft tip
+shaft_air_gap = 0.5;    // slack above the tip so the hub seats on the boss,
+                        // not on the shaft end, whatever the length tolerance
 
 legacy_bore_depth = hub_h + disk_base_thickness - cam_bore_roof;
 
+assert(legacy_bore_depth >= motor_shaft_usable + shaft_air_gap,
+       str("bore is ", legacy_bore_depth, "mm for a ", motor_shaft_usable,
+           "mm shaft - under ", shaft_air_gap, "mm of slack, the cam can hang on ",
+           "the shaft tip instead of seating on the boss"));
 assert(legacy_bore_depth >= motor_shaft_usable,
        str("blind bore is ", legacy_bore_depth, "mm but the cut shaft presents ",
            motor_shaft_usable, "mm - it would bottom out and lift the cam"));

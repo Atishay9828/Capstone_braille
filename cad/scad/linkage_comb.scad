@@ -37,8 +37,13 @@ assert(!is_undef(foot_len) && !is_undef(arm_y) && !is_undef(foot_w)
 // both with no step to rock in. Sized from the FOOT: if the foot is ever
 // narrowed independently of the arm, these must follow the foot.
 slot_fit  = 0.30;                       // 0.15/side sliding fit in resin
-pocket_w  = link_thickness + slot_fit;  // across the track
-pocket_l  = foot_w + slot_fit;          // along the arm
+pocket_w  = link_thickness + slot_fit;  // TANGENTIAL - follows the arm width
+pocket_l  = foot_w + slot_fit;          // RADIAL - follows the track
+
+// The pocket has to swallow the lower riser as well as the foot, and the riser
+// is riser_w radially. If riser_w ever exceeds the foot, this stops fitting.
+assert(pocket_l >= riser_w + 0.2,
+       str("comb pocket is ", pocket_l, "mm radially but the riser is ", riser_w));
 
 // --- vertical ------------------------------------------------------------
 // Rests on the base-plate face, which stands 1.0mm proud of the cam surface.
