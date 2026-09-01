@@ -4,6 +4,153 @@
 
 ---
 
+## CURRENT STATE - 2026-09-01 EVENING (latest, read this first)
+
+### 1. THE BRAILLE CELL WAS TWICE AS WIDE AS A REAL ONE. Fixed, and it was free.
+
+`col_spacing` was **4.8mm** against a 2.34mm standard - 105% over - while rows
+were 2.6mm, 11% over. So the cell measured 4.8 x 2.6 and a trained reader's
+finger would not have read it as a cell at all. Braille dot pitch is SQUARE
+(2.34 both axes); what makes a cell look tall is 2 columns x 3 rows, not an
+uneven pitch.
+
+```
+  REAL BRAILLE          WAS                   NOW
+  pitch 2.34 x 2.34     pitch 4.80 x 2.60     pitch 2.60 x 2.60
+  cell  2.34 x 4.68     cell  4.80 x 5.20     cell  2.60 x 5.20
+  ratio 1 : 2           ratio 1 : 1.08        ratio 1 : 2
+  scale    -            2.05x / 1.11x         1.111x / 1.111x
+```
+
+**Narrowing the columns cost nothing.** Every clearance in the dot cluster is set
+by the ROWS, which are closer, so bringing the columns in to match changed none
+of them:
+
+```
+  col   row   nub-nub   spring wall   arm gap   dome gap
+  4.8   2.6     2.60        0.40       1.60      1.10
+  2.6   2.6     2.60        0.40       1.60      1.10    <- identical
+```
+
+The arms do not crowd either - each already points outward the way its dot sits,
+so the two columns diverge rather than cross. Re-verified by rendering all 15
+linkage pairs and intersecting them: **zero clashes**. Longest arm 19.86 ->
+20.40mm, deflection still 0.063mm at 0.1N against a 0.50mm dot.
+
+**WHY NOT THE TRUE 2.34 STANDARD - and this is the one thing blocking it.** The
+return spring sits on the dot axis and its bore is 2.2mm. A 0.4mm wall between
+bores forces `pitch >= 2.60mm`. Reaching 2.34 needs a spring under **1.74mm OD**,
+and 2.0mm was already hard to source. If sub-2mm springs ever turn up,
+`col_spacing` and `row_spacing` both drop to 2.34 together and the cell becomes
+exactly standard - nothing else in the design has to move.
+
+The other route is taking the spring off the dot axis entirely: a captured cam
+groove would pull the dot down instead of a spring pushing it. That is a real
+mechanism change, not a parameter.
+
+### 2. THE ARM THICKENING WAS WRONG. Corrected.
+
+Earlier today the arm went to 2.0 x 3.0mm. **`link_thickness` is the extrusion
+depth, so it is also the depth of the NUB** - and the nub has to slide inside the
+1.4mm bore in the resin dot insert. At 2.0 the nub was 1.0 x 2.0mm and could not
+enter the hole at all. Mridul spotted it in the render before it was printed.
+
+It was also unnecessary. Stiffness goes as height CUBED and only linearly with
+width, so the free axis does nearly all the work:
+
+```
+  1.0 x 1.0   I=0.083   0.1N -> 1.567mm    original
+  1.0 x 3.0   I=2.250   0.1N -> 0.058mm    27x, NOTHING gets wider   <- chosen
+  2.0 x 3.0   I=4.500   0.1N -> 0.029mm    54x, but breaks the nub
+```
+
+`link_thickness` is back to 1.0 and only `arm_h` grows. There is now an assert on
+the nub diagonal so this cannot be repeated:
+
+```
+  assert(sqrt(nub_w^2 + thickness^2) <= 1.42)
+```
+
+### 3. THE CAM POLYHEDRON WAS INVALID. Latent for the whole project.
+
+`build_track_polyhedron` built each top face as a QUAD:
+
+```
+  [i0, i1, next_i1, next_i0]   inner@a, outer@a, outer@a', inner@a'
+```
+
+At angle `a` both points sit at height h; at `a'` both sit at h'. Wherever the
+track is on a ramp, h != h', so those two radial edges are non-parallel lines at
+different heights and **the quad is non-planar** - invalid polyhedron input.
+
+OpenSCAD 2021 silently picked a diagonal. **OpenSCAD 2026 throws
+"CGAL ERROR: assertion violation" on every one of them.** All four faces are now
+split into explicit triangles, and the assertions are gone.
+
+### 4. TOOLCHAIN: use the nightly, keep the CGAL backend
+
+Mridul installed OpenSCAD 2026.08.31 as a separate "OpenSCAD (Nightly)" app.
+Measured on this project:
+
+```
+                        print_resin_1_all      braille_cam volume
+  2021 CGAL             7m 39s                 4190.042 mm3
+  2026 CGAL             (clean, strict)        4190.042 mm3   <- exact match
+  2026 Manifold         2s                     3615.565 mm3   <- 574mm3 short
+```
+
+**Use `--backend=CGAL` on the nightly.** Same exact arithmetic as 2021, verified
+identical to three decimals, plus it catches invalid input that 2021 swallowed.
+
+**DO NOT switch to Manifold yet, despite it being 230x faster.** Manifold's
+guarantee is that output is a valid closed 2-manifold - which it is; both meshes
+passed the edge check. But valid is not the same as correct, and its answer here
+is *smaller than the disc floor by itself* (3677.8mm3), which is impossible for a
+union containing that floor. CGAL's figure matches hand arithmetic: floor 3678 -
+magnet 63 - bore 26 + hub 303 + track bumps 300 = 4192.
+
+**A LIKELY CAUSE, worth fixing.** Every track polyhedron is built from `z=0`
+while the disc floor spans 0..2.0, so about 2mm of every track is buried inside
+the floor. That is a huge coincident-face overlap, the worst case for a
+float-based booleaner. Starting the tracks at `z=disk_base_thickness` would
+probably make Manifold agree AND unlock the 230x speedup. Not attempted.
+
+### 5. THE DOT DOES NOT REACH THE PLATE RIM - and that is correct
+
+Reported from the simulator as a possible Z-stack bug. It is not a bug:
+
+```
+  reading surface (resin insert top) .... 45.7
+  dot DOWN ............................. 45.7    exactly flush
+  dot UP ............................... 46.2    exactly +0.50
+  plate RIM ............................ 46.5    0.3mm above the dot
+```
+
+The plate has a 0.8mm finger-pad recess. The dot rises 0.5mm above the RECESSED
+surface, which is what the fingertip actually touches - textbook braille. The rim
+is a 3mm border at the plate edge, ~30mm from the nearest dot, and plays no part
+in reading. Before R-07 `pin_lift` was 0.8 = exactly the recess depth, so the dot
+came up flush with the rim; dropping it to 0.5 is what changed the appearance.
+
+Raising the linkage does NOT fix it: the linkage is rigid, so it moves the down
+dot and the up dot together, and the 0.5mm separation is set by the cam. Raising
+by 0.3 would leave every OFF dot standing 0.3mm proud - readable, since a real
+dot is 0.46-0.50 - and the cell would turn to mush. If the rim flush look is
+wanted, the only clean change is `finger_pad_depth` 0.8 -> 0.5.
+
+### 6. Dot dimensions against the standard
+
+```
+  dome diameter   1.50mm    standard 1.44-1.60    OK
+  dot height      0.50mm    standard 0.46-0.50    OK
+  pitch           2.60mm    standard 2.34         +11%, uniform
+```
+
+Feel: a resin dome is the RIGHT feel. Commercial refreshable displays use hard
+plastic or metal pins; only paper braille feels soft.
+
+---
+
 ## CURRENT STATE - 2026-09-01 LATE (latest, read this first)
 
 ### The stack went UP 2.5mm instead of cutting the motor, and the arms got thick
@@ -42,6 +189,10 @@ the shaft tip instead of seating on the boss, which tilts the disc. 2.5 buys
 
 Bonus: the electronics bay grew with it, 23 -> **25.5mm** of clear height. The
 11mm driver assembly now has 14.5mm spare instead of 12.
+
+> **CORRECTED same day: the arms are 1.0 x 3.0, NOT 2.0 x 3.0.** Widening to 2.0
+> broke the nub, which has to pass a 1.4mm bore. Only `arm_h` grows. See the
+> CURRENT STATE section at the top.
 
 **2. THE ARMS ARE 2.0 x 3.0mm, WAS 1.0 x 1.0.** This was the real blocker and it
 had been open since the linkage was drawn:

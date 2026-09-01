@@ -92,7 +92,28 @@ assert(base_width + 4 <= 60, "base plate does not fit the 60mm cavity");
 // Standard dot numbering:   1 4
 //                           2 5
 //                           3 6
-col_spacing = 4.8;     // left column x=-2.4, right column x=+2.4
+// 2026-09-01: col_spacing 4.8 -> 2.6. THE CELL WAS TWICE AS WIDE AS BRAILLE.
+//
+// Standard braille dot pitch is 2.34mm (accepted range 2.29-2.54). Rows were
+// already 2.6; columns were 4.8, so the cell measured 4.8 x 2.6 and a trained
+// reader's finger would not have read it as a cell at all.
+//
+// Narrowing the columns is FREE. Every clearance in the cluster is set by the
+// ROWS, which are closer, so nothing changes by bringing the columns in to match:
+//
+//     col   row   nub-nub   spring wall   arm gap   dome gap
+//     4.8   2.6     2.60        0.40       1.60      1.10
+//     2.6   2.6     2.60        0.40       1.60      1.10   <- identical
+//
+// The arms do not crowd either: each one already points outward the way its dot
+// sits, so the two columns diverge immediately rather than crossing.
+//
+// WHY NOT THE TRUE 2.34 STANDARD: the return spring sits on the dot axis and its
+// bore is 2.2mm. A 0.4mm wall between bores forces pitch >= 2.6mm. Reaching 2.34
+// needs a spring under 1.74mm OD, and 2.0mm was already hard to source. The cell
+// is therefore 2.6 x 2.6 - 11% over standard, but UNIFORM, which matters far more
+// for readability than absolute size.
+col_spacing = 2.6;     // left column x=-1.3, right column x=+1.3
 row_spacing = 2.6;     // rows at y=+2.6, 0, -2.6
 
 function dot_pos(d) = [ (d <= 3) ? -col_spacing/2 : col_spacing/2,
@@ -244,8 +265,25 @@ spring_free_l = 4.0;   // free length to order (~5 coils; 1.5mm solid)
 // R-07 got the disc into shape and this is what makes it mean anything - a
 // gentle ramp is pointless if the follower bends instead of lifting.
 // =========================================================
-link_thickness = 2.0;   // TANGENTIAL width - also the extrusion depth
-arm_h          = 3.0;   // VERTICAL depth of the horizontal arm
+// 2026-09-01, SECOND PASS: thickness goes BACK to 1.0. Only arm_h grows.
+//
+// Widening to 2.0 was wrong and Mridul caught it. `thickness` is the extrusion
+// depth, so it is also the depth of the NUB - and the nub has to slide inside the
+// 1.4mm bore in the resin dot insert. At 2.0 the nub was 1.0 x 2.0mm and could
+// not enter the hole at all.
+//
+// It was also unnecessary. Bending stiffness goes as height CUBED and only
+// linearly with width, so the vertical growth does almost all the work:
+//
+//     1.0 x 1.0   I=0.083    0.1N -> 1.567mm     original
+//     1.0 x 3.0   I=2.250    0.1N -> 0.058mm     27x, nothing gets wider
+//     2.0 x 3.0   I=4.500    0.1N -> 0.029mm     54x, but breaks the nub
+//
+// 27x against a 0.50mm dot is plenty: 0.058mm under a light touch, 0.29mm under
+// a heavy 0.5N press. Take the free axis, leave the constrained one alone.
+link_thickness = 1.0;   // TANGENTIAL width = extrusion depth = NUB depth. Do not
+                        // raise this without checking the dot insert bore.
+arm_h          = 3.0;   // VERTICAL depth of the arm - the free axis
 
 // The lower riser and the foot are sized RADIALLY by the track, not by the arm.
 // They used to inherit link_thickness, which is tangential - so thickening the

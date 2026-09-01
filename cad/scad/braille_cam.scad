@@ -391,11 +391,16 @@ module build_track_polyhedron(t_idx) {
             next_i0 = (i0 + 4) % n, next_i1 = (i1 + 4) % n,
             next_i2 = (i2 + 4) % n, next_i3 = (i3 + 4) % n
         )
+        // TRIANGLES, not quads. The top face spans two radial edges at
+        // DIFFERENT heights wherever the track is on a ramp, so as a quad it is
+        // non-planar - invalid polyhedron input. OpenSCAD 2021 silently picked a
+        // diagonal; 2026 CGAL throws "assertion violation" on every one of them.
+        // Splitting it explicitly makes the mesh valid and the choice ours.
         each [
-            [i0, i1, next_i1, next_i0], // Top Surface
-            [i2, next_i2, next_i3, i3], // Bottom Surface
-            [i0, next_i0, next_i2, i2], // Inner Wall
-            [i1, i3, next_i3, next_i1]  // Outer Wall
+            [i0, i1, next_i1], [i0, next_i1, next_i0],   // Top
+            [i2, next_i2, next_i3], [i2, next_i3, i3],   // Bottom
+            [i0, next_i0, next_i2], [i0, next_i2, i2],   // Inner wall
+            [i1, i3, next_i3], [i1, next_i3, next_i1]    // Outer wall
         ]
     ];
 

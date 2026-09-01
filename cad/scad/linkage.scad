@@ -52,6 +52,12 @@ assert(!is_undef(arm_h) && !is_undef(riser_w),
 
 // Dot end — all from mech_layout.scad so the plate cannot disagree
 nub_w       = nub_width;      // 1.0mm, slides inside the 1.4mm spring bore
+// The nub is nub_w wide in X but `thickness` DEEP in Z, and both have to pass
+// through a round bore. This is what makes link_thickness un-growable.
+assert(sqrt(nub_w*nub_w + thickness*thickness) <= 1.42,
+       str("nub is ", nub_w, " x ", thickness, "mm, diagonal ",
+           sqrt(nub_w*nub_w + thickness*thickness),
+           " - it cannot pass the 1.4mm bore in the dot insert"));
 dot_r       = dot_dome_dia/2; // 0.75 -> 1.5mm dome = braille standard
 total_h     = link_total_h;   // 13.0
 
