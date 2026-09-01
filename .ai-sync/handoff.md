@@ -4,6 +4,36 @@
 
 ---
 
+## SPRING: 0.30 -> 0.20mm WIRE, ACCEPTED BY THE CAD FORK (2026-09-01)
+
+The electronics fork (commit 69d109f) found the return spring is ~6x too stiff:
+six of them load the cam with ~17N, about 87 mN*m of friction against a 30 mN*m
+motor, so the cam cannot turn before a single dot is lifted. Rate goes as wire
+diameter^4, so 0.20mm wire cuts it ~5x. **Applied in `mech_layout.scad`.**
+
+**It is not only a BOM number, and the CAD fork owes them one back.** `spring_id`
+is derived from the wire diameter, and `spring_id` is the bore the linkage nub
+travels through:
+
+```
+  0.30 wire -> spring_id 1.40    nub 1.0 x 1.0 diagonal 1.414   INTERFERES by 0.014
+  0.20 wire -> spring_id 1.60    0.19mm clearance               fits
+```
+
+**So the old spring was also, quietly, too tight for its own nub.** Nobody had
+noticed because 0.014mm reads as a rounding error. The thinner wire fixes the
+friction and the fit at once.
+
+No printed geometry changed - verified, `dot_insert`, `top_plate` and `linkage`
+all export the same facet counts. The 1.4mm figure was the bought spring's inner
+diameter, never a printed feature. The nub assert in `linkage.scad` now derives
+from `spring_id` instead of a hard-coded 1.42.
+
+**R-07 AND THE SPRING ARE PAIRED. Neither works alone** - the ramp fix removes
+the wedging, the spring fix removes the preload. Both are now in.
+
+---
+
 ## CURRENT STATE - 2026-09-01 EVENING (latest, read this first)
 
 ### 1. THE BRAILLE CELL WAS TWICE AS WIDE AS A REAL ONE. Fixed, and it was free.

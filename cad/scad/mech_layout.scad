@@ -230,8 +230,21 @@ link_total_h  = reading_surface_z - cam_flat_z;   // 12.2mm
 // slimmed-down nub. Happy side effect: the dot drops to 1.5mm, which is
 // the REAL braille standard (1.44-1.6mm) instead of the oversized 2.2mm.
 spring_od     = 2.0;   // 2mm OD micro compression spring (stock size)
-spring_wire   = 0.3;   // stainless wire diameter
-spring_id     = spring_od - 2 * spring_wire;   // 1.4mm bore
+// 2026-09-01: 0.30 -> 0.20mm, on the electronics fork's finding (commit 69d109f).
+// Six 0.3mm-wire springs load the cam with about 17N, roughly 87 mN*m of friction
+// against a 30 mN*m motor - the cam cannot turn at all before a single dot is
+// lifted. Spring rate goes as wire diameter^4, so 0.20mm wire cuts it ~5x.
+//
+// IT IS NOT ONLY A BOM CHANGE. spring_id is derived from it, and spring_id is the
+// bore the linkage nub travels through:
+//
+//     0.30 wire -> id 1.40    nub 1.0 x 1.0 has a 1.414 diagonal  -> INTERFERES
+//     0.20 wire -> id 1.60    0.19mm of clearance                 -> fits
+//
+// So the old spring was also, quietly, 0.014mm too tight for its own nub.
+// Paired with R-07: the ramp fix and this one do not work alone.
+spring_wire   = 0.20;  // stainless wire diameter
+spring_id     = spring_od - 2 * spring_wire;   // 1.6mm bore
 spring_free_l = 4.0;   // free length to order (~5 coils; 1.5mm solid)
 
 // --- DOT / NUB / FLANGE (shared by linkage.scad and top_plate.scad) ---
