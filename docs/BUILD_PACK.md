@@ -511,3 +511,59 @@ breadboard.** Everything else on this list is polish.
 4. **Electronics pocket is 14mm** with a ~12mm occupant. Working, zero margin. Verify with real
    soldered wires.
 5. **Upper linkages** — the 24 August risk. Electronics does not depend on them.
+
+---
+
+## 10. The dock connector: why 5 pins for 4 signals
+
+Solder the pogo connector in this order, on **both** dock faces:
+
+```
+   pin 1    pin 2    pin 3    pin 4    pin 5
+   GND      SCL      5V       SDA      GND
+   BLACK    YELLOW   RED      BLUE     BLACK
+```
+
+The order is not arbitrary. It is symmetric about pin 3 on purpose.
+
+The cells dock with magnets. There is no key, no screw, and nothing mechanical
+that stops a cell going in end-for-end. You will do it eventually, because
+walking round the table to face the opposite dock reverses your sense of "left".
+
+With the order above, a reversed cell reads:
+
+```
+   GND      SDA      5V       SCL      GND
+```
+
+5V still meets 5V. GND still meets GND. Only SDA and SCL exchange places, so the
+bus stays silent until the cell is turned around. Nothing is damaged.
+
+Give pin 5 away to any other signal and the supply moves off centre:
+
+```
+   GND      5V       SDA      SCL      SIG      ->  reversed:
+   SIG      SCL      SDA      5V       GND
+```
+
+5V now meets GND. That is a short across the supply and 5V into an MCP23017
+I/O pin. The cell is destroyed on first contact.
+
+**Four signals cannot be made mirror-safe in four pins.** An odd pin count with
+the supply in the centre is the minimum. This is what the fifth pin is for.
+
+### Do not reassign pin 5
+
+Every idea that wants it is already served elsewhere:
+
+| Proposed use | Why it is not needed |
+|---|---|
+| Detect which cells are attached | Scan I2C 0x20-0x27. The bus reports presence and position. |
+| Auto-addressing, no jumpers | Needs a latch per cell, to replace three jumpers set once. |
+| A second 5V line | Refresh is sequential, ~250mA. One pogo pin drops about 30mV. |
+| Shared RESET | Power-cycling the chain recovers a locked bus. |
+| Shared INT | The cells have no inputs. |
+
+A second benefit: pogo contacts on a joint that is pulled apart often will
+oxidise and collect dust. Ground is the one net where a redundant contact costs
+nothing, and the mirror-safe order provides it.
