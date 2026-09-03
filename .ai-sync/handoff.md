@@ -4,6 +4,91 @@
 
 ---
 
+## DOCK CONNECTOR: PIN 5 IS A SECOND GROUND, + 2 MAGNET ITEMS (2026-09-01)
+
+From the electronics fork. Item 1 is a decision, items 2 and 3 are for the CAD fork.
+
+### 1. DECIDED - the 5-pin pogo carries 4 signals and 2 grounds
+
+```
+   pin 1    pin 2    pin 3    pin 4    pin 5
+   GND      SCL      5V       SDA      GND
+```
+
+Documented in `docs/BUILD_PACK.md` Part 10. The fifth pin is **not** spare and must
+not be reassigned. The brain sits at one end of the chain, so the dock joint
+nearest it returns the current of every cell downstream:
+
+```
+2 cells refreshing together    0.5 A     50 mV on one ground pin
+8 cells refreshing together    2.0 A    200 mV on one ground pin
+```
+
+A pogo contact is ~100 milliohms and 2.54mm pogo pins are rated 1-2 A, so at eight
+cells a single ground pin sits at its rating and dissipates 0.4 W in one spring
+contact. Worse, ground is also the I2C reference: 200 mV of ground offset puts the
+far cell's SDA low at 0.4 V against the ESP32's 0.825 V V_IL budget, so half the
+noise margin is lost inside the connector. It fails only when several motors move
+at once, which makes it intermittent.
+
+Ground is doubled rather than 5 V because both carry the same current but only
+ground also carries the signal reference.
+
+### 2. CAD REQUEST - magnet polarity keying is cheaper than it looks
+
+Mridul's plan is to prevent a reversed cell with opposing magnet polarity rather
+than with a mechanical key. That works, and **it needs no new geometry.** The two
+existing magnets per face at `dock_mag_y = 18.5` are sufficient.
+
+The keying does not come from an asymmetric pattern within a face. It comes from
+the two faces of a cell being opposite:
+
+```
+  every magnet on a cell's RIGHT face    north out
+  every magnet on a cell's LEFT  face    south out
+```
+
+Correct docking presents right(N) to left(S) and attracts. A cell turned end for
+end presents right(N) to right(N) and repels. Cells stay identical parts and the
+chain becomes directional, which is what is wanted.
+
+**What is actually needed from CAD:** a visible, permanent mark distinguishing the
+two faces' pockets - a chamfer, a debossed N/S, or different pocket fillets. Once
+the magnets are glued in, polarity is invisible and unrecoverable without a second
+magnet to test with. A wrong-way magnet means desoldering nothing and destroying a
+printed part.
+
+### 3. CAD QUESTION - do 2 magnets beat the pogo springs?
+
+⚠️ This may be an unaccounted load case. **The pogo pins actively push the joint
+apart.** A 2.54mm pogo pin is 50-75 gf at working travel, so five of them press
+the faces apart with **2.5 to 3.75 N**, continuously, for as long as the cells are
+docked.
+
+Rough estimate against that, and these numbers want measuring rather than trusting:
+
+```
+8 x 1mm N35, magnet to magnet, ~0.4mm gap    ~2-3 N per pair
+two pairs per joint                          ~4-6 N
+pogo springs pushing apart                   ~2.5-3.75 N
+margin                                       ~1.5x
+```
+
+1.5x is thin for a joint that is pulled apart by hand repeatedly, and an 8x1mm disc
+loses force steeply with gap - any print bow or glue thickness eats into it
+directly, because the magnet is only 1mm thick.
+
+Geometry is at least sensible already: the pogos sit at y=0, centred between
+magnets at y=+/-18.5, so the push is balanced and there is no prying moment.
+
+**Asked of the CAD fork:** is there room for a second pair at a different z, and
+does the shell height allow it? Only 8x1mm magnets are available to Mridul, so
+more of them is the only lever. Alternatively, confirm the 1.5x figure by
+measuring a real pair before more magnets are ordered - that is the cheaper path
+and Mridul has a kitchen scale.
+
+---
+
 ## SPRING: 0.30 -> 0.20mm WIRE, ACCEPTED BY THE CAD FORK (2026-09-01)
 
 The electronics fork (commit 69d109f) found the return spring is ~6x too stiff:
