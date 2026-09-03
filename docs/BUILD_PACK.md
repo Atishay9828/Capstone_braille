@@ -524,46 +524,64 @@ Solder the pogo connector in this order, on **both** dock faces:
    BLACK    YELLOW   RED      BLUE     BLACK
 ```
 
-The order is not arbitrary. It is symmetric about pin 3 on purpose.
+Pins 1 and 5 are both ground. This is deliberate. Do not reassign pin 5.
 
-The cells dock with magnets. There is no key, no screw, and nothing mechanical
-that stops a cell going in end-for-end. You will do it eventually, because
-walking round the table to face the opposite dock reverses your sense of "left".
+### Ground carries the whole chain
 
-With the order above, a reversed cell reads:
+The brain sits at one end. The dock joint nearest the brain carries the current
+of every cell downstream of it, and all of that current returns through ground.
+
+| Cells refreshing together | Current at the first joint | Drop on 1 pin | Drop on 2 pins |
+|---|---|---|---|
+| 2 | 0.5 A | 50 mV | 25 mV |
+| 8 | 2.0 A | 200 mV | 100 mV |
+
+A pogo contact is about 100 milliohms. At 2 A a single pin dissipates 0.4 W in one
+small spring contact, and 2.54 mm pogo pins are rated for only 1 A to 2 A. The
+most loaded joint in the system is therefore the one closest to its limit.
+
+The signal effect is more serious than the power effect, because ground is also
+the I2C reference:
 
 ```
-   GND      SDA      5V       SCL      GND
+far cell pulls SDA low        0.2 V above its own ground
+its ground sits               0.2 V above the brain ground
+ESP32 sees                    0.4 V
+ESP32 V_IL budget             0.825 V
 ```
 
-5V still meets 5V. GND still meets GND. Only SDA and SCL exchange places, so the
-bus stays silent until the cell is turned around. Nothing is damaged.
+Half of the noise margin is lost inside a connector. A drop on 5 V only weakens a
+motor. A drop on ground corrupts the bus, and it does so only when several motors
+move at the same time, which makes the fault intermittent and hard to find.
 
-Give pin 5 away to any other signal and the supply moves off centre:
+Double the ground and not the 5 V. Both carry the same current, but ground also
+carries the signal reference.
 
-```
-   GND      5V       SDA      SCL      SIG      ->  reversed:
-   SIG      SCL      SDA      5V       GND
-```
+### Orientation
 
-5V now meets GND. That is a short across the supply and 5V into an MCP23017
-I/O pin. The cell is destroyed on first contact.
+Four docking magnets with opposite polarity prevent a reversed cell. This is the
+primary defence and it is mechanical.
 
-**Four signals cannot be made mirror-safe in four pins.** An odd pin count with
-the supply in the centre is the minimum. This is what the fifth pin is for.
+The pin order above is also symmetric about pin 3, so it gives a free second
+defence. A reversed connector reads `GND SDA 5V SCL GND`: 5 V still meets 5 V and
+ground still meets ground, and only SDA and SCL exchange places. The bus stays
+silent until the cell is turned round, and nothing is damaged.
+
+⚠️ The magnets stop a reversed cell **latching**. They do not stop it **touching**.
+Pogo pins protrude and are spring loaded, so a hand that forces two repelling
+faces together still makes contact for a moment. Do not force a cell that pushes
+back. Turn it round.
 
 ### Do not reassign pin 5
-
-Every idea that wants it is already served elsewhere:
 
 | Proposed use | Why it is not needed |
 |---|---|
 | Detect which cells are attached | Scan I2C 0x20-0x27. The bus reports presence and position. |
-| Auto-addressing, no jumpers | Needs a latch per cell, to replace three jumpers set once. |
-| A second 5V line | Refresh is sequential, ~250mA. One pogo pin drops about 30mV. |
-| Shared RESET | Power-cycling the chain recovers a locked bus. |
-| Shared INT | The cells have no inputs. |
+| Shared INT for hall homing | An I2C poll takes about 0.3 ms. At 500 steps per second that is 0.15 of a step. Polling is fast enough. |
+| Separate logic 5 V and motor 5 V | Same adapter and same ground, so no isolation is gained, and both rails lose half their capacity. |
+| Auto-addressing without jumpers | Needs a latch in every cell, to replace three jumpers set once. |
 
-A second benefit: pogo contacts on a joint that is pulled apart often will
-oxidise and collect dust. Ground is the one net where a redundant contact costs
-nothing, and the mirror-safe order provides it.
+Spare capacity for future features is on the MCP23017, not on the connector. Five
+of its 16 pins are used: four to the ULN2003 and one to the hall sensor. A button,
+a touch pad, a status LED or a second sensor goes on the 11 free pins and uses the
+bus that already exists.
