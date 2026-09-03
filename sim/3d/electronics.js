@@ -55,7 +55,7 @@ function mats() {
   const pbr = (color, metalness, roughness, extra = {}) =>
     new THREE.MeshStandardMaterial({ color, metalness, roughness, ...extra });
   M.pcbBlue   = pbr(0x1b4b8f, 0.15, 0.55);
-  M.pcbFr4    = pbr(0xc9a05a, 0.05, 0.70);   // bare perfboard, no soldermask
+  M.pcbFr4    = pbr(0x9c8862, 0.05, 0.72);   // bare perfboard, no soldermask
   M.pcbBlack  = pbr(0x14161c, 0.15, 0.55);
   M.shellPETG = pbr(0x5a6b7c, 0.05, 0.75, { transparent: true, opacity: 1 });
   M.tin       = pbr(0xc8ccd2, 0.60, 0.46);
@@ -86,8 +86,11 @@ function mats() {
   };
   // The scene supplies a PMREM environment, so metals have something to reflect.
   // Without bumping this the tiny parts read as flat grey chips.
-  Object.values(M).forEach(m => { if (m.isMaterial) m.envMapIntensity = 0.42; });
-  Object.values(M.wire).forEach(m => { m.envMapIntensity = 0.3; });
+  // Was 0.42 here against 1.5 in app.js — a 3.5x mismatch that made the
+  // mechanism and the electronics look photographed in different rooms.
+  // One value now; wires stay lower because silicone really is matte.
+  Object.values(M).forEach(m => { if (m.isMaterial) m.envMapIntensity = 1.0; });
+  Object.values(M.wire).forEach(m => { m.envMapIntensity = 0.7; });
   return M;
 }
 

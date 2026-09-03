@@ -152,22 +152,74 @@ function moveAt(m) {
 let word = 'Braille 101', idx = 0, camDeg = 0, targetDeg = 0, dwell = 0;
 let homeCam = null, homeTarget = null;
 
+// Read a colour straight out of the stylesheet so the palette has exactly one
+// home. Color.set() treats a hex string as sRGB and converts to linear working
+// space; scene.background is encoded back on output, so the canvas and the rail
+// match numerically rather than approximately.
+const cssColor = n => new THREE.Color(
+  getComputedStyle(document.documentElement).getPropertyValue(n).trim());
+
+// A soft occlusion blob. This is what makes an object look like it is SITTING on
+// something; a cast shadow alone leaves it hovering. Canvas texture, no file.
+function aoBlob() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 256;
+  const x = c.getContext('2d');
+  const g = x.createRadialGradient(128, 128, 8, 128, 128, 128);
+  g.addColorStop(0, 'rgba(0,0,0,.62)');
+  g.addColorStop(0.45, 'rgba(0,0,0,.26)');
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = g;
+  x.fillRect(0, 0, 256, 256);
+  const m = new THREE.Mesh(
+    new THREE.PlaneGeometry(185, 185),
+    new THREE.MeshBasicMaterial({
+      map: new THREE.CanvasTexture(c), transparent: true,
+      depthWrite: false, color: 0x000000, fog: false,
+    }));
+  m.position.z = -0.32;
+  m.renderOrder = -1;
+  return m;
+}
+
+function resizeStage() {
+  const st = document.getElementById('stage');
+  const r = st.getBoundingClientRect();
+  const w = Math.max(1, r.width), h = Math.max(1, r.height);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+}
+
 function buildScene() {
   const stage = document.getElementById('stage');
   renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(innerWidth, innerHeight);
+  const vp = () => {
+    const r = stage.getBoundingClientRect();
+    return [Math.max(1, r.width), Math.max(1, r.height)];
+  };
+  renderer.setSize(...vp());
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.outputColorSpace = THREE.SRGBColorSpace;   // r185 default; state it
+  // AgX over ACES Filmic: ACES pushes bright neutrals toward orange, which
+  // fights an amber accent and tints the white chrome highlights. AgX rolls
+  // highlights off neutral and holds detail in a near-black background.
+  renderer.toneMapping = THREE.AgXToneMapping;
+  renderer.toneMappingExposure = 0.85;
   stage.appendChild(renderer.domElement);
 
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x12131f);
-  scene.fog = new THREE.Fog(0x12131f, 260, 640);
+  // ONE definition of the ground colour. This used to be 0x12131f hardcoded
+  // twice here while --bg lived in the stylesheet, so a palette change had to be
+  // made in two places or the canvas and the rail stopped matching.
+  const BG = cssColor('--bg-0');
+  scene.background = BG;
+  scene.fog = new THREE.Fog(BG, 300, 760);
 
-  camera = new THREE.PerspectiveCamera(38, innerWidth / innerHeight, 1, 2000);
+  const [vw0, vh0] = vp();
+  camera = new THREE.PerspectiveCamera(38, vw0 / vh0, 1, 2000);
   camera.up.set(0, 0, 1);                    // Z-up, matching the CAD
   camera.position.set(118, -132, 104);
 
@@ -184,38 +236,44 @@ function buildScene() {
   // Lighting kept deliberately modest. The Blender pass blew every surface to pure
   // white because 220W lamps sat 200mm from a 68mm object; irradiance goes as
   // P/(4*pi*r^2), so at this scale small numbers are correct.
-  const key = new THREE.DirectionalLight(0xffffff, 2.1);
+  const key = new THREE.DirectionalLight(0xfff6ea, 2.0);
   key.position.set(120, -90, 190);
   key.castShadow = true;
   key.shadow.mapSize.set(2048, 2048);
-  const d = 120;
+  const d = 85;    // the part is 68mm; a 240mm frustum spent 2/3 of the map on air
   Object.assign(key.shadow.camera, { left: -d, right: d, top: d, bottom: -d, near: 20, far: 460 });
   key.shadow.bias = -0.0012;
-  key.shadow.normalBias = 0.6;
+  key.shadow.normalBias = 0.15;   // FrontSide lets this come way down
+  key.shadow.radius = 3;
   scene.add(key);
 
-  const fill = new THREE.DirectionalLight(0x9fc4ff, 0.55);
-  fill.position.set(-140, -70, 60);
+  // Near-neutral. A blue fill against an orange rim is the look of a gaming
+  // keyboard, not a bench instrument, and it was tinting the white PETG.
+  const fill = new THREE.DirectionalLight(0xd8dee8, 0.38);
+  fill.position.set(-120, -140, 50);
   scene.add(fill);
 
-  const rim = new THREE.DirectionalLight(0xffd9c2, 0.7);
-  rim.position.set(-40, 150, 90);
+  // Brighter and WHITE. Separating a dark object from a dark ground is the
+  // single biggest thing a rim light does, and a tinted one cannot do it.
+  const rim = new THREE.DirectionalLight(0xffffff, 0.9);
+  rim.position.set(-30, 170, 140);
   scene.add(rim);
 
-  scene.add(new THREE.HemisphereLight(0x9aa6d0, 0x141420, 0.5));
+  scene.add(new THREE.HemisphereLight(0xc7ceda, 0x0a0b0c, 0.18));
 
   // catch shadows so the mechanism reads as a solid object in space
   const floor = new THREE.Mesh(
-    new THREE.CircleGeometry(300, 64),
-    new THREE.ShadowMaterial({ opacity: 0.42 }));
+    new THREE.CircleGeometry(200, 64),
+    new THREE.ShadowMaterial({ opacity: 0.55 }));
   floor.position.z = -0.4;
   floor.receiveShadow = true;
   scene.add(floor);
 
-  const grid = new THREE.GridHelper(560, 28, 0x2b2f4d, 0x1d2036);
-  grid.rotation.x = Math.PI / 2;
-  grid.position.z = -0.3;
-  scene.add(grid);
+  // A GridHelper used to sit here. It is the single most recognisable "started
+  // from a three.js example" element there is, and a wireframe floor is not what
+  // a photographed object sits on. What actually sells contact is a soft
+  // occlusion blob directly under the part, which costs one canvas texture.
+  scene.add(aoBlob());
 
   makeEnvironment(renderer, scene);
 }
@@ -233,13 +291,30 @@ function makeEnvironment(renderer, scene) {
     m.position.set(...pos);
     env.add(m);
   };
-  panel(0xffffff, 2.6, [0, 0, 70], [120, 120, 1]);    // soft overhead
-  panel(0x9fc4ff, 1.0, [-70, 0, 10], [1, 120, 90]);   // cool side
-  panel(0xffd9c2, 0.9, [70, 0, 10], [1, 120, 90]);    // warm side
-  panel(0x1a1d2e, 1.0, [0, 0, -70], [140, 140, 1]);   // dark floor bounce
-  scene.environment = pmrem.fromScene(env, 0.05).texture;
+  // A softbox, not three coloured slabs. The cool-left/warm-right pair was
+  // tinting every neutral surface and giving the chrome a blue-orange split
+  // that read as plastic.
+  panel(0xffffff, 1.5, [0, 20, 80], [150, 90, 1]);    // overhead-front key
+  panel(0xffffff, 0.55, [-80, 0, 20], [1, 140, 100]); // broad neutral left
+  panel(0xe9edf4, 0.28, [80, 0, 20], [1, 140, 100]);  // dim neutral right
+  panel(0x101113, 1.0, [0, 0, -75], [160, 160, 1]);   // floor bounce = --bg-1
+  scene.environment = pmrem.fromScene(env, 0.25).texture;
   pmrem.dispose();
 }
+
+// Every printed part gets an AUTHORED finish. Four of these meshes previously
+// kept whatever colour the GLB happened to bake, so the enclosure had no design
+// intent at all -- and the cam was painted 0xe94560, the literal UI accent,
+// which is why the whole scene read as "one red thing on grey".
+//
+// The cam stays the hero by being the brightest and most specular part with the
+// most geometric interest, not by being the only coloured one. Separation is by
+// value and finish. A coloured hero part is the marketing move.
+//
+// One envMapIntensity for both subsystems: this file used 1.5 on the linkages
+// while electronics.js used 0.42, a 3.5x mismatch that made the mechanism and
+// the electronics look photographed in different rooms.
+const ENV_INTENSITY = 1.0;
 
 function applyMaterials(obj) {
   obj.traverse(o => {
@@ -248,7 +323,10 @@ function applyMaterials(obj) {
     o.receiveShadow = true;
     const n = o.name;
     const m = o.material;
-    m.side = THREE.DoubleSide;
+    // FrontSide, not DoubleSide: back faces doubled fragment cost AND wrote
+    // depth from the light's view, which is why the shadow bias had to be
+    // dialled so hard. The CAD meshes are verified manifold.
+    m.side = THREE.FrontSide;
     if (n.startsWith('linkage_')) {
       // Shiny chrome, as requested. This only looks right BECAUSE makeEnvironment()
       // gives it something to reflect — at metalness 0.92 with no environment map
@@ -257,18 +335,29 @@ function applyMaterials(obj) {
       // No state tinting: a raised dot looks exactly like a lowered one, because
       // that is what the real part does. The braille cell in the corner is where
       // you read the state.
-      m.metalness = 0.92;
-      m.roughness = 0.18;
-      m.color.set(0xc9ced6);
-      m.envMapIntensity = 1.5;
+      // Brushed steel rather than mirror chrome. At 0.92/0.18 these reflected
+      // only the four environment panels, so a bright streak dragged across
+      // every dot as the camera moved and read as motion that was not there.
+      m.metalness = 0.85;
+      m.roughness = 0.26;
+      m.color.set(0xd3d7dc);
+      m.envMapIntensity = ENV_INTENSITY;
     } else if (n === 'cam') {
-      m.metalness = 0.35; m.roughness = 0.34; m.color.set(0xe94560);
+      m.metalness = 0.65; m.roughness = 0.28; m.color.set(0xb9bec4);
+      m.envMapIntensity = ENV_INTENSITY;
     } else if (n.startsWith('motor')) {
-      m.metalness = 0.85; m.roughness = 0.3;
+      m.metalness = 0.55; m.roughness = 0.5; m.envMapIntensity = ENV_INTENSITY;
     } else if (n === 'base_plate' || n === 'mid_plate') {
-      m.metalness = 0.05; m.roughness = 0.88; // matte grey
+      m.metalness = 0.10; m.roughness = 0.74; m.color.set(0x8e939a);
+      m.envMapIntensity = ENV_INTENSITY;
+    } else if (n === 'pod_shell' || n === 'pod_lid') {
+      // the pod fell through every branch and kept its baked colour, which is
+      // half of why the two enclosures never looked like the same product
+      m.metalness = 0.0; m.roughness = 0.66; m.color.set(0x646b73);
+      m.envMapIntensity = ENV_INTENSITY;
     } else if (XRAY_PARTS.includes(n)) {
-      m.metalness = 0.05; m.roughness = 0.6;
+      m.metalness = 0.0; m.roughness = 0.62; m.color.set(0x4a5057);
+      m.envMapIntensity = ENV_INTENSITY;
       o.userData.opaque = { opacity: 1, transparent: false };
     }
     m.needsUpdate = true;
@@ -288,12 +377,46 @@ function applyMaterials(obj) {
 // GLTFLoader has no cache option, so fetch the bytes ourselves with
 // cache: 'no-cache' (revalidate, do not refuse to store) and hand them to
 // parse(). The '' path argument is fine because these files embed everything.
+// Weighted so the bar is monotonic across all three assets rather than
+// restarting at 0% twice.
+const GLB_WEIGHT = { './braillix.glb': 0.90, './pod.glb': 0.06, './motor.glb': 0.04 };
+let glbDone = 0;
+
+function loadProgress(file, got, total) {
+  const w = GLB_WEIGHT[file] ?? 0;
+  const frac = total ? got / total : 0;
+  const pct = Math.min(100, Math.round((glbDone + w * frac) * 100));
+  const bar = $('loadbar');
+  if (bar) bar.firstElementChild.style.width = pct + '%';
+  const nm = $('loadname');
+  if (nm) nm.textContent = file.replace('./', '');
+  const pc = $('loadpct');
+  if (pc) pc.textContent = pct + '%';
+}
+
 async function loadGlb(file) {
   const res = await fetch(file, { cache: 'no-cache' });
   if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
-  const buf = await res.arrayBuffer();
+  // Read the stream so the progress bar reports real bytes. Switching to
+  // GLTFLoader.load() to get its onProgress would drop cache:'no-cache' and
+  // silently bring back the stale-GLB desync described above.
+  const total = +res.headers.get('content-length') || 0;
+  const reader = res.body.getReader();
+  const chunks = [];
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    got += value.length;
+    loadProgress(file, got, total);
+  }
+  glbDone += GLB_WEIGHT[file] ?? 0;
+  const buf = new Uint8Array(got);
+  let off = 0;
+  for (const c of chunks) { buf.set(c, off); off += c.length; }
   return new Promise((ok, no) =>
-    new GLTFLoader().parse(buf, '', ok, no));
+    new GLTFLoader().parse(buf.buffer, '', ok, no));
 }
 
 async function buildElectronics(glbScene) {
@@ -335,6 +458,7 @@ function setElectronics(on) {
   cellElec.visible = on;
   glbMotor.forEach(o => o.visible = false);       // never show the placeholder again
   $('btnElec').classList.toggle('on', on);
+  $('btnElec').setAttribute('aria-pressed', String(on));
   // Deliberately does NOT force X-ray on. Two buttons reaching into each other
   // makes the state unpredictable — if you want to see through the walls, press
   // X-Ray yourself.
@@ -349,9 +473,9 @@ const MECH_INFO = [
   ['cam', 'THE CAM DISC',
    'The whole mechanism in one part. Six concentric tracks, 64 angular slices - one per possible dot pattern. Rotating it to an angle IS choosing a character.'],
   ['linkage_1', 'LINKAGE (x6)',
-   'One per dot. A foot rides the cam track; when it meets a raised section the arm pivots and pushes its dot up 0.8mm through the reading surface.'],
+   'One per dot. A foot rides the cam track; when it meets a raised section the arm pivots and pushes its dot up 0.5mm through the reading surface.'],
   ['top_plate', 'READING SURFACE',
-   'What the finger touches. The six dots sit at standard braille spacing - 2.6mm between rows, 4.8mm between the two columns.'],
+   'What the finger touches. Braille pitch is SQUARE - 2.6mm between rows AND between the two columns. A cell looks tall because it is 2 columns by 3 rows, not because the pitch is uneven.'],
 ];
 const SPOT_MAX = 190;             // px: beyond this the dot is at its dimmest
 
@@ -364,6 +488,9 @@ function buildHotspots() {
     const el = document.createElement('button');
     el.className = 'spot';
     el.title = title;
+    el.setAttribute('aria-label', `${title} — show details`);
+    el.setAttribute('aria-expanded', 'false');
+    el.setAttribute('aria-controls', 'info');
     el.addEventListener('click', ev => { ev.stopPropagation(); openInfo(spot, ev); });
     layer.appendChild(el);
     const spot = { o, el, anchor, title, body };
@@ -433,6 +560,7 @@ function setXray(on) {
   });
   const b = document.getElementById('btnXray');
   b.classList.toggle('on', on);
+  $('btnXray').setAttribute('aria-pressed', String(on));
   b.textContent = on ? 'X-Ray: ON' : 'X-Ray Vision';
 }
 
@@ -519,6 +647,27 @@ function updateReadout(item, pos) {
   $('e_step').textContent = (stateToSlice(pos) * STEPS_PER_POS + STEPS_PER_POS / 2) + ' / 4096';
   $('e_ang').textContent = (Math.abs(camAngleForState(pos)) % 360).toFixed(2) + '°';
   $('bits').textContent = pos.toString(2).padStart(6, '0');
+
+  // Unicode braille: U+2800 + a bitmask where dot n is bit n-1. NOTE this is
+  // NOT the same bit order as D2B/DOT_TO_BIT, which is the cam's TRACK ordering.
+  // They must not be merged; the cam would break silently.
+  const uni = String.fromCodePoint(0x2800 + cell.reduce((v, d) => v | (1 << (d - 1)), 0));
+  announce(`${isSpace ? 'space' : ch}, ${label.toLowerCase()}. ` +
+           (cell.length ? `Dots ${cell.join(', ')}.` : 'No dots raised.') +
+           ` Cam position ${pos} of 63. ${uni}`);
+}
+
+// One live region for the whole readout. The six dot divs are aria-hidden --
+// announcing them individually is noise, and this sentence says the same thing
+// better. Throttled: at the 250ms auto-advance an unthrottled region is unusable.
+let annT = 0, annPending = null;
+function announce(text) {
+  annPending = text;
+  clearTimeout(annT);
+  annT = setTimeout(() => {
+    const el = $('live');
+    if (el && annPending) el.textContent = annPending;
+  }, running ? 900 : 120);
 }
 
 function gotoIndex(i) {
@@ -619,36 +768,66 @@ function wireUI() {
   $('word').addEventListener('input', e => {
     word = e.target.value || ' ';   // case is meaningful now: it drives the capital sign
     idx = 0; gotoIndex(0);
+    syncWordMeta();
   });
   addEventListener('pointermove', e => { ptr.x = e.clientX; ptr.y = e.clientY; });
   // click anywhere that is not a dot or the card itself
   addEventListener('pointerdown', e => {
     if (openSpot && !e.target.closest('#info') && !e.target.closest('.spot')) closeInfo();
   });
-  addEventListener('keydown', e => { if (e.key === 'Escape') closeInfo(); });
+  addEventListener('keydown', e => {
+    // never steal keys from the text field, and never fight a browser shortcut
+    if (e.target.matches('input,textarea,summary') ||
+        e.metaKey || e.ctrlKey || e.altKey) {
+      if (e.key === 'Escape') closeInfo();
+      return;
+    }
+    switch (e.key) {
+      case ' ':          e.preventDefault(); running = !running; syncRun(); break;
+      case 'ArrowRight': e.preventDefault(); running = false; syncRun(); gotoIndex(idx + 1); break;
+      case 'ArrowLeft':  e.preventDefault(); running = false; syncRun(); gotoIndex(idx - 1); break;
+      case 'x': case 'X': setXray(!xray); break;
+      case 'e': case 'E': setElectronics(!elec); break;
+      case 'r': case 'R': resetView(); break;
+      case 'Escape':      closeInfo(); break;
+    }
+  });
+
+  // the two panes are tabs only below 840px; above it they are both always on
+  const tabs = [['tabCtl', 'paneCtl'], ['tabEnc', 'paneEnc']];
+  for (const [t, pane] of tabs)
+    $(t).addEventListener('click', () => {
+      for (const [t2, p2] of tabs) {
+        const on = t2 === t;
+        $(t2).setAttribute('aria-selected', String(on));
+        $(p2).classList.toggle('on', on);
+      }
+    });
   $('info').querySelector('.x').addEventListener('click', closeInfo);
 
   $('btnXray').addEventListener('click', () => setXray(!xray));
   $('btnElec').addEventListener('click', () => setElectronics(!elec));
   wireHardware();
   $('btnStep').addEventListener('click', () => { running = false; syncRun(); gotoIndex(idx + 1); });
-  $('btnView').addEventListener('click', () => {
-    camera.position.copy(homeCam); controls.target.copy(homeTarget); controls.update();
-  });
+  $('btnView').addEventListener('click', resetView);
   $('btnRun').addEventListener('click', () => { running = !running; syncRun(); });
   $('speed').addEventListener('input', e => {
     speed = parseFloat(e.target.value);
     $('speedv').textContent = speed.toFixed(1) + '×';
+    e.target.setAttribute('aria-valuetext', speed.toFixed(2) + ' times');
+    syncSpeedFill();
     // The slider scales simulated TIME by k. Replaying a fixed distance k times
     // faster means velocity k and acceleration k^2, so push those to the motor or
     // the screen and the cam stop agreeing the moment the slider moves.
     if (cell && cell.connected)
       cell.setSpeed(...clampHw(Math.round(FW.vmax * speed), Math.round(FW.accel * speed * speed)));
   });
+  // The stage is inset by the rail, so the window is the wrong box to measure.
+  // Debounced through rAF because iOS fires resize on every URL-bar scroll pixel.
+  let rz = 0;
   addEventListener('resize', () => {
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth, innerHeight);
+    cancelAnimationFrame(rz);
+    rz = requestAnimationFrame(resizeStage);
   });
 }
 
@@ -656,6 +835,27 @@ function syncRun() {
   const b = $('btnRun');
   b.classList.toggle('on', running);
   b.textContent = running ? 'Pause' : 'Simulate';
+}
+
+function resetView() {
+  camera.position.copy(homeCam);
+  controls.target.copy(homeTarget);
+  controls.update();
+}
+
+function syncSpeedFill() {
+  const el = $('speed');
+  if (el) el.style.setProperty('--fill',
+    (((speed - 0.25) / 2.75) * 100).toFixed(1) + '%');
+}
+
+// "11 chars -> 13 cells" under the input. Free, and it teaches the indicator-cell
+// idea that currentCells() works hard to model -- capitals and digits cost a cell.
+function syncWordMeta() {
+  const el = $('wordmeta');
+  if (!el) return;
+  const n = $('word').value.length, c = currentCells().length;
+  el.textContent = `${n} char${n === 1 ? '' : 's'} → ${c} cell${c === 1 ? '' : 's'}`;
 }
 
 // ---------------------------------------------------------------- loop
@@ -707,7 +907,9 @@ function tick(now) {
 async function main() {
   const err = m => {
     $('loaderr').innerHTML = m;
-    document.querySelector('.spin').style.display = 'none';
+    $('loadbar').classList.add('err');
+    $('loadname').textContent = 'failed';
+    $('loadpct').textContent = '';
   };
   try {
     // no-cache, not no-store: the browser still keeps the file, it just has to
@@ -763,6 +965,16 @@ async function main() {
   gotoIndex(0);
   camDeg = targetDeg;          // start settled on the first letter, not mid-travel
 
+  // Respect reduced motion: do not auto-advance, and stop the camera drifting
+  // after a drag. The cam's own trapezoid is content, not decoration, so Step
+  // still animates -- a user who presses it is asking for exactly that.
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    running = false;
+    controls.enableDamping = false;
+  }
+  syncRun();
+  syncSpeedFill();
+  syncWordMeta();
   $('loading').classList.add('gone');
 
   // Verification hook. The plan requires checking that the dots raised in 3D match
