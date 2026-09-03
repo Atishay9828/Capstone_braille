@@ -390,11 +390,24 @@ function wire(pts, mat, dia = 0.9) {
 // coil lines never leave the cell they belong to. An earlier version ran jumpers
 // straight through the pod wall into the cell, which would have made the pogo
 // pins decorative.
-// The real connector has FIVE ways. Four are spoken for; the fifth is spare and
-// deliberately unnamed here, because dock_interface.scad specs the part without
-// assigning its nets and the simulator must not invent one. When it is decided
-// (INT from the expander is the obvious candidate) name it in the CAD first.
-const POGO_NET = ['5V', 'GND', 'SDA', 'SCL', 'spare'];
+// Five ways, and the fifth is a SECOND GROUND, not a spare. Decided by the
+// electronics fork and documented in docs/BUILD_PACK.md Part 10; the order is
+// part of the decision, so do not re-sort this array.
+//
+//     pin 1    pin 2    pin 3    pin 4    pin 5
+//     GND      SCL      5V       SDA      GND
+//
+// The brain sits at one end of the chain, so the joint nearest it returns the
+// current of every cell downstream. Eight cells refreshing together is ~2.0A,
+// which is a 2.54mm pogo contact at its rating dissipating 0.4W in one spring.
+// Worse, ground is also the I2C reference: 200mV of offset puts the far cell's
+// SDA low at 0.4V against an 0.825V V_IL budget, so half the noise margin is
+// lost inside the connector. It only fails when several motors move at once,
+// which is what makes it intermittent.
+//
+// Ground is the one doubled, not 5V: both carry the same current, but only
+// ground also carries the signal reference.
+const POGO_NET = ['GND', 'SCL', '5V', 'SDA', 'GND'];
 const pogoY = i => -(POGO.pins - 1) * POGO.pinPitch / 2 + i * POGO.pinPitch;
 
 // Where the per-cell I/O expander goes in the multi-cell product. It does not exist
@@ -417,9 +430,10 @@ function expanderSlot() {
 function podHarness() {
   const m = mats(), g = new THREE.Group(), W = m.wire;
   g.name = 'pod_wiring';
-  // five ways now, not four: the connector is a real 5P part. The spare is drawn
-  // grey because it has no assigned net yet -- see POGO_NET.
-  const cols = [W.red, W.black, W.blue, W.yellow, W.white];
+  // colour follows the NET, so both grounds are black and the doubling is
+  // visible rather than something you have to read the array to notice
+  const NETCOL = { GND: W.black, '5V': W.red, SDA: W.blue, SCL: W.yellow };
+  const cols = POGO_NET.map(n => NETCOL[n]);
   const hdrY = POD.hdr.pitch / 2;                       // +Y header row
   const hdrZ = POD.boardUnderZ - 2.5;                   // just under the pins
   // the connector's solder tails sit behind the ear plate, inside the wall
@@ -447,7 +461,8 @@ function podHarness() {
 function cellHarness() {
   const m = mats(), g = new THREE.Group(), W = m.wire;
   g.name = 'cell_wiring';
-  const cols = [W.red, W.black, W.blue, W.yellow, W.white];
+  const NETCOL = { GND: W.black, '5V': W.red, SDA: W.blue, SCL: W.yellow };
+  const cols = POGO_NET.map(n => NETCOL[n]);
   const FACE = -CELL.length / 2;                        // -34, the dock face
   const FLOOR = 4.6;                                    // box floor top
 
@@ -459,16 +474,17 @@ function cellHarness() {
   const PAD_X = 20.4;
   const pad = (y, z) => [PAD_X, y, z];
   const drvPwr = pad(11, 19);                          // 5V / GND pads, top row
-  // 5V and GND go to the driver; SDA/SCL go to the expander footprint; the
-  // fifth way is spare and terminates there too, waiting on a net assignment.
+  // Routed by NET, not by pin index: 5V and both grounds land on the driver's
+  // power pads, SDA and SCL carry on to the expander footprint.
   for (let i = 0; i < POGO.pins; i++) {
     const y = pogoY(i);
-    const end = i < 2 ? drvPwr : exPin(i + 2);
+    const power = POGO_NET[i] === 'GND' || POGO_NET[i] === '5V';
+    const end = power ? drvPwr : exPin(i + 2);
     g.add(wire([
       [FACE + POGO.wall - 0.2, y, POD.pogo.z],
       [FACE + 8, y * 1.8, 12],
       [-18, y * 2.2, FLOOR + 2],
-      [end[0] - 10, end[1] + (i < 2 ? -4 : 4), FLOOR + 2],
+      [end[0] - 10, end[1] + (power ? -4 : 4), FLOOR + 2],
       end,
     ], cols[i], 0.85));
   }
@@ -640,9 +656,9 @@ export const PART_INFO = [
   ['dc_jack', 'DC BARREL JACK 5.5/2.1',
    'Power in, on the lid. Sits away from the board so the barrel hangs over open floor. Polarity verified: centre positive.'],
   ['pogo_out', 'POGO CONNECTOR - MALE (+X)',
-   'The half that meets the NEXT cell. Chaining is one-directional: female on -X, male on +X, so bricks only go together one way round. 5 ways on 2.54mm pitch - 5V, GND, SDA, SCL and one spare.'],
+   'The half that meets the NEXT cell. Chaining is one-directional: female on -X, male on +X, so bricks only go together one way round. Five ways on 2.54mm pitch: GND, SCL, 5V, SDA, GND. Ground is doubled because the joint nearest the brain returns the current of every cell downstream, and ground is also the I2C reference.'],
   ['pogo_pins', 'POGO CONNECTOR - 5P MAGNETIC (MALE)',
-   'A bought part: 23mm mounting pitch, 20mm boss, five ways on 2.54mm pitch, with two small magnets of its own for final alignment. It mounts from INSIDE - the ear plate bears on the inner wall face, so undocking pulls it into the wall rather than onto its two M1.6 screws. Only power and the I2C bus cross here, never the motor coils, which is why adding a cell needs no extra wiring at all.'],
+   'A bought part: 23mm mounting pitch, 20mm boss, five ways on 2.54mm pitch (GND, SCL, 5V, SDA, GND - ground doubled), with two small magnets of its own for final alignment. It mounts from INSIDE - the ear plate bears on the inner wall face, so undocking pulls it into the wall rather than onto its two M1.6 screws. Only power and the I2C bus cross here, never the motor coils, which is why adding a cell needs no extra wiring at all.'],
   ['pod_shell', 'POD SHELL (PETG)',
    'The real printed part, straight from esp32_pod_shell.scad - 4mm walls, the USB service opening, the pogo recess, the magnet pockets and the slotted grille that keeps the WiFi antenna out of solid plastic.'],
   ['stepper', '28BYJ-48 STEPPER  (model: NandouTech, CC-BY)',
