@@ -18,59 +18,117 @@
 //   body thickness ........... 4.00, with a 2.00 flange step carrying the ears
 //   pin ...................... dia 0.90 head, dia 0.70 tail, 5.00 long
 //
-// IT IS A SURFACE-MOUNT PART. There is no body window.
+// IT MOUNTS FROM THE INSIDE. 2026-09-04, Mridul's call, and it is the right one.
 //
-// The mounting ears sit OUTSIDE the 20mm body on a 23mm pitch, and the spring
-// pins face outward - so the connector bolts flat to the outside of the wall
-// like any panel-mount part. The only thing that has to cross the wall is the
-// five solder tails and their wires.
+// The connector is a top hat: a 2mm ear plate carrying the two mounting holes,
+// with a 2mm raised boss standing proud of it that holds the pins and the two
+// magnets. It goes in from INSIDE the box - the boss pushes out through the wall
+// and the ear plate stays behind, flat against the inside face.
 //
-// That matters for printing. A 20.4 x 4.4mm through-window would have been a
-// 20.4mm unsupported BRIDGE across its top, and FDM sags 0.3-0.5mm over that
-// span against the 0.2mm of clearance a 4.0mm body leaves. The window would
-// have closed up on the exact part it was cut for. A tail slot is 13mm wide,
-// sits entirely behind the connector where nothing has to fit, and any sag in
-// it is invisible and harmless.
+// WHY THAT IS BETTER, and it is not just preference. Undocking pulls the
+// connector OUTWARD. Mounted outside, the only thing resisting that is two M1.6
+// screws in plastic. Mounted inside, the ear plate bears on the inner face and
+// THE WALL takes the load - the screws only stop it falling inward, which
+// nothing is pulling it to do. The joint gets stronger every time you pull it.
 //
-// ASSEMBLY ORDER MATTERS: the tails are only 1.5mm long and the wall is 4mm, so
-// they do not reach the inside. Solder the five wires to the connector FIRST,
-// feed the wires through the slot, then seat it and screw it down. The slot is
-// sized to pass the soldered joints, not just bare tails.
-pogo_body_l      = 20.0;   // along the wall (Y)
-pogo_body_w      =  4.0;   // up the wall (Z)
-pogo_hole_pitch  = 23.0;   // mounting hole centres
-pogo_screw_pilot =  1.3;   // M1.6 self-tapper into PETG; NOT a 1.7 clearance hole
-pogo_screw_depth =  3.5;   // of a 4.0mm wall - stops short of breaking through
+// THE WALL HAS TO THIN TO LET THE BOSS REACH THE SURFACE. The boss is 2mm and
+// the wall is 4mm, so a plain through-window would leave the connector face
+// recessed 2mm - and with one on each box, the two faces would sit 4mm apart
+// with the shells already touching. Pogo pins travel about 1mm. They would never
+// meet. So the ear plate sits in a 2.1mm-deep pocket in the INNER face, and the
+// boss crosses the 1.9mm that remains and finishes flush outside.
+//
+//     inner face  x=0.0  ------------------.
+//                        |  ear plate 2mm  |   <- pocket, bears here
+//     pocket floor x=2.1 |-----.     .-----|
+//                        | boss 2mm  |         <- window, 1.9mm of wall
+//     outer face  x=4.0  '-----'     '-----'   <- boss face, flush
+//
+// PRINTING. Both openings are in a vertical wall, so both have a bridge across
+// the top: 27.5mm over the pocket and 20.4mm over the window. That is a normal
+// FDM bridge, not a support case, but it does sag - so the window is cut 0.8mm
+// taller than the boss instead of the usual 0.2, and the sag is spent on that
+// clearance rather than on the fit. The gap it leaves is a cosmetic line at the
+// top of the window, and the ear plate is behind it, not in front.
+//
+// THE FLANGE FIGURES ARE SPEC. Hole pitch, body and boss come off the drawing;
+// the ear-plate outline was not dimensioned, so pogo_flange_l is inferred from
+// the 23mm pitch plus room for the 1.5mm holes. MEASURE IT before printing.
+pogo_hole_pitch  = 23.0;   // mounting hole centres, from the drawing
+pogo_screw_pilot =  1.3;   // M1.6 self-tapper into PETG
+pogo_screw_depth =  1.5;   // from the POCKET FLOOR - only 1.9mm of wall under it
 pogo_pin_pitch   =  2.54;
 pogo_pins        =  5;
-pogo_mag_pitch   = 16.0;   // the connector's OWN magnets
+pogo_mag_pitch   = 16.0;   // the connector's OWN magnets, inside the boss
+
+pogo_boss_l      = 20.0;   // SPEC   raised section, along the wall
+pogo_boss_w      =  4.0;   // SPEC   raised section, up the wall
+pogo_boss_t      =  2.0;   // SPEC   how far it stands proud of the ear plate
+pogo_flange_l    = 27.0;   // SPEC   MEASURE - inferred from the 23mm hole pitch
+pogo_flange_w    =  4.0;   // SPEC   MEASURE
+pogo_flange_t    =  2.0;   // SPEC   ear plate thickness
+
+pogo_fit_side    = 0.4;    // 0.2 per side, snug in Y
+pogo_fit_top     = 0.8;    // deliberate headroom for bridge sag, see above
+
+pogo_win_l       = pogo_boss_l + pogo_fit_side;      // 20.4
+pogo_win_w       = pogo_boss_w + pogo_fit_top;       //  4.8
+pogo_pocket_l    = pogo_flange_l + pogo_fit_side;    // 27.4
+pogo_pocket_w    = pogo_flange_w + pogo_fit_top;     //  4.8
+pogo_pocket_d    = pogo_flange_t + 0.1;              //  2.1
 
 pogo_tail_span   = (pogo_pins - 1) * pogo_pin_pitch;   // 10.16 across the tails
-pogo_tail_slot_w = 13.0;   // Y - tails plus room for the solder joints
-pogo_tail_slot_h =  4.0;   // Z
 
-// Kept for anything that still asks the old question.
-dock_receiver_w = pogo_tail_slot_w;
-dock_receiver_h = pogo_tail_slot_h;
+// Kept for anything still asking the old question.
+dock_receiver_w  = pogo_win_l;
+dock_receiver_h  = pogo_win_w;
 
-// Cut into one wall face. X through the wall, Y along it, Z up.
-// face_x = +1 for the -X wall, -1 for the +X wall.
+// Cut into one wall. X through the wall, Y along it, Z up.
+// face_x = -1 for the -X wall, +1 for the +X wall.
+// Cut into one wall. The CALLER places this at the wall's OUTER face.
+// Canonical frame: local x=0 is that outer surface and the wall runs to -wall_t,
+// so every number below reads as a depth from outside. face_x = +1 for the +X
+// wall, -1 for the -X wall, which just mirrors it.
+//
+// Built from min-corners rather than centred cubes on purpose: the first version
+// of this used center=true and put the ear pocket on the OUTER face, which is
+// the exact thing this change was meant to stop. Measured, not assumed.
 module dock_pogo_cutout(wall_t, face_x = 1) {
-    // wire/tail slot, straight through, hidden behind the connector body
-    cube([wall_t * 2 + 2, pogo_tail_slot_w, pogo_tail_slot_h], center = true);
-    // two screw pilots, blind, entered from the OUTSIDE face
-    for (sy = [-1, 1])
-        translate([face_x * (wall_t / 2 + 0.01), sy * pogo_hole_pitch / 2, 0])
-            rotate([0, -face_x * 90, 0])
-                cylinder(d = pogo_screw_pilot, h = pogo_screw_depth + 0.01, $fn = 20);
+    mirror([face_x < 0 ? 1 : 0, 0, 0]) union() {
+        // 1. boss window - right through the wall
+        translate([-wall_t - 1, -pogo_win_l / 2, -pogo_win_w / 2])
+            cube([wall_t + 2, pogo_win_l, pogo_win_w]);
+
+        // 2. ear-plate pocket - from the INNER face, going outward
+        translate([-wall_t - 0.01, -pogo_pocket_l / 2, -pogo_pocket_w / 2])
+            cube([pogo_pocket_d + 0.01, pogo_pocket_l, pogo_pocket_w]);
+
+        // 3. screw pilots - start at the pocket floor, blind toward outside
+        for (sy = [-1, 1])
+            translate([-wall_t + pogo_pocket_d, sy * pogo_hole_pitch / 2, 0])
+                rotate([0, 90, 0])
+                    cylinder(d = pogo_screw_pilot, h = pogo_screw_depth, $fn = 20);
+    }
 }
 
-assert(pogo_tail_slot_w > pogo_tail_span + 2,
-       "tail slot is too narrow for the 5 solder joints");
+
+// The ear plate rests on the pocket floor, so the boss face lands at
+// (pocket depth + boss height) from the inner face. That has to REACH the outer
+// face at 4.0 - short of it and the two connectors never touch - without
+// standing so proud that the shells cannot close up.
+pogo_face_x = pogo_pocket_d + pogo_boss_t;   // 4.1, i.e. 0.1mm proud
+assert(pogo_face_x >= 4.0,
+       str("connector face lands at ", pogo_face_x, " inside a 4.0mm wall - it is ",
+           4.0 - pogo_face_x, "mm recessed and the pins will never meet"));
+assert(pogo_face_x <= 4.0 + 0.5,
+       str("connector face stands ", pogo_face_x - 4.0, "mm proud - the shells will not close"));
+assert(pogo_screw_depth <= 4.0 - pogo_pocket_d - 0.3,
+       str("screw pilot would break through the ",
+           4.0 - pogo_pocket_d, "mm of wall left under the pocket"));
+assert(pogo_pocket_l > pogo_win_l,
+       "ear pocket must be wider than the window or there is no ledge to bear on");
 assert(pogo_hole_pitch / 2 + 2 < 68 / 2,
        "pogo mounting holes fall outside the 68mm wall");
-assert(pogo_screw_depth < 4.0,
-       "pogo screw pilot would break through the 4mm wall");
 // v8.5: was 31 in a 58mm shell. The shell is now 44 and the usable wall runs from
 // the floor at 4 to the base plate at 27, so the window is centred in that: 15.5,
 // spanning 11.5..19.5 with 7.5mm clear above and below.
