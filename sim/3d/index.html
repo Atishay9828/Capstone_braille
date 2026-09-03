@@ -352,7 +352,9 @@
     #glyph{font-size:30px;min-width:32px}
     #cellnote,#pitchnote{display:none}
     #cellmeta{max-width:92px}
-    button{min-height:40px}
+    /* .spot is a <button> too, so a bare `button` rule here stretched every
+       hotspot into a 14x40 ellipse. Scope it to the rail's real controls. */
+    #rail .btns button,#rail summary{min-height:40px}
     /* the handle sits above the sheet and spans enough to be a real target */
     #railToggle{left:50%;top:auto;bottom:46dvh;width:auto;height:26px;
       padding:0 var(--s3);transform:translate(-50%,0);

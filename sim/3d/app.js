@@ -203,6 +203,7 @@ function resizeStage() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  SB = { left: r.left, top: r.top, width: w, height: h };
   if (units.length) frameRow();
 }
 
@@ -539,6 +540,9 @@ function closeInfo() {
 const shown = o => { for (let n = o; n; n = n.parent) if (!n.visible) return false; return true; };
 
 const ptr = { x: -1e4, y: -1e4 };
+// cached canvas box; refreshed by resizeStage rather than measured every frame
+let SB = { left: 0, top: 0, width: 1, height: 1 };
+
 function updateHotspots() {
   if (!SPOTS.length) return;
   const v = new THREE.Vector3();
@@ -546,7 +550,13 @@ function updateHotspots() {
     if (!shown(s.o)) { s.el.style.display = 'none'; continue; }
     v.copy(s.anchor).project(camera);
     if (v.z > 1) { s.el.style.display = 'none'; continue; }   // behind the camera
-    const x = (v.x * 0.5 + 0.5) * innerWidth, y = (-v.y * 0.5 + 0.5) * innerHeight;
+    // The canvas is NOT the window: the rail insets it on desktop and the sheet
+    // insets it on mobile. Projecting against innerWidth/innerHeight put every
+    // dot at a fraction of its true offset, so they drifted off their parts and
+    // pooled below the model. #spots is fixed to the window, so the canvas
+    // origin has to be added back.
+    const x = SB.left + (v.x * 0.5 + 0.5) * SB.width;
+    const y = SB.top + (-v.y * 0.5 + 0.5) * SB.height;
     s.el.style.display = 'block';
     s.el.style.left = x + 'px';
     s.el.style.top = y + 'px';
