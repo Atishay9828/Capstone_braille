@@ -381,11 +381,85 @@ function pogoConnector(male = true) {
 }
 
 // ---------------------------------------------------------------- wires
+// THE MOTOR IS A SOLID. Wires used to be routed by eye, and three of the five
+// pogo runs had a control point literally inside the can - the loom went
+// straight through the motor. Hand-placing waypoints around a 28mm cylinder is
+// the wrong tool; the can is a known shape, so the routing should be made to
+// respect it and stay respecting it when anything moves.
+//
+// Keep-out is the can plus half the wire plus air. Ears and the wire block sit
+// outside this and are small enough that the clearance covers them.
+const CAN_CLEAR = 1.9;
+const canKeepOut = () => ({
+  cx: MOTOR.xOffset,
+  r: MOTOR.dia / 2 + CAN_CLEAR,
+  z0: MOTOR.seatZ - 0.4,
+  z1: MOTOR.faceZ + 0.4,
+});
+
+const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
+
+// Two passes, because fixing the control points is not enough on its own: a
+// spline through two points either side of the can still cuts the chord.
+//   1. shove any point that is inside the cylinder radially out to the surface
+//   2. where the run BETWEEN two points still clips it, insert a waypoint on
+//      the surface at the bisecting angle, so the wire takes the short way
+//      round instead of through
+function avoidMotor(pts) {
+  const { cx, r, z0, z1 } = canKeepOut();
+  const band = z => z > z0 && z < z1;
+  const push = ([x, y, z]) => {
+    if (!band(z)) return [x, y, z];
+    const dx = x - cx, d = Math.hypot(dx, y);
+    if (d >= r) return [x, y, z];
+    if (d < 1e-6) return [cx + r, 0, z];          // dead on the axis
+    const k = r / d;
+    return [cx + dx * k, y * k, z];
+  };
+
+  const out = [];
+  for (let i = 0; i < pts.length; i++) {
+    const a = push(pts[i]);
+    out.push(a);
+    if (i === pts.length - 1) break;
+    const b = push(pts[i + 1]);
+    if (!band(a[2]) && !band(b[2])) continue;
+
+    // closest approach of segment a->b to the can axis
+    const ax = a[0] - cx, ay = a[1];
+    const vx = (b[0] - cx) - ax, vy = b[1] - ay;
+    const L2 = vx * vx + vy * vy;
+    if (L2 < 1e-9) continue;
+    const t = Math.max(0, Math.min(1, -(ax * vx + ay * vy) / L2));
+    if (Math.hypot(ax + vx * t, ay + vy * t) >= r) continue;
+
+    // Walk the arc rather than dropping one point on the bisector. A
+    // Catmull-Rom does not stay inside the hull of its control points, so a
+    // single midpoint over a long sweep still let the curve dip back into the
+    // can - measured 1.07mm of penetration. One point per ~30 degrees holds it
+    // on the surface.
+    const aa = Math.atan2(ay, ax);
+    const sweep = wrapPi(Math.atan2(b[1], b[0] - cx) - aa);
+    const n = Math.max(1, Math.ceil(Math.abs(sweep) / (Math.PI / 6)));
+    for (let k = 1; k <= n; k++) {
+      const f = k / (n + 1);
+      const ang = aa + sweep * f;
+      out.push([cx + Math.cos(ang) * r * 1.05,
+                Math.sin(ang) * r * 1.05,
+                a[2] + (b[2] - a[2]) * f]);
+    }
+  }
+  return out;
+}
+
 // Dupont jumpers drawn as swept tubes through a Catmull-Rom curve. Real jumpers
 // sag and bulge; dead-straight lines look like a schematic, not a build.
 function wire(pts, mat, dia = 0.9) {
-  const curve = new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)));
-  const o = new THREE.Mesh(new THREE.TubeGeometry(curve, 18, dia / 2, 6, false), mat);
+  const route = avoidMotor(pts);
+  const curve = new THREE.CatmullRomCurve3(route.map(p => new THREE.Vector3(...p)));
+  // more segments than before: the arc waypoints put real curvature in these
+  // runs, and 18 samples faceted it visibly
+  const o = new THREE.Mesh(new THREE.TubeGeometry(curve, 40, dia / 2, 6, false), mat);
   o.castShadow = true;
   return o;
 }
