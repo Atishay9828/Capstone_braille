@@ -399,6 +399,49 @@ const canKeepOut = () => ({
 
 const wrapPi = a => Math.atan2(Math.sin(a), Math.cos(a));
 
+// The driver assembly is the other thing in the bay a wire can end up inside.
+// It is a slab, not a cylinder, so it gets its own keep-out: an AABB in world
+// space, grown by half a wire. Points inside are pushed out through the nearest
+// face, which for this geometry is always -X -- the side the pads are on and
+// the side every run approaches from.
+// The SOLID part only. The assembly envelope is 11mm deep but the first
+// 1.5mm of it is pin tails in open air -- that is where the wires land, and
+// treating it as solid pushed every terminal back off its own pad.
+//
+//   tails 10.50..12.00   <- air, wires terminate here
+//   board 12.00..13.60   ] solid
+//   socket+chip ..21.50  ]
+const boardKeepOut = () => {
+  const front = DRIVER.x - DRIVER.overallH / 2 + DRIVER.tail;   // 12.0
+  return {
+    x0: front - 0.3, x1: DRIVER.x + DRIVER.overallH / 2 + 0.6,
+    y0: -DRIVER.pcbLen / 2 - 0.6, y1: DRIVER.pcbLen / 2 + 0.6,
+    z0: DRIVER.z - 0.6, z1: DRIVER.z + DRIVER.pcbW + 0.6,
+  };
+};
+
+function avoidBoard(pts) {
+  const b = boardKeepOut();
+  const inside = ([x, y, z]) =>
+    x > b.x0 && x < b.x1 && y > b.y0 && y < b.y1 && z > b.z0 && z < b.z1;
+  const last = pts.length - 1;
+  return pts.map((pt, i) => {
+    // a wire is allowed to touch what it lands ON; only the run between the
+    // ends has to keep clear
+    if (i === 0 || i === last) return pt;
+    if (!inside(pt)) return pt;
+    const [x, y, z] = pt;
+    // nearest face wins, so a point that has only just crept in does not get
+    // flung across the bay
+    const d = [
+      [x - b.x0, [b.x0, y, z]], [b.x1 - x, [b.x1, y, z]],
+      [y - b.y0, [x, b.y0, z]], [b.y1 - y, [x, b.y1, z]],
+      [z - b.z0, [x, y, b.z0]], [b.z1 - z, [x, y, b.z1]],
+    ].sort((p, q) => p[0] - q[0])[0];
+    return d[1];
+  });
+}
+
 // Two passes, because fixing the control points is not enough on its own: a
 // spline through two points either side of the can still cuts the chord.
 //   1. shove any point that is inside the cylinder radially out to the surface
@@ -455,7 +498,7 @@ function avoidMotor(pts) {
 // Dupont jumpers drawn as swept tubes through a Catmull-Rom curve. Real jumpers
 // sag and bulge; dead-straight lines look like a schematic, not a build.
 function wire(pts, mat, dia = 0.9) {
-  const route = avoidMotor(pts);
+  const route = avoidMotor(avoidBoard(pts));
   const curve = new THREE.CatmullRomCurve3(route.map(p => new THREE.Vector3(...p)));
   // more segments than before: the arc waypoints put real curvature in these
   // runs, and 18 samples faceted it visibly
@@ -550,7 +593,8 @@ function cellHarness() {
   const exPin = i => [EXPANDER[0] - 8.9 + i * 2.54, EXPANDER[1] + 6.5, EXPANDER[2] + 0.6];
   // The driver's solder side faces +X at x=20.0, so every wire lands on a
   // perfboard pad rather than a connector — there is no JST plug now.
-  const PAD_X = 20.4;
+  // solder side, facing the wires. Was 20.4 on the far face of the board.
+  const PAD_X = 11.2;
   const pad = (y, z) => [PAD_X, y, z];
   const drvPwr = pad(11, 19);                          // 5V / GND pads, top row
   // Routed by NET, not by pin index: 5V and both grounds land on the driver's
@@ -572,7 +616,9 @@ function cellHarness() {
   for (let i = 0; i < 4; i++)
     g.add(wire([
       pad(-2 + i * 2.54, 16),
-      [22, -14 + i * 1.4, FLOOR + 3],
+      // was x=22, i.e. behind the board, from when the pads faced +X. Both
+      // ends are on the -X side now, so the run never leaves that side.
+      [9.5, -15 + i * 1.4, FLOOR + 3],
       [4, -14 + i * 1.2, FLOOR + 1.5],
       exPin(i),
     ], [W.green, W.orange, W.purple, W.white][i], 0.8));
@@ -584,7 +630,8 @@ function cellHarness() {
     const o = (i - 2) * 1.2;
     g.add(wire([
       pad(-13 + i * 2.54, 8),
-      [22, -20 + o, FLOOR + 2],
+      // around the board's -Y end and along the floor, all on the -X side
+      [10, -18.5 + o, FLOOR + 2],
       [8, -19 + o, FLOOR + 2],
       [CAN[0] + R * 0.7, -13 + o, 9 + o * 0.4],          // onto the can's near side
     ], [W.blue, W.purple, W.yellow, W.orange, W.red][i], 0.8));
@@ -679,10 +726,20 @@ export function buildCellElectronics(realMotor) {
   // but that reading does not fit — it puts the chip at x=7.3, inside the motor
   // cup. Read as the ASSEMBLY mid-plane it lands at 10.50..21.50 with exactly
   // the 1.35mm the handoff quotes, so that is what is drawn. Flagged upstream.
+  // CHIP FACES THE WALL, SOLDER SIDE FACES THE WIRES. It was the other way
+  // round, which put the pads at x=20.4 on the FAR side of the board from
+  // everything that lands on them -- so every run crossed the board to reach
+  // its own pads. On a perfboard you solder on the side the wires come from,
+  // and here they all come from -X: the dock, and the motor.
+  //
+  //   tails 10.50..12.00 | board 12.00..13.60 | socket 13.60..17.00 | chip 17.00..21.50
+  //
+  // The chip then sits 0.60mm off the corner-boss inner edge at 22.10, which is
+  // inside the 1.35mm the gap has spare.
   const drv = uln2003();
   drv.name = 'uln2003';
-  drv.rotation.set(0, -Math.PI / 2, 0);   // board plane -> YZ, chip faces -X
-  drv.position.set(DRIVER.x + DRIVER.overallH / 2 - DRIVER.tail - DRIVER.pcbT,
+  drv.rotation.set(0, Math.PI / 2, 0);    // board plane -> YZ, chip faces +X
+  drv.position.set(DRIVER.x - DRIVER.overallH / 2 + DRIVER.tail + DRIVER.pcbT,
                    DRIVER.y, DRIVER.z + DRIVER.pcbW / 2);
   g.add(drv);
 
