@@ -331,10 +331,15 @@ function pogoConnector(male = true) {
   // the connector's OWN magnets, the two discs visible in the product photo.
   // Small -- they align the last millimetre; the 8mm shell magnets do the
   // holding. dock_interface.scad keeps both for exactly that reason.
+  // AXIS ALONG X. cyl() already sets rotation.x = PI/2 to stand its axis up on
+  // Z, so rotation.set() here REPLACES that -- and rotating a CylinderGeometry
+  // about Y leaves its axis on Y, where it started. Every disc in this function
+  // then lay along the connector's length instead of through it, and a 3mm
+  // magnet in a 2mm boss stood 1.2mm proud of the face. Rotate about Z.
   for (const sy of [-1, 1]) {
     const d = cyl(3.0, 0.6, m.magnet,
       [P.faceX - P.wall - 0.3, sy * P.magPitch / 2, 0], null, 20);
-    d.rotation.set(0, Math.PI / 2, 0);
+    d.rotation.set(0, 0, Math.PI / 2);
     g.add(d);
   }
 
@@ -345,31 +350,31 @@ function pogoConnector(male = true) {
   for (let i = 0; i < P.pins; i++) {
     const y = -span / 2 + i * P.pinPitch;
     const barrel = cyl(1.4, P.bossT, m.tin, [bossX0 + P.bossT / 2, y, 0], null, 12);
-    barrel.rotation.set(0, Math.PI / 2, 0);
+    barrel.rotation.set(0, 0, Math.PI / 2);
     g.add(barrel);
     if (male) {
       const pl = cyl(P.pinHeadDia, P.travel + 0.6,
         m.gold, [P.faceX - P.wall + 0.3, y, 0], null, 12);
-      pl.rotation.set(0, Math.PI / 2, 0);
+      pl.rotation.set(0, 0, Math.PI / 2);
       g.add(pl);
       const tip = new THREE.Mesh(new THREE.SphereGeometry(P.pinHeadDia / 2, 10, 8), m.gold);
       tip.position.set(P.faceX - P.wall + 0.6, y, 0);
       g.add(tip);
     } else {
       const ring = cyl(1.8, 0.25, m.gold, [P.faceX - P.wall - 0.05, y, 0], null, 14);
-      ring.rotation.set(0, Math.PI / 2, 0);
+      ring.rotation.set(0, 0, Math.PI / 2);
       g.add(ring);
     }
     // solder tails, out the back of the ear plate
     const tail = cyl(P.pinTailDia, 1.5, m.solder, [flangeX0 - 0.75, y, 0], null, 8);
-    tail.rotation.set(0, Math.PI / 2, 0);
+    tail.rotation.set(0, 0, Math.PI / 2);
     g.add(tail);
   }
 
   // M1.6 retention screws, y = +/-11.5
   for (const sy of [-1, 1]) {
     const h = cyl(2.4, 0.8, m.tin, [flangeX0 - 0.4, sy * P.holePitch / 2, 0], null, 12);
-    h.rotation.set(0, Math.PI / 2, 0);
+    h.rotation.set(0, 0, Math.PI / 2);
     g.add(h);
   }
   return g;
