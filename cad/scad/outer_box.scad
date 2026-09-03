@@ -279,9 +279,9 @@ union() {
         // Pogo windows, sized to the real 5P magnetic connector (dock_interface.scad).
         // Body window plus two blind screw pilots per face.
         translate([-shell_length/2, 0, dock_center_z])
-            mirror([1, 0, 0]) dock_pogo_cutout(wall_thickness);
+            dock_pogo_cutout(wall_thickness, -1);
         translate([ shell_length/2, 0, dock_center_z])
-            dock_pogo_cutout(wall_thickness);
+            dock_pogo_cutout(wall_thickness,  1);
 
         // Carrier retention intentionally omitted until the actual pogo module is measured.
         // pogo_carrier_pocket(-internal_length/2);

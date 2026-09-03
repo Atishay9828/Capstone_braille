@@ -18,36 +18,55 @@
 //   body thickness ........... 4.00, with a 2.00 flange step carrying the ears
 //   pin ...................... dia 0.90 head, dia 0.70 tail, 5.00 long
 //
-// The window is cut to the BODY and the flange bears on the outer face. There is
-// deliberately no flange recess: recessing 2mm into a 4mm wall would leave only
-// 1.8mm for the screws to bite, and 4mm of thread in PETG is worth more than a
-// flush look. The connectors mate body-to-body, so the standoff is by design.
-// =========================================================
-pogo_body_l     = 20.0;   // along the wall (Y)
-pogo_body_w     =  4.0;   // up the wall (Z)
-pogo_fit        =  0.4;   // 0.2 per side
-pogo_hole_pitch = 23.0;   // mounting hole centres
-pogo_screw_pilot = 1.3;   // M1.6 self-tapper into PETG; NOT a 1.7 clearance hole
-pogo_screw_depth = 3.5;   // of a 4.0mm wall - stops short of breaking through
-pogo_pin_pitch  = 2.54;
-pogo_pins       = 5;
-pogo_mag_pitch  = 16.0;   // the connector's OWN magnets
+// IT IS A SURFACE-MOUNT PART. There is no body window.
+//
+// The mounting ears sit OUTSIDE the 20mm body on a 23mm pitch, and the spring
+// pins face outward - so the connector bolts flat to the outside of the wall
+// like any panel-mount part. The only thing that has to cross the wall is the
+// five solder tails and their wires.
+//
+// That matters for printing. A 20.4 x 4.4mm through-window would have been a
+// 20.4mm unsupported BRIDGE across its top, and FDM sags 0.3-0.5mm over that
+// span against the 0.2mm of clearance a 4.0mm body leaves. The window would
+// have closed up on the exact part it was cut for. A tail slot is 13mm wide,
+// sits entirely behind the connector where nothing has to fit, and any sag in
+// it is invisible and harmless.
+//
+// ASSEMBLY ORDER MATTERS: the tails are only 1.5mm long and the wall is 4mm, so
+// they do not reach the inside. Solder the five wires to the connector FIRST,
+// feed the wires through the slot, then seat it and screw it down. The slot is
+// sized to pass the soldered joints, not just bare tails.
+pogo_body_l      = 20.0;   // along the wall (Y)
+pogo_body_w      =  4.0;   // up the wall (Z)
+pogo_hole_pitch  = 23.0;   // mounting hole centres
+pogo_screw_pilot =  1.3;   // M1.6 self-tapper into PETG; NOT a 1.7 clearance hole
+pogo_screw_depth =  3.5;   // of a 4.0mm wall - stops short of breaking through
+pogo_pin_pitch   =  2.54;
+pogo_pins        =  5;
+pogo_mag_pitch   = 16.0;   // the connector's OWN magnets
 
-dock_receiver_w = pogo_body_l + pogo_fit;   // 20.4, was a guessed 10.0
-dock_receiver_h = pogo_body_w + pogo_fit;   //  4.4, was a guessed  8.0
+pogo_tail_span   = (pogo_pins - 1) * pogo_pin_pitch;   // 10.16 across the tails
+pogo_tail_slot_w = 13.0;   // Y - tails plus room for the solder joints
+pogo_tail_slot_h =  4.0;   // Z
 
-// Cut through one wall face. Caller places it at the wall and rotates.
-// Drawn in the wall's local frame: X through the wall, Y along it, Z up.
-module dock_pogo_cutout(wall_t) {
-    // body window, straight through
-    cube([wall_t * 2 + 2, dock_receiver_w, dock_receiver_h], center = true);
-    // two screw pilots, blind from the outside face
+// Kept for anything that still asks the old question.
+dock_receiver_w = pogo_tail_slot_w;
+dock_receiver_h = pogo_tail_slot_h;
+
+// Cut into one wall face. X through the wall, Y along it, Z up.
+// face_x = +1 for the -X wall, -1 for the +X wall.
+module dock_pogo_cutout(wall_t, face_x = 1) {
+    // wire/tail slot, straight through, hidden behind the connector body
+    cube([wall_t * 2 + 2, pogo_tail_slot_w, pogo_tail_slot_h], center = true);
+    // two screw pilots, blind, entered from the OUTSIDE face
     for (sy = [-1, 1])
-        translate([wall_t / 2 + 0.01, sy * pogo_hole_pitch / 2, 0])
-            rotate([0, -90, 0])
+        translate([face_x * (wall_t / 2 + 0.01), sy * pogo_hole_pitch / 2, 0])
+            rotate([0, -face_x * 90, 0])
                 cylinder(d = pogo_screw_pilot, h = pogo_screw_depth + 0.01, $fn = 20);
 }
 
+assert(pogo_tail_slot_w > pogo_tail_span + 2,
+       "tail slot is too narrow for the 5 solder joints");
 assert(pogo_hole_pitch / 2 + 2 < 68 / 2,
        "pogo mounting holes fall outside the 68mm wall");
 assert(pogo_screw_depth < 4.0,

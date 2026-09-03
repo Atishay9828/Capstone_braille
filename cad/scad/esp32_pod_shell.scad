@@ -45,7 +45,7 @@ module dock_receiver_cutout() {
     // Through service receiver. It is deliberately contact-agnostic until a
     // measured, current-rated flush cartridge is selected.
     translate([pod_length/2, 0, pogo_z_from_bot])
-        dock_pogo_cutout(pod_wall);
+        dock_pogo_cutout(pod_wall, 1);
 }
 
 module magnet_pockets() {
