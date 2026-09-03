@@ -22,8 +22,8 @@ export const POD = {
   boardUnderZ: 10.5,                                   // :81 pod_floor+hdr_strip_h-channel
   usb: { w: 14, h: 9, z: 9.5 },                        // :78-82
   jack: { dia: 11.5, x: -20, y: 18 },                  // :66-71
-  pogo: { w: 10, h: 8, z: 15.5, recess: 1 },            // dock_interface.scad dock_center_z
-  mag: { dia: 8.4, ys: [-14, 14], z: 13.5 },           // dock_interface.scad dock_mag_z
+  pogo: { z: 15.5 },                                   // dock_interface.scad dock_center_z
+  mag: { dia: 8.4, ys: [-18.5, 18.5], z: 13.5 },       // dock_mag_y / dock_mag_z
 };
 const CELL = { length: 68, width: 68, height: 46.5 };  // outer_box shell_height
 
@@ -294,30 +294,84 @@ function barrelJack() {
   return g;
 }
 
-// ------------------------------------------------------------ pogo pins
-// Four spring-loaded pins on the pod's dock face, meeting flat pads on the cell.
-// This is the whole reason cells can be chained without a wiring loom.
-function pogoPins(count = 4) {
+// ---------------------------------------------- the pogo connector, a real part
+// 5P magnetic spring-loaded pogo connector, male/female pair. Every number is
+// from cad/scad/dock_interface.scad, which took them off the manufacturer
+// drawing -- this replaced four loose pins floating on a guessed 10 x 8mm
+// "receiver envelope" that predated owning the part and was wrong in both axes.
+//
+// The connector is a top hat mounted FROM THE INSIDE: a 27mm ear plate carrying
+// the two mounting holes, with a 20mm boss standing 2mm proud of it. The boss
+// pushes out through the wall and the ear plate stays behind it, flat against
+// the inner face -- so undocking pulls the plate INTO the wall and the wall
+// takes the load, not the two M1.6 screws.
+export const POGO = {
+  holePitch: 23.0, pinPitch: 2.54, pins: 5, magPitch: 16.0,
+  bossL: 20.0, bossW: 4.0, bossT: 2.0,
+  flangeL: 27.0, flangeW: 4.0, flangeT: 2.0,
+  pocketD: 2.1, wall: 4.0,
+  faceX: 4.1,                 // where the boss face lands: 0.1mm proud of 4.0
+  pinHeadDia: 0.9, pinTailDia: 0.7, travel: 1.0,
+};
+
+// Local frame: x = 0 is the wall's OUTER face and +X is the mating direction,
+// so every number below reads the way dock_interface.scad describes it.
+function pogoConnector(male = true) {
   const m = mats(), g = new THREE.Group();
-  const pitch = 2.54, span = (count - 1) * pitch;
-  // axis along X (toward the cell). Setting rotation.x AND rotation.y compounded
-  // into a quarter-turn that squashed each pin into a flat disc.
-  const alongX = o => { o.rotation.set(0, 0, Math.PI / 2); return o; };
-  for (let i = 0; i < count; i++) {
-    const y = -span / 2 + i * pitch;
-    g.add(alongX(cyl(1.9, 4.5, m.tin, [-1.2, y, 0], null, 14)));      // body
-    g.add(alongX(cyl(1.0, 3.6, m.gold, [2.0, y, 0], null, 12)));      // plunger
-    const tip = new THREE.Mesh(new THREE.SphereGeometry(0.5, 10, 8), m.gold);
-    tip.position.set(3.8, y, 0);
-    g.add(tip);
+  const P = POGO;
+  const bossX0 = P.faceX - P.wall - P.bossT;       // -1.9
+  const flangeX0 = bossX0 - P.flangeT;             // -3.9
+
+  const slab = (l, w, t, x, name) =>
+    box(t, l, w, m.blackPlas, [x + t / 2, 0, 0], name);
+
+  g.add(slab(P.flangeL, P.flangeW, P.flangeT, flangeX0, 'pogo_flange'));
+  g.add(slab(P.bossL, P.bossW, P.bossT, bossX0, 'pogo_boss'));
+
+  // the connector's OWN magnets, the two discs visible in the product photo.
+  // Small -- they align the last millimetre; the 8mm shell magnets do the
+  // holding. dock_interface.scad keeps both for exactly that reason.
+  for (const sy of [-1, 1]) {
+    const d = cyl(3.0, 0.6, m.magnet,
+      [P.faceX - P.wall - 0.3, sy * P.magPitch / 2, 0], null, 20);
+    d.rotation.set(0, Math.PI / 2, 0);
+    g.add(d);
   }
-  return g;
-}
-function pogoPads(count = 4) {
-  const m = mats(), g = new THREE.Group();
-  const pitch = 2.54, span = (count - 1) * pitch;
-  for (let i = 0; i < count; i++)
-    g.add(box(0.4, 1.8, 6, m.gold, [0, -span / 2 + i * pitch, 0]));
+
+  // 5 contacts on 2.54. A male carries sprung plungers; a female is a flat
+  // target ring, which is the whole point -- flat-to-sprung has no alignment
+  // tolerance problem and nothing to snap off.
+  const span = (P.pins - 1) * P.pinPitch;
+  for (let i = 0; i < P.pins; i++) {
+    const y = -span / 2 + i * P.pinPitch;
+    const barrel = cyl(1.4, P.bossT, m.tin, [bossX0 + P.bossT / 2, y, 0], null, 12);
+    barrel.rotation.set(0, Math.PI / 2, 0);
+    g.add(barrel);
+    if (male) {
+      const pl = cyl(P.pinHeadDia, P.travel + 0.6,
+        m.gold, [P.faceX - P.wall + 0.3, y, 0], null, 12);
+      pl.rotation.set(0, Math.PI / 2, 0);
+      g.add(pl);
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(P.pinHeadDia / 2, 10, 8), m.gold);
+      tip.position.set(P.faceX - P.wall + 0.6, y, 0);
+      g.add(tip);
+    } else {
+      const ring = cyl(1.8, 0.25, m.gold, [P.faceX - P.wall - 0.05, y, 0], null, 14);
+      ring.rotation.set(0, Math.PI / 2, 0);
+      g.add(ring);
+    }
+    // solder tails, out the back of the ear plate
+    const tail = cyl(P.pinTailDia, 1.5, m.solder, [flangeX0 - 0.75, y, 0], null, 8);
+    tail.rotation.set(0, Math.PI / 2, 0);
+    g.add(tail);
+  }
+
+  // M1.6 retention screws, y = +/-11.5
+  for (const sy of [-1, 1]) {
+    const h = cyl(2.4, 0.8, m.tin, [flangeX0 - 0.4, sy * P.holePitch / 2, 0], null, 12);
+    h.rotation.set(0, Math.PI / 2, 0);
+    g.add(h);
+  }
   return g;
 }
 
@@ -336,8 +390,12 @@ function wire(pts, mat, dia = 0.9) {
 // coil lines never leave the cell they belong to. An earlier version ran jumpers
 // straight through the pod wall into the cell, which would have made the pogo
 // pins decorative.
-const POGO_NET = ['5V', 'GND', 'SDA', 'SCL'];
-const pogoY = i => -3.81 + i * 2.54;
+// The real connector has FIVE ways. Four are spoken for; the fifth is spare and
+// deliberately unnamed here, because dock_interface.scad specs the part without
+// assigning its nets and the simulator must not invent one. When it is decided
+// (INT from the expander is the obvious candidate) name it in the CAD first.
+const POGO_NET = ['5V', 'GND', 'SDA', 'SCL', 'spare'];
+const pogoY = i => -(POGO.pins - 1) * POGO.pinPitch / 2 + i * POGO.pinPitch;
 
 // Where the per-cell I/O expander goes in the multi-cell product. It does not exist
 // yet, and pretending otherwise is why several wires used to stop in mid-air: SDA,
@@ -359,15 +417,18 @@ function expanderSlot() {
 function podHarness() {
   const m = mats(), g = new THREE.Group(), W = m.wire;
   g.name = 'pod_wiring';
-  const cols = [W.red, W.black, W.blue, W.yellow];
+  // five ways now, not four: the connector is a real 5P part. The spare is drawn
+  // grey because it has no assigned net yet -- see POGO_NET.
+  const cols = [W.red, W.black, W.blue, W.yellow, W.white];
   const hdrY = POD.hdr.pitch / 2;                       // +Y header row
   const hdrZ = POD.boardUnderZ - 2.5;                   // just under the pins
-  const pinX = POD.length / 2 - POD.pogo.recess - 2.5;
+  // the connector's solder tails sit behind the ear plate, inside the wall
+  const pinX = POD.length / 2 - POGO.wall + 0.2;
   // v8.5: the dock centre dropped to 15.5, barely above the board, so these no
   // longer climb a wall — they run out along the floor and lift at the end.
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < POGO.pins; i++) {
     const x0 = POD.devkit.xOffset + 8 + i * 2.54;
-    const o = (i - 1.5) * 1.1;
+    const o = (i - (POGO.pins - 1) / 2) * 1.1;
     g.add(wire([
       [x0, hdrY, hdrZ],
       [x0 + 3, hdrY + 3 + o, POD.floor + 2],
@@ -386,7 +447,7 @@ function podHarness() {
 function cellHarness() {
   const m = mats(), g = new THREE.Group(), W = m.wire;
   g.name = 'cell_wiring';
-  const cols = [W.red, W.black, W.blue, W.yellow];
+  const cols = [W.red, W.black, W.blue, W.yellow, W.white];
   const FACE = -CELL.length / 2;                        // -34, the dock face
   const FLOOR = 4.6;                                    // box floor top
 
@@ -398,11 +459,13 @@ function cellHarness() {
   const PAD_X = 20.4;
   const pad = (y, z) => [PAD_X, y, z];
   const drvPwr = pad(11, 19);                          // 5V / GND pads, top row
-  for (let i = 0; i < 4; i++) {
+  // 5V and GND go to the driver; SDA/SCL go to the expander footprint; the
+  // fifth way is spare and terminates there too, waiting on a net assignment.
+  for (let i = 0; i < POGO.pins; i++) {
     const y = pogoY(i);
     const end = i < 2 ? drvPwr : exPin(i + 2);
     g.add(wire([
-      [FACE + 4, y, POD.pogo.z],
+      [FACE + POGO.wall - 0.2, y, POD.pogo.z],
       [FACE + 8, y * 1.8, 12],
       [-18, y * 2.2, FLOOR + 2],
       [end[0] - 10, end[1] + (i < 2 ? -4 : 4), FLOOR + 2],
@@ -480,10 +543,11 @@ export function buildBrainPod(printed) {
   jack.position.set(POD.jack.x, POD.jack.y, H - wall);
   pod.add(jack);
 
-  // pins sit in the 1mm recess on the dock face, not back at the inner wall
-  const pins = pogoPins();
+  // The pod carries the MALE half on its +X face, which is the one that meets
+  // the cell. Local x=0 of the connector is the wall's outer surface.
+  const pins = pogoConnector(true);
   pins.name = 'pogo_pins';
-  pins.position.set(L / 2 - POD.pogo.recess - 2.5, 0, POD.pogo.z);
+  pins.position.set(L / 2, 0, POD.pogo.z);
   pod.add(pins);
 
   pod.add(podHarness());
@@ -540,10 +604,19 @@ export function buildCellElectronics(realMotor) {
   hall.position.set(0, 17.35, 30.3);
   g.add(hall);
 
-  const pads = pogoPads();
+  // outer_box.scad cuts dock_pogo_cutout on BOTH walls, so a cell is female on
+  // -X (meeting the pod, or the cell before it) and male on +X (meeting the
+  // cell after it). That is what makes the row chain in one direction.
+  const pads = pogoConnector(false);
   pads.name = 'pogo_pads';
+  pads.rotation.set(0, Math.PI, 0);          // mating direction -> -X
   pads.position.set(-CELL.length / 2, 0, POD.pogo.z);
   g.add(pads);
+
+  const outPins = pogoConnector(true);
+  outPins.name = 'pogo_out';
+  outPins.position.set(CELL.length / 2, 0, POD.pogo.z);
+  g.add(outPins);
 
   // the cell's mating magnets, flush with its -X face and polarised to attract
   for (const y of POD.mag.ys) {
@@ -566,8 +639,10 @@ export const PART_INFO = [
    'The controller. 51.5x28mm, dropped onto two female header strips so it lifts out with no soldering. Runs the text-to-braille encoding and drives the motor.'],
   ['dc_jack', 'DC BARREL JACK 5.5/2.1',
    'Power in, on the lid. Sits away from the board so the barrel hangs over open floor. Polarity verified: centre positive.'],
-  ['pogo_pins', 'POGO PINS - 5V / GND / SDA / SCL',
-   'Four spring contacts on the dock face, pressing onto flat pads. Only power and the I2C bus cross here - never the motor coils. Each cell drives its own motor locally, which is why adding a cell needs no extra wiring at all.'],
+  ['pogo_out', 'POGO CONNECTOR - MALE (+X)',
+   'The half that meets the NEXT cell. Chaining is one-directional: female on -X, male on +X, so bricks only go together one way round. 5 ways on 2.54mm pitch - 5V, GND, SDA, SCL and one spare.'],
+  ['pogo_pins', 'POGO CONNECTOR - 5P MAGNETIC (MALE)',
+   'A bought part: 23mm mounting pitch, 20mm boss, five ways on 2.54mm pitch, with two small magnets of its own for final alignment. It mounts from INSIDE - the ear plate bears on the inner wall face, so undocking pulls it into the wall rather than onto its two M1.6 screws. Only power and the I2C bus cross here, never the motor coils, which is why adding a cell needs no extra wiring at all.'],
   ['pod_shell', 'POD SHELL (PETG)',
    'The real printed part, straight from esp32_pod_shell.scad - 4mm walls, the USB service opening, the pogo recess, the magnet pockets and the slotted grille that keeps the WiFi antenna out of solid plastic.'],
   ['stepper', '28BYJ-48 STEPPER  (model: NandouTech, CC-BY)',
@@ -578,8 +653,8 @@ export const PART_INFO = [
    'Darlington array. The ESP32 cannot supply the motor coils directly, so four GPIO lines switch this instead. The ready-made breakout was dropped: at 35x32mm it fits nowhere in the cell, and nearly all of it is a JST socket, an LED row and headers this build does not use. What is left is the bare chip in a socket on a 28x18mm scrap of perfboard - 11mm tall, standing on edge in the 12.35mm strip beside the motor. The socket is deliberate: a ULN2003 dies shorted on coil kickback, and desoldering 16 pins inside a glued box is not a repair.'],
   ['hall', 'HALL SENSOR (BARE TO-92)',
    'Finds home. On power-up the cam turns until the magnet passes it - the only way the firmware learns which of the 64 positions it is sitting on. Shown as the bare TO-92 because the module it ships on is too big for the pocket, so the sensor gets desoldered off its blue carrier board.'],
-  ['pogo_pads', 'POGO PADS',
-   'The flat gold targets the pins press onto. Flat-to-sprung means no alignment tolerance problem and nothing to snap off.'],
+  ['pogo_pads', 'POGO CONNECTOR - 5P MAGNETIC (FEMALE)',
+   'The mating half on the -X face. Flat-to-sprung means no alignment tolerance problem and nothing to snap off. Its own magnets align the last millimetre; the 8mm shell magnets either side do the holding.'],
   ['pod_magnets', 'DOCK MAGNETS 8x1mm',
    'Two per face, flush with the dock wall at y +/-14. Poles are reversed between pod and cell so they only latch the right way round - you physically cannot dock a cell backwards.'],
   ['cell_wiring', 'THE 13-WIRE LOOM',
