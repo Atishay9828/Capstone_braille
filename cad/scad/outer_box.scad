@@ -91,7 +91,11 @@ mag_depth         = 1.2;   // 1mm magnet + glue gap (4mm wall keeps 2.8mm behind
 // 4mm only above the mechanism; moving the magnets would needlessly invalidate
 // mating parts and the existing pogo wire route.
 mag_z             = dock_mag_z;     // v8.6: shared, was a hand-copied 13.5
-mag_y_pos         = [-14, 14];
+// v8.9: +/-14 -> +/-17.5. The pogo window is the real connector's 20.4mm now,
+// not the guessed 10mm, and at 14 the teardrop apex ran 2.14mm into it.
+// 17.5 clears the window by 1.36mm at the apex and 3.10mm at the circle, and
+// still leaves 10.6mm of wall outboard.
+mag_y_pos         = [-dock_mag_y, dock_mag_y];
 
 // Pogo carrier pocket params (behind each ±X window)
 pogo_carrier_w    = 12;    // carrier board width (measure real part!)
@@ -197,18 +201,11 @@ module floor_wire_gutters() {
 // (a 45 degree peak instead of a round top), which needs no post-processing and is the
 // correct way to solve an overhang in CAD.
 
-module teardrop_magnet_pocket() {
-    // Horizontal-axis magnet pocket with a 45° "roof" — round side-wall holes fused
-    // closed on the fit-test print; the teardrop top is self-supporting on FDM.
-    // Drawn with axis along +Z, mouth at z=0; caller rotates it into the wall.
-    r = mag_dia / 2;
-    linear_extrude(mag_depth + 0.01) union() {
-        circle(r=r, $fn=40);
-        polygon([[-r * sin(45), r * cos(45)],
-                 [0, r * sqrt(2)],
-                 [ r * sin(45), r * cos(45)]]);
-    }
-}
+// teardrop_magnet_pocket() moved to dock_interface.scad in v8.9 - the pod kept
+// its own copy of it, so fixing the apex here left the pod cutting the old
+// broken shape. One definition, shared.
+assert(!is_undef(dock_mag_y), "outer_box needs the dock magnet spec from dock_interface.scad");
+
 
 // --- vertical_wire_guides() DELETED IN v7.6. DO NOT ADD IT BACK. ---
 // It was a single flat blade, 2 x 1.5mm in section and 27mm tall, standing off
@@ -279,27 +276,27 @@ union() {
         translate([0, shell_width/2, floor_thickness + 3])
             cube([15, wall_thickness + 2, 6], center=true);
 
-        // Pogo service windows — symmetric cuts fully through both ±X walls
+        // Pogo windows, sized to the real 5P magnetic connector (dock_interface.scad).
+        // Body window plus two blind screw pilots per face.
         translate([-shell_length/2, 0, dock_center_z])
-            cube([wall_thickness * 2 + 2, dock_receiver_w, dock_receiver_h], center=true);
+            mirror([1, 0, 0]) dock_pogo_cutout(wall_thickness);
         translate([ shell_length/2, 0, dock_center_z])
-            cube([wall_thickness * 2 + 2, dock_receiver_w, dock_receiver_h], center=true);
+            dock_pogo_cutout(wall_thickness);
 
         // Carrier retention intentionally omitted until the actual pogo module is measured.
         // pogo_carrier_pocket(-internal_length/2);
         // pogo_carrier_pocket( internal_length/2);
 
-        // Magnet pockets — -X face N/S, +X face S/N (teardrop tops, v6.1)
-        for(my = mag_y_pos) {
+        // Magnet pockets — OFF by default since v8.9: the pogo connector carries
+        // its own magnets. See dock_interface.scad. Kept, not deleted.
+        if (dock_use_separate_magnets)
+        for(my = mag_y_pos)
             translate([-shell_length/2 - 0.01, my, mag_z])
-                rotate([0, 90, 0])
-                teardrop_magnet_pocket();
-        }
-        for(my = mag_y_pos) {
+                teardrop_magnet_pocket(1);
+        if (dock_use_separate_magnets)
+        for(my = mag_y_pos)
             translate([shell_length/2 + 0.01, my, mag_z])
-                rotate([0, -90, 0])
-                teardrop_magnet_pocket();
-        }
+                teardrop_magnet_pocket(-1);
 
         // Front tactile marker — bold chevron (^) groove, v6.1.
         // Replaces the braille 'F' (1.5mm dots — FDM-unprintable, came out as mush).

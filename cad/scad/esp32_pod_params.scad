@@ -98,7 +98,8 @@ pogo_z_from_bot  = dock_center_z;
 // Cell -X face = N/S; pod +X face = S/N → attract, repel reversed
 mag_dia          = dock_mag_dia;  // v8.6: shared, see dock_interface.scad
 mag_depth        = 1.2;   // 1mm magnet + glue gap (4mm wall keeps 2.8mm)
-mag_y_positions  = [-14, 14];
+// v8.9: follows the cell - the wider pogo window pushed these outboard.
+mag_y_positions  = [-dock_mag_y, dock_mag_y];
 // Dock features stay at the same absolute height when Option A adds headroom.
 // v8.6: WAS 29 AND WRONG. The comment said "matches cell" and stopped being true
 // the moment the cell dropped 14mm; the two magnet rings were 15.5mm apart.
@@ -176,18 +177,9 @@ $fn = 60;
 
 // --- SHARED BASE MODULE ---
 
-module teardrop_magnet_pocket() {
-    // Horizontal-axis magnet pocket with a 45° "roof" — round side-wall holes fused
-    // closed on the fit-test print; the teardrop top is self-supporting on FDM.
-    // Drawn with axis along +Z, mouth at z=0; caller rotates it into the wall.
-    r = mag_dia / 2;
-    linear_extrude(mag_depth + 0.01) union() {
-        circle(r=r, $fn=40);
-        polygon([[-r * sin(45), r * cos(45)],
-                 [0, r * sqrt(2)],
-                 [ r * sin(45), r * cos(45)]]);
-    }
-}
+// teardrop_magnet_pocket() moved to dock_interface.scad in v8.9. This file used
+// to carry its own copy, which is why the apex fix had to be made twice.
+
 
 module pod_rounded_box(l, w, h, r) {
     hull() {

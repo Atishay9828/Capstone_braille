@@ -45,17 +45,16 @@ module dock_receiver_cutout() {
     // Through service receiver. It is deliberately contact-agnostic until a
     // measured, current-rated flush cartridge is selected.
     translate([pod_length/2, 0, pogo_z_from_bot])
-        cube([pod_wall * 2 + 2, pogo_pad_w, pogo_pad_h], center=true);
+        dock_pogo_cutout(pod_wall);
 }
 
 module magnet_pockets() {
     // Cell -X face = N/S; pod +X face = S/N → attract when docked
     // v6.1: 8.4×1.2mm teardrop pockets for the real 8×1mm magnets (see params)
-    for(my = mag_y_positions) {
+    if (dock_use_separate_magnets)
+    for(my = mag_y_positions)
         translate([pod_length/2 + 0.01, my, mag_z])
-        rotate([0, -90, 0])
-            teardrop_magnet_pocket();
-    }
+            teardrop_magnet_pocket(-1);
 }
 
 module antenna_grille() {
