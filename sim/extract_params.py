@@ -21,6 +21,7 @@ docs/SOFTWARE_TEAM_README.md before writing anything. If the CAD and the docs
 ever disagree, this fails loudly instead of quietly animating the wrong thing.
 """
 import json
+import math
 import os
 import re
 import sys
@@ -28,7 +29,11 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MECH = os.path.join(ROOT, "cad", "scad", "mech_layout.scad")
 CAM = os.path.join(ROOT, "cad", "scad", "braille_cam.scad")
-OUT = os.path.join(ROOT, "sim", "braillix_params.json")
+# Two copies on purpose: sim/ is the canonical artefact, sim/3d/ is what the
+# page actually fetches. Writing only the first left the browser reading a
+# stale file — the same duplicated-constant drift this script exists to stop.
+OUTS = [os.path.join(ROOT, "sim", "braillix_params.json"),
+        os.path.join(ROOT, "sim", "3d", "braillix_params.json")]
 
 
 def read(path):
@@ -106,6 +111,27 @@ disk_base_thickness = scalar(cam, "disk_base_thickness", CAM)
 track_r = [inner_radius + t * (track_width + track_gap) + track_width / 2
            for t in range(dots)]
 
+# R-07: every track gets the widest ramp its OWN arc allows, so the six ramps
+# differ. angular_ramp_fraction is only the fallback when use_auto_ramp is off.
+# Sizing all six from one number is exactly what R-07 exists to undo, so the
+# simulator has to carry the per-track figures rather than a single global.
+_auto = re.search(r"^\s*use_auto_ramp\s*=\s*(true|false)", cam, re.M)
+use_auto_ramp = (_auto.group(1) == "true") if _auto else False
+foot_roll_r = scalar(mech, "foot_roll_r", MECH)
+dwell_tol = scalar(cam, "dwell_tol", CAM)
+foot_flat_arc = 2 * (foot_roll_r * math.tan(math.radians(15)) + dwell_tol)
+
+
+def ramp_frac_of(t):
+    """braille_cam.scad ramp_fraction_of() - keep these two in step."""
+    if not use_auto_ramp:
+        return ramp_frac
+    arc = 2 * math.pi * track_r[t] / states
+    return max(0.05, min(0.98, (arc - foot_flat_arc) / arc))
+
+
+ramp_angle = [(360.0 / states) * ramp_frac_of(t) for t in range(dots)]
+
 
 def dot_pos(d):
     """Standard braille numbering:  1 4 / 2 5 / 3 6  — mirrors mech_layout.scad"""
@@ -157,7 +183,9 @@ params = {
     "cam": {"states": states, "dots": dots,
             "slice_angle": 360.0 / states,
             "angular_ramp_fraction": ramp_frac,
-            "ramp_angle": (360.0 / states) * ramp_frac,
+            "use_auto_ramp": use_auto_ramp,
+            "foot_flat_arc": foot_flat_arc,
+            "ramp_angle": ramp_angle,          # PER TRACK since R-07
             "inner_radius": inner_radius, "track_width": track_width,
             "track_gap": track_gap, "track_r": track_r,
             "disk_base_thickness": disk_base_thickness, "pin_lift": pin_lift,
@@ -188,9 +216,13 @@ params = {
     },
 }
 
-os.makedirs(os.path.dirname(OUT), exist_ok=True)
-with open(OUT, "w", encoding="utf-8") as f:
-    json.dump(params, f, indent=2)
+for _out in OUTS:
+    os.makedirs(os.path.dirname(_out), exist_ok=True)
+for _out in OUTS:
+    with open(_out, "w", encoding="utf-8") as f:
+        json.dump(params, f, indent=2)
 
 print(f"\ntrack_r  {[round(r, 2) for r in track_r]}")
-print(f"wrote    {os.path.relpath(OUT, ROOT)}")
+print(f"ramp_deg {[round(a, 3) for a in ramp_angle]}   "
+      f"({'auto, per track' if use_auto_ramp else 'manual, flat'})")
+print("wrote    " + ", ".join(os.path.relpath(o, ROOT) for o in OUTS))

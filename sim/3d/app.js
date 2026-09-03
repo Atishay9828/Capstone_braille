@@ -73,9 +73,14 @@ function heightFactor(aEff, track) {
   const vc = patternBit(k, track);
   const vp = patternBit((k - 1 + STATES) % STATES, track);
   const vn = patternBit((k + 1) % STATES, track);
-  const hr = RAMP / 2;
-  if (ais < hr)             { const b = sCurve((ais + hr) / RAMP);            return (1 - b) * vp + b * vc; }
-  if (ais > SLICE - hr)     { const b = sCurve((ais - (SLICE - hr)) / RAMP);  return (1 - b) * vc + b * vn; }
+  // R-07 sizes each ramp from its OWN track's arc, so the six differ: 3.43 deg
+  // on the innermost up to 4.23 on the outermost. This used to be one global
+  // 1.125 for all six, which is both 3x too narrow AND the very uniformity R-07
+  // was written to remove — dots snapped up where the real cam eases them.
+  const ramp = RAMP[track];
+  const hr = ramp / 2;
+  if (ais < hr)             { const b = sCurve((ais + hr) / ramp);            return (1 - b) * vp + b * vc; }
+  if (ais > SLICE - hr)     { const b = sCurve((ais - (SLICE - hr)) / ramp);  return (1 - b) * vc + b * vn; }
   return vc;
 }
 
@@ -687,14 +692,25 @@ async function main() {
     document.querySelector('.spin').style.display = 'none';
   };
   try {
-    P = await (await fetch('./braillix_params.json')).json();
+    // no-cache, not no-store: the browser still keeps the file, it just has to
+    // ask whether it changed. Without this a stale copy sticks around for the
+    // heuristic lifetime — locally that showed the OLD ramp angles against
+    // freshly rebuilt geometry, and on GitHub Pages it would outlive a deploy.
+    P = await (await fetch('./braillix_params.json',
+                           { cache: 'no-cache' })).json();
   } catch (e) {
     return err('Could not load <b>braillix_params.json</b>.<br>' +
       'This app must be served over http, not opened as a file.<br>' +
       'Double-click <b>run.bat</b>.');
   }
   CAM = P.cam; STACK = P.stack;
-  STATES = CAM.states; SLICE = CAM.slice_angle; RAMP = CAM.ramp_angle;
+  STATES = CAM.states; SLICE = CAM.slice_angle;
+  // ramp_angle became a per-track array at R-07. Tolerate the old scalar so an
+  // out-of-date params file degrades to the previous behaviour instead of
+  // silently making every ramp NaN.
+  RAMP = Array.isArray(CAM.ramp_angle)
+    ? CAM.ramp_angle
+    : new Array(CAM.dots).fill(CAM.ramp_angle);
   PIN_LIFT = CAM.pin_lift; CAM_FLAT = STACK.cam_flat_z;
   Z_SIGN = P.motion.blender_z_sign; STEPS_PER_POS = P.motion.steps_per_position;
   D2B = Object.fromEntries(Object.entries(P.encoding.DOT_TO_BIT).map(([k, v]) => [+k, v]));

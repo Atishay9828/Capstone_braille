@@ -39,7 +39,16 @@
     "dots": 6,
     "slice_angle": 5.625,
     "angular_ramp_fraction": 0.2,
-    "ramp_angle": 1.125,
+    "use_auto_ramp": true,
+    "foot_flat_arc": 0.5679491924311226,
+    "ramp_angle": [
+      3.4262775875563,
+      3.6528126239898926,
+      3.837027928342485,
+      3.989769261097148,
+      4.1184679766589465,
+      4.228386622138766
+    ],
     "inner_radius": 14.0,
     "track_width": 1.6,
     "track_gap": 0.1,
