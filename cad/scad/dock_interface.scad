@@ -56,7 +56,11 @@
 // the 23mm pitch plus room for the 1.5mm holes. MEASURE IT before printing.
 pogo_hole_pitch  = 23.0;   // mounting hole centres, from the drawing
 pogo_screw_pilot =  1.3;   // M1.6 self-tapper into PETG
-pogo_screw_depth =  1.5;   // from the POCKET FLOOR - only 1.9mm of wall under it
+// From the POCKET FLOOR, and only 1.9mm of wall sits under it. At 1.5 that left
+// 0.40mm - one or two layers, which an M1.6 self-tapper will burst straight
+// through and show as a hole on the outside face. 1.2 leaves 0.70mm. The screws
+// are retention only: the ear plate bears on the wall, so short threads are fine.
+pogo_screw_depth =  1.2;
 pogo_pin_pitch   =  2.54;
 pogo_pins        =  5;
 pogo_mag_pitch   = 16.0;   // the connector's OWN magnets, inside the boss
@@ -99,9 +103,21 @@ module dock_pogo_cutout(wall_t, face_x = 1) {
         translate([-wall_t - 1, -pogo_win_l / 2, -pogo_win_w / 2])
             cube([wall_t + 2, pogo_win_l, pogo_win_w]);
 
-        // 2. ear-plate pocket - from the INNER face, going outward
-        translate([-wall_t - 0.01, -pogo_pocket_l / 2, -pogo_pocket_w / 2])
-            cube([pogo_pocket_d + 0.01, pogo_pocket_l, pogo_pocket_w]);
+        // 2. ear-plate pocket - from the INNER face, going outward, with a
+        //    45-degree roof so it prints without drooping into itself.
+        //
+        //    WITHOUT THE ROOF this is a 2.1mm shelf hanging over a 27.4mm run,
+        //    and the ear plate is 2.0mm thick in a 2.1mm pocket - 0.1mm of
+        //    slack. A 0.3mm droop, which is ordinary for an unsupported shelf,
+        //    eats that and the plate stops seating flush at the top edge.
+        //    The chamfer costs 2.1mm of height on the inside where nothing
+        //    looks at it, and there is 9mm of wall above before the base plate.
+        rotate([90, 0, 0])
+            linear_extrude(pogo_pocket_l, center = true)
+                polygon([[-wall_t - 0.01, -pogo_pocket_w / 2],
+                         [-wall_t + pogo_pocket_d, -pogo_pocket_w / 2],
+                         [-wall_t + pogo_pocket_d,  pogo_pocket_w / 2],
+                         [-wall_t - 0.01, pogo_pocket_w / 2 + pogo_pocket_d]]);
 
         // 3. screw pilots - start at the pocket floor, blind toward outside
         for (sy = [-1, 1])
@@ -202,7 +218,14 @@ module teardrop_magnet_pocket(face_x) {
 }
 
 // Magnets must clear the pogo window they sit beside.
-dock_mag_y = 17.5;
-assert(dock_mag_y - dock_mag_dia / 2 * sqrt(2) > dock_receiver_w / 2 + 0.5,
-       str("magnet teardrop at y=", dock_mag_y,
-           " runs into the ", dock_receiver_w, "mm pogo window"));
+// 17.5 -> 18.5. At 17.5 the magnet pocket started at y=13.30 while the ear
+// pocket ran to 13.70, so they overlapped by 0.40mm in Y with only 0.70mm of
+// PETG between their floors in X. At 18.5 the magnet starts at 14.30 and clears
+// the ear pocket by 0.60mm, so nothing is shared. Outer edge reaches 24.44
+// against a 34mm half-wall.
+dock_mag_y = 18.5;
+assert(dock_mag_y - dock_mag_dia / 2 > pogo_pocket_l / 2 + 0.5,
+       str("magnet pocket at y=", dock_mag_y, " comes within 0.5mm of the ear pocket, ",
+           "which runs to ", pogo_pocket_l / 2));
+assert(dock_mag_y + dock_mag_dia / 2 * sqrt(2) < 68 / 2 - 2,
+       "magnet teardrop runs off the edge of the wall");
