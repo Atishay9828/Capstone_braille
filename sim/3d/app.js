@@ -108,6 +108,20 @@ const cellToPos = cell => cell.reduce((v, d) => v | (1 << D2B[d]), 0);
 const XRAY_PARTS = ['outer_box', 'top_plate', 'dot_insert', 'comb'];
 let renderer, scene, camera, controls, parts = {}, linkages = [];
 let pod = null, cellElec = null, glbMotor = [], podShells = [];
+
+// ---- MULTI-CELL ----------------------------------------------------------
+// Stacking is the product's whole argument: a display is a ROW of these, each
+// with its own motor, and adding one costs no extra wiring because only power
+// and I2C cross the dock. So the simulator has to be able to show more than one.
+//
+// A unit is one physical brick. Object3D.clone() shares geometry AND materials
+// by reference, which is exactly right here: X-ray and the finish palette then
+// apply to every cell at once, while transforms (cam angle, linkage lift) stay
+// independent, which is the only thing that must differ per cell.
+const CELL_PITCH = 68;            // outer_box is 68mm; bricks butt face to face
+const MAX_UNITS = 4;
+let units = [];                   // [{root, elec, linkages, cam, deg, target, move}]
+let unitTemplate = null;          // the loaded GLB scene, cloned per unit
 let running = true, xray = false, elec = false, speed = 1;
 let cell = null, hwBusy = false;      // the real hardware, over Web Serial
 let move = null;                      // the active trapezoid, or null when parked
@@ -189,6 +203,7 @@ function resizeStage() {
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
   renderer.setSize(w, h);
+  if (units.length) frameRow();
 }
 
 function buildScene() {
@@ -201,7 +216,7 @@ function buildScene() {
   };
   renderer.setSize(...vp());
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;   // PCFSoft is deprecated in r185
   renderer.outputColorSpace = THREE.SRGBColorSpace;   // r185 default; state it
   // AgX over ACES Filmic: ACES pushes bright neutrals toward orange, which
   // fights an amber accent and tints the white chrome highlights. AgX rolls
@@ -216,7 +231,7 @@ function buildScene() {
   // made in two places or the canvas and the rail stopped matching.
   const BG = cssColor('--bg-0');
   scene.background = BG;
-  scene.fog = new THREE.Fog(BG, 300, 760);
+  scene.fog = new THREE.Fog(BG, 420, 1500);
 
   const [vw0, vh0] = vp();
   camera = new THREE.PerspectiveCamera(38, vw0 / vh0, 1, 2000);
@@ -228,7 +243,9 @@ function buildScene() {
   controls.dampingFactor = 0.06;
   controls.target.set(0, 0, 30);
   controls.minDistance = 55;
-  controls.maxDistance = 520;
+  // 520 was fine for one brick. A row of four plus the pod needs ~900 to frame
+  // in portrait, and the clamp was silently cropping the ends of the row.
+  controls.maxDistance = 1400;
   controls.update();
   homeCam = camera.position.clone();
   homeTarget = controls.target.clone();
@@ -298,7 +315,7 @@ function makeEnvironment(renderer, scene) {
   panel(0xffffff, 0.55, [-80, 0, 20], [1, 140, 100]); // broad neutral left
   panel(0xe9edf4, 0.28, [80, 0, 20], [1, 140, 100]);  // dim neutral right
   panel(0x101113, 1.0, [0, 0, -75], [160, 160, 1]);   // floor bounce = --bg-1
-  scene.environment = pmrem.fromScene(env, 0.25).texture;
+  scene.environment = pmrem.fromScene(env, 0.035)   // >0.04 clips: three caps the sample count at 20.texture;
   pmrem.dispose();
 }
 
@@ -455,7 +472,7 @@ function setElectronics(on) {
   // The pod is a brick sitting next to the cell, not something buried inside it,
   // so it stays on screen whatever this toggle says. Only the cell's own innards
   // are hidden behind it.
-  cellElec.visible = on;
+  units.forEach(u => { if (u.elec) u.elec.visible = on; });
   glbMotor.forEach(o => o.visible = false);       // never show the placeholder again
   $('btnElec').classList.toggle('on', on);
   $('btnElec').setAttribute('aria-pressed', String(on));
@@ -539,28 +556,61 @@ function updateHotspots() {
   }
 }
 
-function setXray(on) {
-  xray = on;
-  // the pod's own walls have to go glass too, or turning on X-ray leaves the
-  // controller sealed inside an opaque box while the cell beside it opens up
-  const targets = XRAY_PARTS.map(n => parts[n]).concat(podShells);
-  targets.forEach(o => {
+// X-ray used to be a hard cut: one frame opaque, the next 20% glass, which
+// reads as a glitch rather than a transition and loses the viewer's place
+// inside the mechanism. It is a tween now, driven from tick().
+//
+// The shell has to be `transparent` for the WHOLE tween, not just at the end --
+// flipping that flag mid-fade re-sorts the draw order and pops. depthWrite and
+// castShadow switch once, at the point where the wall stops being solid enough
+// to matter.
+const XRAY_DUR = 0.34;             // seconds
+let xrayT = 0;                     // 0 = solid, 1 = glass
+let xrayFrom = 0, xrayTo = 0, xrayEl = XRAY_DUR;
+
+function xrayTargets() {
+  const t = [];
+  for (const u of units) t.push(...u.xray);
+  return t.concat(podShells);
+}
+
+function applyXray(k) {
+  const ease = k * k * (3 - 2 * k);          // smoothstep
+  xrayTargets().forEach(o => {
     if (!o) return;
     o.traverse(c => {
       if (!c.isMesh) return;
       const m = c.material;
-      m.transparent = on;
-      m.opacity = on ? 0.2 : 1.0;      // 20% transparent glass
-      m.depthWrite = !on;
-      m.roughness = on ? 0.12 : 0.6;   // polycarbonate read
-      m.metalness = on ? 0.0 : 0.05;
-      c.castShadow = !on;
+      m.transparent = ease > 0.001;
+      m.opacity = 1 - 0.86 * ease;           // 1.0 -> 0.14
+      m.depthWrite = ease < 0.5;
+      m.roughness = 0.62 - 0.55 * ease;      // matte print -> polycarbonate
+      m.metalness = 0;
+      m.envMapIntensity = 1 + 1.0 * ease;    // glassier as it thins
+      c.castShadow = ease < 0.5;
       m.needsUpdate = true;
     });
   });
+}
+
+function stepXray(dt) {
+  if (xrayEl >= XRAY_DUR) return;
+  xrayEl = Math.min(XRAY_DUR, xrayEl + dt);
+  xrayT = xrayFrom + (xrayTo - xrayFrom) * (xrayEl / XRAY_DUR);
+  applyXray(xrayT);
+}
+
+function setXray(on) {
+  xray = on;
+  xrayFrom = xrayT;
+  xrayTo = on ? 1 : 0;
+  xrayEl = 0;
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    xrayT = xrayTo; xrayEl = XRAY_DUR; applyXray(xrayT);
+  }
   const b = document.getElementById('btnXray');
   b.classList.toggle('on', on);
-  $('btnXray').setAttribute('aria-pressed', String(on));
+  b.setAttribute('aria-pressed', String(on));
   b.textContent = on ? 'X-Ray: ON' : 'X-Ray Vision';
 }
 
@@ -671,22 +721,111 @@ function announce(text) {
 }
 
 function gotoIndex(i) {
-  const cells = currentCells();
-  if (!cells.length) return;
-  idx = ((i % cells.length) + cells.length) % cells.length;
-  const item = cells[idx];
-  const pos = cellToPos(item.cell);
-  // shortest path: wrap the wanted angle to the nearest equivalent of camDeg, so
-  // the cam turns whichever way is closer. 63 -> 0 is 5.6deg back, not 354.4 forward.
-  const want = camAngleForState(pos);
-  targetDeg = camDeg + ((((want - camDeg) % 360) + 540) % 360) - 180;
-  move = Math.abs(targetDeg - camDeg) > 1e-6 ? planMove(camDeg, targetDeg) : null;
-  updateReadout(item, pos);
+  const seq = currentCells();
+  if (!seq.length) return;
+  idx = ((i % seq.length) + seq.length) % seq.length;
 
+  // Unit k shows the character k places along, so a word spreads across the row
+  // and then flows through it — which is the thing a photo of one cell can
+  // never show and is the entire reason for the Add cell button.
+  units.forEach((u, k) => {
+    const item = seq[(idx + k) % seq.length];
+    const pos = cellToPos(item.cell);
+    // shortest path: wrap the wanted angle to the nearest equivalent of u.deg, so
+    // the cam turns whichever way is closer. 63 -> 0 is 5.6deg back, not 354.4 forward.
+    const want = camAngleForState(pos);
+    u.target = u.deg + ((((want - u.deg) % 360) + 540) % 360) - 180;
+    u.move = Math.abs(u.target - u.deg) > 1e-6 ? planMove(u.deg, u.target) : null;
+    u.pos = pos;
+    if (k === 0) { targetDeg = u.target; move = u.move; updateReadout(item, pos); }
+  });
+
+  // one real cell exists, so it follows unit 0
   if (cell && cell.connected) {
     hwBusy = true;
-    cell.goToState(pos).finally(() => { hwBusy = false; });
+    cell.goToState(units[0].pos).finally(() => { hwBusy = false; });
   }
+}
+
+// Build one more brick. The clone shares geometry and materials with the first,
+// so a second cell costs transforms and draw calls, not memory.
+function addUnit() {
+  if (!unitTemplate || units.length >= MAX_UNITS) return;
+  const k = units.length;
+  const root = k === 0 ? unitTemplate : unitTemplate.clone(true);
+  root.position.x = k * CELL_PITCH;
+  if (k) scene.add(root);
+
+  const u = {
+    root,
+    linkages: [1, 2, 3, 4, 5, 6].map(d => root.getObjectByName('linkage_' + d)),
+    cam: root.getObjectByName('cam'),
+    xray: XRAY_PARTS.map(n => root.getObjectByName(n)).filter(Boolean),
+    elec: null,
+    deg: units.length ? units[0].deg : 0,
+    target: 0, move: null, pos: 0,
+  };
+  if (k) {
+    u.elec = cellElec.clone(true);
+    u.elec.position.x = k * CELL_PITCH;
+    u.elec.visible = elec;
+    scene.add(u.elec);
+    // the clone must match whatever X-ray state the page is already in
+    root.traverse(c => { if (c.isMesh) c.castShadow = !xray; });
+  } else {
+    u.elec = cellElec;
+  }
+  units.push(u);
+  syncUnitUI();
+  gotoIndex(idx);
+}
+
+function removeUnit() {
+  if (units.length <= 1) return;
+  const u = units.pop();
+  scene.remove(u.root);
+  if (u.elec) scene.remove(u.elec);
+  u.root.traverse(o => { if (o.isMesh) o.geometry?.dispose?.(); });
+  syncUnitUI();
+  gotoIndex(idx);
+}
+
+function syncUnitUI() {
+  const n = units.length;
+  const lbl = $('unitcount');
+  if (lbl) lbl.textContent = n + (n === 1 ? ' cell' : ' cells');
+  const add = $('btnAddCell'), rm = $('btnDelCell');
+  if (add) add.disabled = n >= MAX_UNITS;
+  if (rm) rm.disabled = n <= 1;
+  // Frame the whole row, not just the first brick, or adding a cell pushes it
+  // off screen and looks like nothing happened.
+  frameRow();
+}
+
+// Fit the camera to the ACTUAL bounds of everything on screen. A width estimate
+// is not enough: the row is viewed on a diagonal, so its projected extent is not
+// its length, and a phone is portrait while a row of bricks is wide. A bounding
+// sphere is angle-independent, which is the only thing that survives both.
+function frameRow() {
+  if (!units.length) return;
+  const box = new THREE.Box3();
+  for (const u of units) box.expandByObject(u.root);
+  if (pod) box.expandByObject(pod);
+  const sph = box.getBoundingSphere(new THREE.Sphere());
+
+  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  // fit whichever axis is tighter -- portrait makes the horizontal one bind
+  const dist = sph.radius / Math.sin(Math.min(vFov, hFov) / 2);
+
+  controls.target.copy(sph.center);
+  const dir = camera.position.clone().sub(controls.target).normalize();
+  if (!dir.lengthSq()) dir.set(0.62, -0.68, 0.39).normalize();
+  camera.position.copy(controls.target).addScaledVector(
+    dir, THREE.MathUtils.clamp(dist * 1.08, 80, 1300));
+  controls.update();
+  homeCam = camera.position.clone();
+  homeTarget = controls.target.clone();
 }
 
 
@@ -789,6 +928,7 @@ function wireUI() {
       case 'x': case 'X': setXray(!xray); break;
       case 'e': case 'E': setElectronics(!elec); break;
       case 'r': case 'R': resetView(); break;
+      case 'c': case 'C': $('railToggle').click(); break;
       case 'Escape':      closeInfo(); break;
     }
   });
@@ -804,6 +944,24 @@ function wireUI() {
       }
     });
   $('info').querySelector('.x').addEventListener('click', closeInfo);
+
+  $('btnAddCell').addEventListener('click', addUnit);
+  $('btnDelCell').addEventListener('click', removeUnit);
+
+  // Collapsed by default on a phone, where 46dvh of chrome buries the model;
+  // open by default on a desktop, where the rail is not in the model's way.
+  const narrow = matchMedia('(max-width:840px)');
+  const setRail = open => {
+    document.body.classList.toggle('railoff', !open);
+    const t = $('railToggle');
+    t.setAttribute('aria-expanded', String(open));
+    t.setAttribute('aria-label', open ? 'Hide controls' : 'Show controls');
+    // the canvas box is observed, so nothing has to guess when the rail
+    // transition has finished
+  };
+  setRail(!narrow.matches);
+  $('railToggle').addEventListener('click',
+    () => setRail(document.body.classList.contains('railoff')));
 
   $('btnXray').addEventListener('click', () => setXray(!xray));
   $('btnElec').addEventListener('click', () => setElectronics(!elec));
@@ -825,10 +983,13 @@ function wireUI() {
   // The stage is inset by the rail, so the window is the wrong box to measure.
   // Debounced through rAF because iOS fires resize on every URL-bar scroll pixel.
   let rz = 0;
-  addEventListener('resize', () => {
-    cancelAnimationFrame(rz);
-    rz = requestAnimationFrame(resizeStage);
-  });
+  const onBox = () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(resizeStage); };
+  addEventListener('resize', onBox);
+  // The rail collapsing changes the canvas box without firing `resize`, and a
+  // setTimeout tuned to the CSS transition was landing a frame early -- the
+  // canvas stayed 432px tall inside an 800px stage and the row sat high and
+  // small. Observing the element removes the guess entirely.
+  new ResizeObserver(onBox).observe(document.getElementById('stage'));
 }
 
 function syncRun() {
@@ -861,7 +1022,17 @@ function syncWordMeta() {
 // ---------------------------------------------------------------- loop
 // SINGLE place that moves anything. tick() and the debug snapshot both call this,
 // so a screenshot can never show a different mechanism state than the live view.
-function updateMechanism(deg) {
+function updateMechanism() {
+  for (const u of units) {
+    if (u.cam) u.cam.rotation.z = THREE.MathUtils.degToRad(u.deg);
+    u.linkages.forEach((o, i) => {
+      o.position.z = CAM_FLAT + linkageLift(i + 1, u.deg);
+    });
+  }
+}
+
+// kept for the debug hooks, which drive a single angle by hand
+function updateMechanismAt(deg) {
   if (parts.cam) parts.cam.rotation.z = THREE.MathUtils.degToRad(deg);
   // Position only. Nothing about a linkage's appearance changes with its state —
   // a raised dot looks exactly like a lowered one, just 0.8mm higher, because that
@@ -882,21 +1053,27 @@ function tick(now) {
   // `speed` scales simulated TIME, so the profile shape stays identical to the
   // real motor's — at 1.0x the screen and the cam take the same milliseconds.
   const sdt = dt * speed;
-  if (move) {
-    move.t += sdt;
-    camDeg = move.from + move.dir * moveAt(move);
-    if (move.t >= move.T) { camDeg = targetDeg; move = null; dwell = 0; }
-  } else {
-    camDeg = targetDeg;
+  let busy = false;
+  for (const u of units) {
+    if (!u.move) { u.deg = u.target; continue; }
+    u.move.t += sdt;
+    u.deg = u.move.from + u.move.dir * moveAt(u.move);
+    if (u.move.t >= u.move.T) { u.deg = u.target; u.move = null; }
+    else busy = true;
+  }
+  // unit 0 is what the readout and the real hardware follow
+  if (units.length) { camDeg = units[0].deg; move = units[0].move; }
+
+  if (busy) dwell = 0;
+  else if (running && !hwBusy) {
     // A real cell sets the pace: showState() blocks while the motor runs, so we
     // hold until it reports back rather than racing ahead of it.
-    if (running && !hwBusy) {
-      dwell += sdt;
-      if (dwell > FW.gapMs / 1000) { dwell = 0; gotoIndex(idx + 1); }
-    } else if (!running) dwell = 0;
-  }
+    dwell += sdt;
+    if (dwell > FW.gapMs / 1000) { dwell = 0; gotoIndex(idx + 1); }
+  } else if (!running) dwell = 0;
 
-  updateMechanism(camDeg);
+  stepXray(dt);
+  updateMechanism();
   updateHotspots();
 
   controls.update();
@@ -946,6 +1123,7 @@ async function main() {
   }
 
   scene.add(gltf.scene);
+  unitTemplate = gltf.scene;
   gltf.scene.traverse(o => { if (o.isMesh || o.isObject3D) parts[o.name] = parts[o.name] || o; });
   applyMaterials(gltf.scene);
 
@@ -959,6 +1137,7 @@ async function main() {
   XRAY_PARTS.forEach(n => parts[n] = gltf.scene.getObjectByName(n));
 
   await buildElectronics(gltf.scene);
+  addUnit();                       // unit 0 wraps the template already in the scene
 
   wireUI();
   syncRun();
@@ -989,6 +1168,13 @@ async function main() {
       controls.update();
     },
     lift: (d, deg = camDeg) => linkageLift(d, deg),
+    units: () => units.length,
+    unitState: () => units.map((u, k) => ({
+      k, deg: +u.deg.toFixed(2), target: +u.target.toFixed(2),
+      pos: u.pos, moving: !!u.move,
+      camRot: +(u.cam.rotation.z * 180 / Math.PI).toFixed(2),
+    })),
+    addUnit, removeUnit,
     linkZ: () => linkages.map(o => +o.position.z.toFixed(4)),
     camDeg: () => camDeg,
     posFor: ch => cellToPos(LETTERS[ch.toLowerCase()] ?? []),

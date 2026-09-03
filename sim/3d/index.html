@@ -222,6 +222,34 @@
   #hint{font-size:var(--t10);color:var(--ink-3);line-height:1.6;
     font-family:var(--f-mono)}
 
+
+  /* ---- +/- cell stepper ---- */
+  #unitrow{gap:var(--s2)}
+  #unitcount{font-family:var(--f-mono);font-size:var(--t11);color:var(--ink-2);
+    min-width:52px;text-align:center;font-variant-numeric:tabular-nums}
+  button.icon{width:28px;height:28px;min-width:0;padding:0;flex:none;
+    font-size:var(--t14);line-height:1}
+
+  /* ---- the rail handle ----
+     Asked for as "a button which says show control, toggleable, off by
+     default". On a phone that is right: the model is the content and 46dvh of
+     chrome buries it. On a desktop the rail is not in the model's way, so it
+     starts open there and the handle just collapses it. Same control, same
+     place, different default -- which is what "perfect on mobile" needs. */
+  #railToggle{position:fixed;z-index:12;left:var(--rail);top:50%;
+    transform:translate(-1px,-50%);width:18px;height:56px;padding:0;min-width:0;
+    border-radius:0 var(--r2) var(--r2) 0;border-left:0;background:var(--bg-1);
+    display:grid;place-items:center;
+    transition:left var(--dur2) var(--ease),background var(--dur1)}
+  #railToggle span{width:2px;height:16px;background:var(--ink-3);border-radius:1px;
+    transition:background var(--dur1)}
+  #railToggle:hover span{background:var(--acc)}
+  #rail{transition:transform var(--dur2) var(--ease)}
+  body.railoff #rail{transform:translateX(-100%)}
+  body.railoff #railToggle{left:0}
+  body.railoff #stage,body.railoff #vignette{inset:0}
+  #stage,#vignette{transition:inset var(--dur2) var(--ease)}
+
   /* ============================================================ READOUT
      The one panel that still floats. Being the only floating element is what
      gives it emphasis — it reads as a discrete instrument module over the
@@ -325,6 +353,22 @@
     #cellnote,#pitchnote{display:none}
     #cellmeta{max-width:92px}
     button{min-height:40px}
+    /* the handle sits above the sheet and spans enough to be a real target */
+    #railToggle{left:50%;top:auto;bottom:46dvh;width:auto;height:26px;
+      padding:0 var(--s3);transform:translate(-50%,0);
+      border:1px solid var(--line-1);border-bottom:0;
+      border-radius:var(--r2) var(--r2) 0 0;gap:var(--s2);
+      grid-auto-flow:column;font-size:var(--t10);letter-spacing:.08em;
+      text-transform:uppercase;color:var(--ink-3);font-family:var(--f-mono)}
+    #railToggle span{width:18px;height:2px}
+    #railToggle::after{content:'Hide'}
+    body.railoff #railToggle{left:50%;bottom:var(--s4);border-bottom:1px solid var(--line-1);
+      border-radius:var(--r2);background:var(--bg-2)}
+    body.railoff #railToggle::after{content:'Controls'}
+    /* with the sheet down the readout has the whole bottom edge */
+    body.railoff #cell{bottom:calc(var(--s4) + 44px)}
+    body.railoff #rail{transform:translateY(100%)}
+    body.railoff #stage,body.railoff #vignette{inset:0}
   }
   @media (max-width:420px){
     #cell{gap:var(--s2)}
@@ -352,6 +396,9 @@
 </div>
 
 <!-- ============================================================ RAIL -->
+<button id="railToggle" aria-controls="rail" aria-expanded="true"
+        aria-label="Hide controls"><span></span></button>
+
 <div id="rail">
   <div id="brand">
     <h1>BRAIL<span>LIX</span></h1>
@@ -387,6 +434,13 @@
     <div class="btns">
       <button id="btnXray" aria-pressed="false">X-Ray Vision</button>
       <button id="btnElec" aria-pressed="false">Electronics</button>
+    </div>
+
+    <div class="rowspeed" id="unitrow">
+      <span class="label" style="margin:0">Cells</span>
+      <button id="btnDelCell" class="icon" aria-label="Remove a cell">&minus;</button>
+      <span id="unitcount">1 cell</span>
+      <button id="btnAddCell" class="icon" aria-label="Add a cell">+</button>
     </div>
 
     <details id="hwdisc">
