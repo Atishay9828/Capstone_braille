@@ -278,10 +278,28 @@ function applyMaterials(obj) {
 // The pod docks on the cell's -X face: the pod's +X wall meets the cell's -X wall,
 // so its centre sits a full brick away. The GLB's plain-cylinder motor is retired
 // in favour of the real 28BYJ-48 shape (offset shaft, gearbox boss, connector).
+// Every .glb here is a build artefact that gets regenerated whenever the CAD
+// moves, and the browser will happily serve an old one for its heuristic cache
+// lifetime. That is not cosmetic: a stale braillix.glb means old geometry drawn
+// against freshly extracted params, which is precisely the desync this project
+// keeps having. It cost a debugging session already — the page kept showing
+// 400-triangle linkages after the 3228-triangle rebuild.
+//
+// GLTFLoader has no cache option, so fetch the bytes ourselves with
+// cache: 'no-cache' (revalidate, do not refuse to store) and hand them to
+// parse(). The '' path argument is fine because these files embed everything.
+async function loadGlb(file) {
+  const res = await fetch(file, { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`${file}: HTTP ${res.status}`);
+  const buf = await res.arrayBuffer();
+  return new Promise((ok, no) =>
+    new GLTFLoader().parse(buf, '', ok, no));
+}
+
 async function buildElectronics(glbScene) {
   const loadOptional = async (file, what) => {
     try {
-      return (await new GLTFLoader().loadAsync(file)).scene;
+      return (await loadGlb(file)).scene;
     } catch (e) {
       console.warn(`${file} missing — falling back to the built-in ${what}.`);
       return null;
@@ -719,7 +737,7 @@ async function main() {
 
   let gltf;
   try {
-    gltf = await new GLTFLoader().loadAsync('./braillix.glb');
+    gltf = await loadGlb('./braillix.glb');
   } catch (e) {
     return err('Could not load <b>braillix.glb</b>.<br>Rebuild it with:<br>' +
       '<code>blender --background --factory-startup --python renders/export_glb.py</code>');

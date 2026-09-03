@@ -21,6 +21,15 @@
 include <mech_layout.scad>
 use <linkage.scad>       // linkage_3d_v4(dot)
 
+// AND `use` DOES NOT CARRY $fn EITHER — the same trap the note above describes.
+// linkage.scad sets $fn = 48 at its top level, which is a VARIABLE, so it stops
+// at the `use` boundary exactly like asm_ang() would. Without it OpenSCAD falls
+// back to $fa=12/$fs=2, and on a 0.75mm dot dome that is about six facets: the
+// exported braille dots came out visibly polygonal while linkage.stl, compiled
+// directly, was smooth. 400 facets per assembled linkage against 20328 for the
+// print layout of six.
+$fn = 48;                // keep in step with linkage.scad
+
 dot = 1;   // override on the command line with -D dot=N
 
 // --- LOCAL FRAME OF linkage_3d_v4() ---
