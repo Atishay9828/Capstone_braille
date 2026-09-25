@@ -1,13 +1,43 @@
-GEMINI.md
+# --- Agent / tool scratch (not part of the project) ---
 .claude
-__pycache__/*
+GEMINI.md
+.codex-remote-attachments/
+
+# NOTE: .ai-sync/ is NOT ignored — it's the real cross-agent context log
+# (Claude/Codex/Antigravity), meant to be committed and shared.
+
+# --- Python ---
+__pycache__/
 *.py[cod]
-*.pyo
+*.egg-info/
 .venv/
 venv/
-.env
-braillix.db
-.pytest_cache/
-.coverage
-htmlcov/
+
+# --- Blender auto-backup files ---
+*.blend1
+*.blend2
+
+# --- OS junk ---
 .DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editor junk ---
+*.swp
+*.swo
+*~
+
+# --- Secrets: real credentials, never committed (see *.example.h) ---
+secrets.h
+**/secrets.h
+
+# --- Agent scratch (Codex nav-cap review artifacts) ---
+.tmp_nav_review/
+
+# Blender frame output — regenerable via renders/braillix_anim.py
+renders/out/
+
+# Legacy G-code: contains G2/G3 arcs the stock Kobra Neo firmware cannot run.
+# The good set is printing/gcode_kobra_neo_checked/ (regenerate with
+# printing/orca/slice_kobra_neo_checked.sh). Delete printing/gcode/ locally.
+printing/gcode/

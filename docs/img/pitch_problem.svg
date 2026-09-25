@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 330" width="720" height="330" font-family="ui-sans-serif,Segoe UI,Roboto,sans-serif">
+  <rect width="720" height="330" fill="#12131f"/>
+  <text x="24" y="34" fill="#e8eaf2" font-size="17" font-weight="700">The wall: standard braille cell pitch is 6.2 mm</text>
+  <text x="24" y="56" fill="#8d93b0" font-size="12">Anything placed at EVERY cell must fit inside this width.</text>
+
+  <!-- reference band -->
+  <rect x="150" y="76" width="18" height="212" fill="#4ecca3" opacity="0.18"/>
+  <line x1="150" y1="76" x2="150" y2="288" stroke="#4ecca3" stroke-width="2"/>
+  <line x1="168" y1="76" x2="168" y2="288" stroke="#4ecca3" stroke-width="2"/>
+  <text x="159" y="70" fill="#4ecca3" font-size="11" text-anchor="middle">6.2 mm</text>
+
+  <g font-size="12.5">
+    <text x="140" y="106" fill="#8d93b0" text-anchor="end">piezo bimorph</text>
+    <rect x="150" y="94" width="6" height="17" fill="#4ecca3"/>
+    <text x="176" y="106" fill="#4ecca3">2 mm — FITS, but ~$100 per cell</text>
+
+    <text x="140" y="142" fill="#8d93b0" text-anchor="end">N20 gearmotor</text>
+    <rect x="150" y="130" width="35" height="17" fill="#e9a13b"/>
+    <text x="196" y="142" fill="#e9a13b">10–12 mm — 1.9× too wide</text>
+
+    <text x="140" y="178" fill="#8d93b0" text-anchor="end">28BYJ-48</text>
+    <rect x="150" y="166" width="81" height="17" fill="#e94560"/>
+    <text x="242" y="178" fill="#e94560">28 mm — 4.5× too wide</text>
+
+    <text x="140" y="214" fill="#8d93b0" text-anchor="end">cam disc (today)</text>
+    <rect x="150" y="202" width="129" height="17" fill="#e94560"/>
+    <text x="290" y="214" fill="#e94560">44.4 mm — 7.2× too wide</text>
+
+    <text x="140" y="250" fill="#8d93b0" text-anchor="end">Braillix cell today</text>
+    <rect x="150" y="238" width="197" height="17" fill="#e94560" opacity="0.55"/>
+    <text x="358" y="250" fill="#e94560">68 mm — 11× too wide</text>
+  </g>
+
+  <line x1="24" y1="276" x2="696" y2="276" stroke="#2b2f4d"/>
+  <text x="24" y="300" fill="#e8eaf2" font-size="13" font-weight="600">Conclusion</text>
+  <text x="24" y="319" fill="#8d93b0" font-size="12">Only piezo fits per cell — and piezo is what makes commercial displays cost $4,000+. To stay cheap, stop putting an actuator at every cell.</text>
+</svg>

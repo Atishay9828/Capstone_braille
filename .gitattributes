@@ -1,0 +1,4 @@
+*.pdf binary
+*.stl binary
+*.gcode text eol=lf
+*.sh text eol=lf

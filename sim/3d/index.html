@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Braillix — Mechanism Simulator</title>
+
+<!-- Import map so the vendored Three.js addons can say `from 'three'`.
+     Everything is local: this runs with no internet, which is the point. -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three.module.min.js",
+    "three/addons/": "./vendor/"
+  }
+}
+</script>
+
+<style>
+  /* ============================================================ TOKENS
+     One accent, a neutral value ramp, and nothing else. The palette this
+     replaced (#12131f / #e94560 / #4ecca3) is a stock dark-dashboard triad,
+     and the fix is structural rather than a re-tint: a graphite ramp carries
+     every distinction that six competing hues used to carry badly.
+
+     Amber is the instrument colour — bench gear, phosphor, anodised dials.
+     It also measures better: 9.9:1 on --bg-1 against 4.7:1 for the old red,
+     so it can carry small text and hairlines without a contrast problem. */
+  :root{
+    --bg-0:#0A0B0C;   /* canvas + scene.background + fog. app.js READS this. */
+    --bg-1:#101113;   /* rail surface */
+    --bg-2:#16181B;   /* raised: inputs, popover */
+    --bg-3:#1E2125;   /* hover / pressed */
+
+    --line-1:#24272C; /* hairline, resting */
+    --line-2:#33373D; /* hairline, hover / focus-within */
+
+    --ink-1:#F2F4F6;
+    --ink-2:#A8AEB6;
+    --ink-3:#7C838C;
+
+    --acc:#F0A02A;
+    --acc-dim:#7A5316;
+    --acc-ink:#0A0B0C;
+    --danger:#FF5C4D;   /* NOT a palette colour. Failure states only. */
+
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px;
+    --r1:3px; --r2:6px;          /* instruments have small radii */
+    --shadow-pop:0 16px 48px -12px rgba(0,0,0,.82);
+    --dur1:90ms; --dur2:160ms; --ease:cubic-bezier(.2,0,0,1);
+
+    --f-mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --f-sans:ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+
+    /* 6 steps, replacing 13 ad-hoc sizes. No half-pixels. */
+    --t10:10px; --t11:11px; --t12:12px; --t14:14px; --t18:18px; --t40:40px;
+    --rail:314px;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:var(--bg-0);color:var(--ink-1);
+    font-family:var(--f-sans);font-size:var(--t12);-webkit-font-smoothing:antialiased}
+  canvas{display:block}
+
+  /* Every numeric readout is tabular. #e_step runs 64/4096 -> 4032/4096 and
+     #e_ang swings 5.62 -> 354.37 four times a second; without tnum the columns
+     shimmer. slashed-zero because this is a data display. */
+  .mono,input,button,#decode,#cellmeta,#speedv,#bits,#glyph,.pill{
+    font-family:var(--f-mono);
+    font-variant-numeric:tabular-nums slashed-zero;
+    font-feature-settings:"tnum"1,"zero"1;
+  }
+
+  .label{font-size:var(--t10);letter-spacing:.08em;text-transform:uppercase;
+    color:var(--ink-3);font-family:var(--f-mono);font-weight:500;display:block}
+
+  /* The ONLY focus treatment. The old `outline:none` + 1px border swap was
+     borderline invisible; amber at ~10:1 genuinely reads. */
+  :where(button,input,summary,a,[tabindex]):focus-visible{
+    outline:2px solid var(--acc);outline-offset:2px;border-radius:var(--r1)}
+
+  .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+  /* ============================================================ STAGE */
+  #stage{position:fixed;inset:0 0 0 var(--rail)}
+
+  /* A flat fill bands on 8-bit panels and reads dead. The vignette does in CSS
+     what a post-processing pass would cost a whole EffectComposer to do, and
+     the grain kills the banding. Both are pointer-transparent. */
+  #vignette{position:fixed;inset:0 0 0 var(--rail);z-index:1;pointer-events:none;
+    background:radial-gradient(130% 100% at 50% 42%,transparent 40%,rgba(0,0,0,.58) 100%)}
+  #grain{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.035;
+    mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+  /* ============================================================ LOADING */
+  #loading{position:fixed;inset:0;display:grid;place-content:center;gap:var(--s4);
+    justify-items:start;background:var(--bg-0);z-index:50;transition:opacity .4s;
+    padding:var(--s6)}
+  #loading.gone{opacity:0;pointer-events:none}
+  #loading .wordmark{font-size:var(--t18);letter-spacing:.16em;font-weight:600}
+  .bar{width:280px;height:1px;background:var(--line-1);position:relative}
+  .bar i{position:absolute;inset:0 auto 0 0;width:0;background:var(--acc);
+    transition:width var(--dur2) linear}
+  .bar.err i{background:var(--danger);width:100%}
+  #loadpct{float:right;color:var(--ink-2)}
+  #loadfile{font-size:var(--t11);color:var(--ink-3);width:280px}
+  #loaderr{font-size:var(--t11);color:var(--danger);max-width:440px;line-height:1.6}
+  #loaderr code,.code{font-family:var(--f-mono);font-size:var(--t11);
+    background:var(--bg-2);border:1px solid var(--line-1);border-radius:var(--r1);
+    padding:1px 5px;color:var(--ink-2)}
+
+  /* ============================================================ THE RAIL
+     #ui and #decode used to be two separate glass cards in two corners, and
+     #decode — the most interesting content in the app — was display:none below
+     900px because there was nowhere for it to go. One column solves both. */
+  #rail{position:fixed;inset:0 auto 0 0;width:var(--rail);z-index:10;
+    background:var(--bg-1);border-right:1px solid var(--line-1);
+    display:flex;flex-direction:column;padding:var(--s5) var(--s4) var(--s4);
+    gap:var(--s4);overflow:hidden}
+
+  #brand h1{font-size:var(--t18);letter-spacing:.16em;font-weight:600;
+    font-family:var(--f-mono)}
+  #brand h1 span{color:var(--acc)}
+  #brand p{font-size:var(--t11);color:var(--ink-3);margin-top:var(--s1);
+    line-height:1.5}
+  .rule{height:1px;background:var(--line-1);flex:none}
+
+  .group{display:flex;flex-direction:column;gap:var(--s2)}
+  /* Above the breakpoint both panes are simply stacked in the rail; the .on
+     class only means anything once they become tabs. */
+  .pane{display:flex;flex-direction:column;gap:var(--s3);min-height:0}
+  #paneEnc{overflow-y:auto}
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:3px}
+  ::-webkit-scrollbar-track{background:transparent}
+  *{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+
+  input[type=text]{width:100%;background:var(--bg-2);border:1px solid var(--line-1);
+    color:var(--ink-1);padding:9px 11px;border-radius:var(--r1);font-size:var(--t14);
+    /* functional, not decorative: it makes the typed string scannable
+       character-by-character against the cell sequence. The one exception to
+       the single-tracking-value rule. */
+    letter-spacing:.16em}
+  /* no text-transform: case is meaningful, it decides the capital sign */
+  input[type=text]:focus{border-color:var(--acc)}
+  #wordmeta{font-size:var(--t10);color:var(--ink-3);font-family:var(--f-mono);
+    font-variant-numeric:tabular-nums}
+
+  /* ---- buttons: three roles, not seven identical rectangles ---- */
+  .btns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+  .btns .wide{grid-column:1/-1}
+  button{background:transparent;border:1px solid var(--line-1);color:var(--ink-2);
+    height:32px;padding:0 var(--s2);border-radius:var(--r1);font-size:var(--t12);
+    font-weight:500;cursor:pointer;white-space:nowrap;overflow:hidden;
+    text-overflow:ellipsis;
+    transition:background var(--dur1) var(--ease),border-color var(--dur1) var(--ease),
+               color var(--dur1) var(--ease)}
+  button:hover:not(:disabled){border-color:var(--line-2);color:var(--ink-1);
+    background:var(--bg-3)}
+  button:disabled{opacity:.45;cursor:default}
+  /* toggle ON: a filled hairline, not a colour flood */
+  button.on{background:color-mix(in srgb,var(--acc) 13%,transparent);
+    border-color:var(--acc);color:var(--acc)}
+  /* the primary action — the only filled control at rest */
+  #btnRun{grid-column:1/-1;height:38px;background:var(--acc);border-color:var(--acc);
+    color:var(--acc-ink);font-weight:600}
+  #btnRun:hover{background:#FFB84D;border-color:#FFB84D;color:var(--acc-ink)}
+  /* running -> inverts to outline, the standard play/pause affordance */
+  #btnRun.on{background:transparent;border-color:var(--acc);color:var(--acc)}
+
+  /* ---- speed: fully custom. accent-color was the last unstyled control ---- */
+  .rowspeed{display:flex;align-items:center;gap:var(--s3)}
+  #speed{flex:1;-webkit-appearance:none;appearance:none;background:transparent;
+    height:18px;cursor:pointer}
+  #speed::-webkit-slider-runnable-track{height:2px;
+    background:linear-gradient(to right,var(--acc) var(--fill,27%),
+      var(--line-1) var(--fill,27%))}
+  #speed::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;
+    margin-top:-5px;border-radius:50%;background:var(--ink-1);
+    border:2px solid var(--bg-1)}
+  #speed::-moz-range-track{height:2px;background:var(--line-1)}
+  #speed::-moz-range-progress{height:2px;background:var(--acc)}
+  #speed::-moz-range-thumb{width:12px;height:12px;border:2px solid var(--bg-1);
+    border-radius:50%;background:var(--ink-1)}
+  #speedv{font-size:var(--t11);color:var(--ink-2);min-width:38px;text-align:right}
+
+  /* ---- hardware: behind a disclosure. Almost nobody has the board, and the
+         two buttons were 29% of the console. <details> is safe for Web Serial:
+         the click on #btnHw is still a direct user gesture. ---- */
+  #hwdisc{border:1px solid var(--line-1);border-radius:var(--r1);
+    background:var(--bg-2)}
+  #hwdisc summary{list-style:none;cursor:pointer;padding:8px var(--s3);
+    display:flex;align-items:center;gap:var(--s2)}
+  #hwdisc summary::-webkit-details-marker{display:none}
+  #hwled{width:6px;height:6px;border-radius:50%;background:var(--line-2);
+    margin-left:auto;flex:none;transition:background var(--dur2)}
+  #hwdisc.live #hwled{background:var(--acc);box-shadow:0 0 8px var(--acc)}
+  #hwdisc.bad  #hwled{background:var(--danger)}
+  #hwbody{padding:0 var(--s3) var(--s3);display:flex;flex-direction:column;
+    gap:var(--s2)}
+  #hwstat{font-size:var(--t10);line-height:1.5;color:var(--ink-3);display:none;
+    font-family:var(--f-mono)}
+  #hwstat.on{display:block}
+  #hwstat.bad{color:var(--danger)}
+  #hwstat.good{color:var(--acc)}
+
+  .spacer{flex:1;min-height:var(--s2)}
+
+  /* ---- the encoding block, pinned to the bottom of the rail ---- */
+  #decode{font-family:var(--f-mono);font-size:var(--t12)}
+  #decode h2{margin-bottom:var(--s2)}
+  .dl{display:flex;justify-content:space-between;padding:2px 0;gap:var(--s3);
+    margin:0}
+  .dl dt{color:var(--ink-3)}
+  .dl dd{color:var(--ink-2);margin:0}
+  .dl dd.hl{color:var(--acc)}
+  #bits{letter-spacing:.30em;font-size:var(--t14);color:var(--ink-1);
+    margin:var(--s2) 0 2px}
+  #bitlabel{font-size:var(--t10);color:var(--ink-3);line-height:1.5}
+  #hint{font-size:var(--t10);color:var(--ink-3);line-height:1.6;
+    font-family:var(--f-mono)}
+
+
+  /* ---- +/- cell stepper ---- */
+  #unitrow{gap:var(--s2)}
+  #unitcount{font-family:var(--f-mono);font-size:var(--t11);color:var(--ink-2);
+    min-width:52px;text-align:center;font-variant-numeric:tabular-nums}
+  button.icon{width:28px;height:28px;min-width:0;padding:0;flex:none;
+    font-size:var(--t14);line-height:1}
+
+  /* ---- the rail handle ----
+     Asked for as "a button which says show control, toggleable, off by
+     default". On a phone that is right: the model is the content and 46dvh of
+     chrome buries it. On a desktop the rail is not in the model's way, so it
+     starts open there and the handle just collapses it. Same control, same
+     place, different default -- which is what "perfect on mobile" needs. */
+  #railToggle{position:fixed;z-index:12;left:var(--rail);top:50%;
+    transform:translate(-1px,-50%);width:18px;height:56px;padding:0;min-width:0;
+    border-radius:0 var(--r2) var(--r2) 0;border-left:0;background:var(--bg-1);
+    display:grid;place-items:center;
+    transition:left var(--dur2) var(--ease),background var(--dur1)}
+  #railToggle span{width:2px;height:16px;background:var(--ink-3);border-radius:1px;
+    transition:background var(--dur1)}
+  #railToggle:hover span{background:var(--acc)}
+  #rail{transition:transform var(--dur2) var(--ease)}
+  body.railoff #rail{transform:translateX(-100%)}
+  body.railoff #railToggle{left:0}
+  body.railoff #stage,body.railoff #vignette{inset:0}
+  #stage,#vignette{transition:inset var(--dur2) var(--ease)}
+
+  /* ============================================================ READOUT
+     The one panel that still floats. Being the only floating element is what
+     gives it emphasis — it reads as a discrete instrument module over the
+     mechanism rather than a fourth identical card. */
+  #cell{position:fixed;top:var(--s4);right:var(--s4);z-index:10;
+    display:flex;gap:var(--s5);align-items:center;padding:var(--s3) var(--s4);
+    background:color-mix(in srgb,var(--bg-1) 94%,transparent);
+    border:1px solid var(--line-1);border-radius:var(--r2)}
+  #glyph{font-size:var(--t40);font-weight:600;line-height:1;min-width:46px;
+    text-align:center;color:var(--ink-1)}
+  #glyph.space{font-size:var(--t12);color:var(--ink-3);letter-spacing:.1em}
+  /* Indicators are cells the reader feels but are not characters. That used to
+     be signalled with a second hue; it is now typographic, so it survives
+     greyscale and does not spend the page's one accent on it. */
+  #glyph.sign{font-size:26px;border:1px solid var(--line-2);border-radius:var(--r1);
+    padding:4px 8px;color:var(--ink-2)}
+  #cellmeta{font-size:var(--t10);letter-spacing:.08em;color:var(--ink-3);
+    margin-top:var(--s2);max-width:136px;line-height:1.5;text-transform:uppercase}
+  #cellmeta.sign{color:var(--acc)}
+  #cellnote{font-size:var(--t10);color:var(--ink-3);opacity:.75;max-width:136px;
+    line-height:1.5;margin-top:2px;font-family:var(--f-sans)}
+
+  /* Dots carry their state on TWO channels, not just hue: an unraised dot is a
+     hairline ring on the panel ground, a raised dot is a solid amber disc that
+     also grows. That satisfies WCAG 1.4.1 and survives a projector. */
+  #dots{display:grid;grid-template-columns:repeat(2,18px);gap:6px 12px}
+  .d{width:18px;height:18px;border-radius:50%;background:transparent;
+    border:1px solid var(--line-2);
+    transition:background var(--dur2) var(--ease),border-color var(--dur2) var(--ease),
+               transform var(--dur2) var(--ease)}
+  .d.up{background:var(--acc);border-color:var(--acc);transform:scale(1.12)}
+  #pitchnote{font-size:var(--t10);color:var(--ink-3);margin-top:var(--s2);
+    font-family:var(--f-mono);text-align:center}
+
+  /* ============================================================ HOTSPOTS */
+  #spots{position:fixed;inset:0;z-index:8;pointer-events:none}
+  .spot{position:absolute;left:0;top:0;width:14px;height:14px;
+    margin:-7px 0 0 -7px;border-radius:50%;
+    border:1px solid var(--ink-2);background:transparent;padding:0;
+    cursor:pointer;pointer-events:auto;
+    /* --p is 0 far away, 1 under the pointer; set every frame from JS */
+    opacity:calc(.22 + .78 * var(--p,0));
+    transition:background var(--dur1) linear,border-color var(--dur1) linear}
+  /* 14px visual, 44px target. The dot does not look any bigger. */
+  .spot::before{content:'';position:absolute;inset:-15px;border-radius:50%}
+  .spot::after{content:'';position:absolute;inset:3px;border-radius:50%;
+    background:var(--ink-2);opacity:calc(.2 + .8 * var(--p,0))}
+  .spot:hover{border-color:var(--acc)}
+  .spot:hover::after{background:var(--acc)}
+  .spot.open{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 20%,transparent)}
+  .spot.open::after{background:var(--acc);opacity:1}
+  /* --p is driven by pointermove, which barely fires on touch — so on a phone
+     every hotspot sat at opacity .22 forever. */
+  @media (hover:none){ .spot{--p:.85} }
+
+  /* The only elevated surface on the page. Blur is now the marker of the modal
+     layer instead of ambient decoration on six static cards. */
+  #info{position:fixed;z-index:11;width:268px;padding:var(--s3) var(--s4);
+    display:none;background:var(--bg-2);border:1px solid var(--line-2);
+    border-radius:var(--r2);box-shadow:var(--shadow-pop);backdrop-filter:blur(12px)}
+  #info.on{display:block}
+  #info h3{font-size:var(--t10);letter-spacing:.08em;color:var(--acc);
+    font-weight:600;margin-bottom:var(--s2);font-family:var(--f-mono);
+    text-transform:uppercase;padding-right:var(--s4)}
+  #info p{font-size:var(--t12);line-height:1.65;color:var(--ink-2)}
+  #info .x{position:absolute;top:6px;right:6px;width:24px;height:24px;
+    border:0;background:transparent;color:var(--ink-3);font-size:var(--t14);
+    line-height:1;cursor:pointer;padding:0}
+  #info .x:hover{color:var(--ink-1);background:var(--bg-3)}
+
+  /* The in-scene dimension label, positioned by the same projection code that
+     places the hotspots so it stays crisp text rather than a font texture. */
+  #dim{position:fixed;z-index:7;pointer-events:none;font-family:var(--f-mono);
+    font-size:var(--t10);color:var(--ink-3);display:none;
+    font-variant-numeric:tabular-nums;transform:translate(-50%,-50%)}
+  #dim.on{display:block}
+
+  #tabs{display:none;gap:var(--s1);border:1px solid var(--line-1);
+    border-radius:var(--r1);padding:2px}
+  #tabs button{flex:1;height:28px;border:0;font-size:var(--t10);
+    letter-spacing:.08em;text-transform:uppercase}
+  #tabs button[aria-selected=true]{background:var(--bg-3);color:var(--acc)}
+
+  /* ============================================================ MOBILE
+     The old breakpoint deleted #decode, #cellnote, the tagline and the hint.
+     The rail becomes a bottom sheet with tabs instead, so nothing is lost. */
+  @media (max-width:840px){
+    :root{--rail:0px}
+    #stage,#vignette{inset:0 0 46dvh 0}
+    #rail{inset:auto 0 0 0;width:auto;height:46dvh;border-right:0;
+      border-top:1px solid var(--line-1);padding:var(--s3) var(--s4) var(--s4);
+      gap:var(--s3)}
+    #brand p,.spacer,#hint{display:none}
+    #brand h1{font-size:var(--t14)}
+    #tabs{display:flex}
+    .pane{display:none}
+    .pane.on{display:flex;overflow-y:auto;flex:1}
+    #cell{top:auto;bottom:calc(46dvh + var(--s3));right:var(--s3);
+      padding:var(--s2) var(--s3);gap:var(--s3)}
+    #glyph{font-size:30px;min-width:32px}
+    #cellnote,#pitchnote{display:none}
+    #cellmeta{max-width:92px}
+    /* .spot is a <button> too, so a bare `button` rule here stretched every
+       hotspot into a 14x40 ellipse. Scope it to the rail's real controls. */
+    #rail .btns button,#rail summary{min-height:40px}
+    /* the handle sits above the sheet and spans enough to be a real target */
+    #railToggle{left:50%;top:auto;bottom:46dvh;width:auto;height:26px;
+      padding:0 var(--s3);transform:translate(-50%,0);
+      border:1px solid var(--line-1);border-bottom:0;
+      border-radius:var(--r2) var(--r2) 0 0;gap:var(--s2);
+      grid-auto-flow:column;font-size:var(--t10);letter-spacing:.08em;
+      text-transform:uppercase;color:var(--ink-3);font-family:var(--f-mono)}
+    #railToggle span{width:18px;height:2px}
+    #railToggle::after{content:'Hide'}
+    body.railoff #railToggle{left:50%;bottom:var(--s4);border-bottom:1px solid var(--line-1);
+      border-radius:var(--r2);background:var(--bg-2)}
+    body.railoff #railToggle::after{content:'Controls'}
+    /* with the sheet down the readout has the whole bottom edge */
+    body.railoff #cell{bottom:calc(var(--s4) + 44px)}
+    body.railoff #rail{transform:translateY(100%)}
+    body.railoff #stage,body.railoff #vignette{inset:0}
+  }
+  @media (max-width:420px){
+    #cell{gap:var(--s2)}
+    #cellmeta{display:none}
+    .btns{grid-template-columns:1fr}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{transition-duration:.01ms!important;
+      animation-duration:.01ms!important}
+  }
+</style>
+</head>
+<body>
+
+<div id="stage"></div>
+<div id="vignette"></div>
+<div id="grain"></div>
+
+<div id="loading">
+  <div class="wordmark mono">BRAIL<span style="color:var(--acc)">LIX</span></div>
+  <div class="bar" id="loadbar"><i></i></div>
+  <div id="loadfile" class="mono"><span id="loadname">initialising</span><span id="loadpct">0%</span></div>
+  <div id="loaderr"></div>
+</div>
+
+<!-- ============================================================ RAIL -->
+<button id="railToggle" aria-controls="rail" aria-expanded="true"
+        aria-label="Hide controls"><span></span></button>
+
+<div id="rail">
+  <div id="brand">
+    <h1>BRAIL<span>LIX</span></h1>
+    <p>Refreshable braille cell — mechanism simulator</p>
+  </div>
+
+  <div id="tabs" role="tablist" aria-label="Panel">
+    <button role="tab" aria-selected="true"  aria-controls="paneCtl" id="tabCtl">Controls</button>
+    <button role="tab" aria-selected="false" aria-controls="paneEnc" id="tabEnc">Encoding</button>
+  </div>
+
+  <div class="pane on" id="paneCtl">
+    <div class="group">
+      <label class="label" for="word">Text to display</label>
+      <input id="word" type="text" value="Braille 101" autocomplete="off" spellcheck="false">
+      <div id="wordmeta"></div>
+    </div>
+
+    <div class="btns">
+      <button id="btnRun">Simulate</button>
+      <button id="btnStep">Step ▸</button>
+      <button id="btnView">Reset view</button>
+    </div>
+
+    <div class="rowspeed">
+      <span class="label" style="margin:0">Speed</span>
+      <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1">
+      <span id="speedv">1.0×</span>
+    </div>
+
+    <div class="rule"></div>
+
+    <div class="btns">
+      <button id="btnXray" aria-pressed="false">X-Ray Vision</button>
+      <button id="btnElec" aria-pressed="false">Electronics</button>
+    </div>
+
+    <div class="rowspeed" id="unitrow">
+      <span class="label" style="margin:0">Cells</span>
+      <button id="btnDelCell" class="icon" aria-label="Remove a cell">&minus;</button>
+      <span id="unitcount">1 cell</span>
+      <button id="btnAddCell" class="icon" aria-label="Add a cell">+</button>
+    </div>
+
+    <details id="hwdisc">
+      <summary><span class="label">Hardware link</span><span id="hwled" aria-hidden="true"></span></summary>
+      <div id="hwbody">
+        <div class="btns">
+          <button id="btnHw">Connect USB</button>
+          <button id="btnBle">Connect Bluetooth</button>
+        </div>
+        <div id="hwstat"></div>
+      </div>
+    </details>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="pane" id="paneEnc">
+    <div id="decode">
+      <h2 class="label">How this letter is encoded</h2>
+      <dl class="dl"><dt>character</dt><dd id="e_char">—</dd></dl>
+      <dl class="dl"><dt>braille dots</dt><dd id="e_dots">—</dd></dl>
+      <div id="bits" aria-label="pattern bits, 5 to 0">------</div>
+      <div id="bitlabel">bit 5→0 drives dot 5,4,1,2,3,6 (DOT_TO_BIT)</div>
+      <dl class="dl" style="margin-top:8px"><dt>cam position</dt><dd id="e_pos" class="hl">—</dd></dl>
+      <dl class="dl"><dt>motor step</dt><dd id="e_step">—</dd></dl>
+      <dl class="dl"><dt>disc angle</dt><dd id="e_ang">—</dd></dl>
+    </div>
+    <div id="hint">drag to orbit · scroll to zoom · right-drag to pan<br>
+      space play/pause · ←→ step · X x-ray · E electronics · R reset</div>
+  </div>
+</div>
+
+<!-- ============================================================ READOUT -->
+<div id="cell">
+  <div>
+    <div id="glyph" aria-hidden="true">—</div>
+    <div id="cellmeta" aria-hidden="true">CELL</div>
+    <div id="cellnote" aria-hidden="true"></div>
+  </div>
+  <div>
+    <div id="dots" aria-hidden="true">
+      <div class="d" id="d1"></div><div class="d" id="d4"></div>
+      <div class="d" id="d2"></div><div class="d" id="d5"></div>
+      <div class="d" id="d3"></div><div class="d" id="d6"></div>
+    </div>
+    <div id="pitchnote">2.6 mm pitch</div>
+  </div>
+</div>
+
+<!-- the accessible restatement of the readout above; the dots are decorative -->
+<div id="live" class="sr" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div id="spots" role="group" aria-label="Part callouts"></div>
+<div id="dim"></div>
+<div id="info" role="dialog" aria-labelledby="infoTitle" tabindex="-1">
+  <button class="x" aria-label="Close">&times;</button>
+  <h3 id="infoTitle"></h3><p id="infoBody"></p>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

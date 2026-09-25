@@ -5,6 +5,279 @@
 
 ---
 
+## v7.9 — 2026-07-31 (owned-part measurements resolved)
+
+- Recorded M5 = 3.0mm, M11b = 1.6mm, and M21 = 25.6mm as owned-part measurements.
+- Updated the ESP32 socket-channel pitch from the 25.4mm placeholder to the measured 25.6mm.
+- Confirmed the existing 3.2mm cam bore provides 0.2mm total clearance across the measured shaft flats.
+- Kept the Hall recess at 1.6mm; it is an exact geometric fit with zero print margin and requires a dry-fit.
+- Photo-identified the owned power part as an inline female DC pigtail jack, not a panel-mount part.
+  It remains useful for testing; the final pod still needs a selected threaded 5.5×2.1mm jack.
+
+## v7.8 — 2026-07-31 (component measurement research)
+
+- Researched the full M1-M28 list and labelled every value as measured, derived, published spec,
+  likely clone match, or still requiring the owned part.
+- Prefilled the measurement handout and added `docs/MEASUREMENT_RESEARCH.md` with source links.
+- Corrected ESP32 and barrel-jack M-number comments in the live parameter file; no geometry changed.
+- Identified that the owned yellow/black power adapter is inline, while the CAD assumes a
+  panel-mount jack; final hardware should standardize on a specified panel-mount part.
+
+## v7.7 — 2026-07-31 (USB-C recovery access)
+
+- Widened the ESP32 pod USB-C service opening from **13 × 9 mm** to **14 × 9 mm**.
+- Preserved the existing 9 mm height; the proposed 7 mm height would have reduced cable-overmould clearance.
+- Regenerated the pod STL, all six PETG G-code files, and the measurement PDF.
+- OpenSCAD verification: simple geometry, expected connected-volume count, and exactly 36 mm³ removed.
+- Corrected Orca CLI's selected build-plate temperature from 60°C to 80°C and hardened the slicer guard to validate the actual emitted bed temperature and fail nonzero on unsafe output.
+- OrcaSlicer verification: actual heater commands confirmed at 235/80°C first layer and 230°C thereafter.
+
+## v7.3 — 2026-07-29 (pre-assembly audit — 5 blocking CAD defects found)
+
+Full pre-assembly audit ahead of a presentation demo, run as five parallel agents and then
+**independently re-verified against source** before being believed. Six new documents.
+
+### Firmware bugs FIXED in breadboard_test.ino
+1. **"CW 90 deg" moved 512 steps = 45 deg.** At 4096 steps/rev, 90 deg is 1024. Button label,
+   log line and self-tests all claimed 90. Fixed to 1024.
+2. **Full-revolution log said "2048 steps" while moving 4096** — 2048 is exactly the full-step
+   error this project already corrected once; printing it on the dashboard undid that.
+3. **The dashboard froze for the whole ~10s of homing.** `doHoming()` never called
+   `server.handleClient()` inside its `while (stepper.run())` loops (unlike `runTests()`, which
+   does). The page died at precisely the moment you say "watch it find home." 3 calls added.
+
+### CAD defects found — ALL VERIFIED FROM SOURCE, all block assembly
+1. **The hall sensor pocket does not exist.** Its farthest corner is at r=22.31mm and the Ø46
+   cam pocket has r=23.00mm, cut over the identical z-range (2..6). It is entirely subsumed —
+   the printed part has no hall pocket at all. Separately, the pocket was sized 5.3x4.3x3mm for
+   a bare TO-92, but the owned part is a blue MH-Sensor-Series module several times larger.
+2. **The motor's right mounting ear has nothing to screw into.** Hole at x=+9.5, y=0 sits inside
+   the 22x16mm spring-cavity through-window. One-screw motor mount.
+3. **Nav buttons cannot actuate.** Shaft 4.5mm minus flange 1.5mm = 3.0mm projecting, against a
+   4.0mm pod wall — 1mm short of even reaching through, before the switch gap.
+4. **ESP32 DevKit overruns the pod cavity by 1.75mm** (board +29.75 vs cavity +28.00). Also the
+   USB cutout is at the wrong height, and devkit_width/hdr_row_pitch describe a 38-pin board
+   while every doc says 30-pin.
+5. **The cam homing-magnet pocket craters the running surface.** Ø3.0 at r=17.35 spans
+   r 15.85..18.85 and overlaps **tracks 2, 3 AND 4** — the 1mm linkage foot rides over that hole
+   once per revolution. (The audit reported two tracks; re-verification found three.)
+
+Also found: the cam bore is a through-hole giving 6mm engagement, not the 8mm its comment
+claims, and the hub lands 2mm proud; the barrel-jack cradle collides with the cavity wall so
+the lid cannot close; base-plate standoffs overhang the plate edge by 1mm.
+
+**None of these block the presentation demo**, which runs on a breadboard and needs no printed
+parts. They all block physical assembly.
+
+### Print troubleshooting — previous advice was wrong
+The old guidance to print `outer_box` rim-down was incorrect and probably CAUSED the
+unremovable supports: nothing bridges a 60mm cavity, and it hangs the four Ø7.8x37mm bosses
+tip-first in air. Root cause of welded supports is `Support Placement = Everywhere` plus
+Cura's PLA-tuned Z distance; PETG needs ~0.4mm Top Distance and `Support Distance Priority =
+Z overrides X/Y`. The real fix is that **no PETG part needs supports at all** — every overhang
+is already handled in CAD (teardrop pockets, 0.6mm printed bridges, boss gussets).
+
+### New documents (all with PDFs)
+`MASTER_BOM.md` · `ASSEMBLY_BIBLE.md` · `CAD_FIT_CHECK.md` · `DEMO_SCRIPT.md` ·
+`PRINT_TROUBLESHOOTING.md` · `BRAILLE_READABILITY.md` · plus `docs/md2pdf.py` (reusable
+markdown->PDF converter). `SHOPPING_LIST.md` stamped SUPERSEDED — it still listed 4mm pen
+springs and 2mm bearing balls, both wrong since v7.1.
+
+### Braille standards check
+Dot diameter 1.5mm is **in spec** (1.44-1.60). Dot height 0.8mm is 1.6x too tall. Vertical
+spacing 2.6mm is fine; horizontal 4.8mm is 1.9x too wide — and the reason for that (2.5mm holes
+merging) disappeared in v7.1 when holes shrank to 1.7mm. Nobody revisited it. Worth ~4h after
+the demo to make the cell genuinely standard-compliant within the character.
+
+## v7.2 — 2026-07-29 (top plate leaves the resin batch; dot-flush bug fixed)
+
+**Resin cost cut ~4.5x.** The 68x70mm top plate was 19.85 of the 23.8 cm3 resin
+bill, but almost all of it is plain flat structure an FDM printer handles fine.
+Only two features genuinely need resin: the six 1.7mm dot holes (the dome has to
+SLIDE through them, and a 0.4mm nozzle prints them ~1.4mm and furry) and the six
+2.2mm spring bores, whose 0.4mm dividing walls are one nozzle width on FDM.
+
+Those moved into **`dot_insert.scad`** — a 15x15x3.2mm resin tile, **0.45 cm3** —
+which glues into a pocket in the now-PETG top plate.
+
+```
+              RESIN                    PETG
+  before   19.85 cm3  (incl. plate)      -
+  after     4.38 cm3  (incl. insert)   15.46 cm3  (print it yourself)
+```
+
+- **`dot_insert.scad` (NEW)** — top-hat form: an 11mm body drops through the plate,
+  a 15mm flange lands on a rebate whose floor is the **glue shelf** (2mm wide all
+  round, ~106mm2 of contact). Top chamfered so a reading finger doesn't catch the
+  seam. Verified surfaces at 0.0 / 2.0 / 3.2mm.
+- **`top_plate.scad`** — dot holes and spring bores removed; now carries only an
+  11.2mm opening + 15.2mm rebate. Fully FDM-friendly.
+
+**BUG FIXED — every dot was permanently raised.** `link_total_h` measured to the
+plate's outer top (58.0), but the plate has a 0.8mm finger-pad recess over the
+middle, so the surface the dots actually emerge through is at 57.2. Every dot
+therefore stood 0.8mm proud when DOWN and 1.6mm when UP — all six always readable,
+which is not braille. `link_total_h` 13.0 -> 12.2mm. Now flush at rest, 0.8mm proud
+when lifted (verified: 0.00mm error).
+
+- **Linkages: 12 (two full sets).** All eight were only 4% of the plate — the cam
+  disc is 94% of it — so a second full set costs ~4% and covers a snapped part or a
+  second cell. Laid out 3 columns x 4 rows.
+- **Count-dots moved to the arm UNDERSIDE and shrunk** (0.9 -> 0.6mm dia, 0.5 ->
+  0.35mm proud): invisible in normal view, still countable by fingernail. They earn
+  their place because arms differ by as little as 0.67mm and fitting the wrong one
+  puts its foot on the wrong cam track. 2.35mm clearance above the cam bump.
+- Removed superseded v7.0 files `print_resin_cam_linkage` / `print_resin_nav_buttons`.
+
+## v7.1 — 2026-07-26 (return spring moves onto the dot axis)
+
+v7.0 seated the return spring on a 5mm pad **halfway along the arm**. Rejected by Mridul,
+and he was right: physically the return force belongs on the dot axis, where the dot is.
+v7.1 puts it there and makes it actually fit.
+
+**Why it did not fit before, and what changed.** Braille rows are 2.6mm apart, so a spring
+wrapped around one dot must be under ~2.4mm OD or it fouls the springs above and below it.
+With the old 2.2mm nub that was impossible at any wire gauge:
+
+```
+nub 2.2mm -> spring ID 2.6, OD 3.1  COLLIDES (-0.5mm)
+nub 1.8mm -> spring ID 2.2, OD 2.7  COLLIDES (-0.1mm)
+nub 1.0mm -> spring ID 1.4, OD 2.0  FITS, 0.6mm to spare
+```
+
+So the nub slimmed 2.2 -> 1.0mm and the spring became a **2mm OD micro spring** (a stock
+catalogue size, 0.3mm stainless). **Ballpoint-pen springs are ruled out permanently** —
+at ~4mm OD they need 4.2mm of pitch and we have 2.6mm.
+
+Side effect worth having: the dot dropped 2.2 -> **1.5mm, which is the real braille
+standard** (1.44-1.6mm). The old dome was oversized.
+
+- **`linkage.scad` rev 4.1** — mid-arm pad deleted; **spring flange** (2.2mm) added on the
+  upper riser; nub 2.2 -> 1.0mm; dome 2.2 -> 1.5mm; count-dots back on the arm.
+- **`top_plate.scad`** — spring counterbores are **coaxial with each dot hole** again (2.2mm
+  x 2.5mm deep), dot hole 2.5 -> 1.7mm. Documented honestly: only 0.4mm of plate is left
+  between the three bores in a column, which is the unavoidable price of a spring on the
+  dot axis at braille pitch.
+- **`mech_layout.scad`** — spring/nub/dome/flange dimensions and the vertical placement now
+  live here, shared by linkage and plate.
+- **`docs/SOURCING.md`** — 2mm micro springs (assortment kit recommended), soft-sponge
+  fallback, and bearing balls marked NO LONGER NEEDED (the dot is printed).
+- **New print plates** for quoting: `print_resin_1_all` (cam+linkages+plate+buttons),
+  `print_resin_2_no_buttons`, `print_resin_3_cam_linkages`.
+
+Assembly: thread each spring over the 1.5mm dome by twisting it on past the 1.4mm bore —
+Mridul's own idea, and exactly the right trick for a 0.1mm interference on a steel coil.
+
+Verified: 15/15 numeric checks pass (spring vs row pitch 0.60mm, flange vs neighbour 0.40mm,
+flange-to-plate clearance when raised 0.20mm, spring working length 3.5mm down / 2.7mm up
+against 1.5mm solid). Flange and dome diameters confirmed by measuring the rendered STL
+directly: 2.20mm at Y=8.0 and 1.50mm at the dome, total height 13.00mm.
+
+## v7.0 — 2026-07-26 (spread feet — the mechanism becomes buildable)
+
+The v6.x mechanism could not be assembled. Two independent checks proved it:
+six arms all ran from the braille cluster to the SAME radial line, so 14 pairs
+overlapped in plan view and each needed its own height — six stacked levels
+need ~11.5mm and only 6.5mm exists between the cam surface and the top plate.
+Three arms sat inside the top plate. Separately, the dot never emerged: the
+linkage was 1mm too short, so it topped out 0.2mm BELOW the reading surface.
+
+**Fix: spread the six feet 60° apart around the disc**, and give each braille
+dot the foot that points the way that dot already sits. The arms then fan
+outward and never cross (closest pair 2.60mm vs 1.0mm needed), so **all six
+share one arm height** and the crowding problem disappears instead of being
+fought. Device size, cam diameter and print cost are all unchanged.
+
+- **`mech_layout.scad` (NEW)** — single source of truth for everything the cam,
+  linkages and top plate must agree on (track radii, dot positions, the
+  dot→track/angle assignment, the vertical stack, spring seats). Created
+  specifically to stop the stale-duplicate-number bugs that produced v6.x.
+- **`braille_cam.scad`** — per-track phase: each track's bump pattern is carved
+  pre-rotated by its own foot's angle, so all six feet still read the same state.
+  One line. Without it each foot reads a different letter.
+- **`linkage.scad` rev 4.0** — `arm_y` is now ONE constant (was six heights);
+  `total_h` 12→13 so the dot actually reaches the surface; foot rebuilt as a
+  proper 0.5mm roll (was a teardrop wedge tapering to a 0.2mm point); braille
+  dot is a **printed dome** (no glued 2mm ball, no machined cup, nothing to
+  source); return-spring pad added on the arm; fillets on every internal corner
+  (strength — sharp corners are where resin cracks); count-dots on the pad rim
+  so the six parts can be told apart in the hand.
+- **`top_plate.scad`** — spring pockets moved OFF the dot axis. At 2.6mm row
+  pitch three 4.5mm pockets merged into one slot; there were never six pockets.
+  Now over the arm pads, 9.6mm apart.
+- **Software** — `DOT_TO_BIT` lookup replaces the old formula; authority is
+  `dot_track` in `mech_layout.scad`.
+
+Verified: closest arms 2.60mm (need 1.0), spring seats 9.58mm apart (need 5.4),
+arm-to-plate clearance 3.70mm, dot proud 0.80mm, foot clearance inside its own
+track 0.10mm. Arms also got SHORTER (10.4–17.9mm, was 15.4–19.1mm) = stiffer.
+
+## v6.2 — 2026-06-13 (over-cap lids + boss reinforcement; built via builder/supervisor agents)
+
+Driven by a 2nd round of fit-test photos. Built by a BUILDER agent and visually verified
+by a SUPERVISOR agent (rendered PNGs from multiple angles, checked for floating/colliding
+geometry). All parts `Simple: yes`; topology as expected.
+
+- **Top plate + pod lid → OVER-CAP design.** The old inset plate/lid left a visible gap ring
+  whenever a PETG print came out slightly small. Both are now caps that cover the full
+  footprint with a 1mm overhang + 4mm skirt on the **±Y faces only** (±X stay flush — they're
+  docking faces and must mate flat). Mounting/screw holes enlarged for print tolerance
+  (top plate screw 2.8→3.2, c-bore 5.0→5.6; pod lid screw 2.4→2.8).
+- **Box walls shortened 58→54mm** (`wall_top_h`) so the 4mm over-cap sits on top and total
+  height stays 58. `shell_height=58` kept as the reference for all feature positions, so
+  nothing else moved.
+- **Corner screw bosses reinforced** (they snapped on the real print): added a cone gusset
+  flaring from Ø13 at the floor to Ø7.8, fused into the floor + cavity wall, below the
+  mid-plate. Pairs with a print-setting fix → **set Wall Loops/perimeters = 5** on the slicer
+  so small bosses print solid (perimeters matter more than infill % for these).
+- **Pod lid jack cradle** (bare-socket jack has no nut): a box/U-pocket under the jack hole
+  takes the plug insertion force. ⚠️ **PLACEHOLDER dims — must measure the real jack.**
+- Pod shell: removed the now-redundant inner lid-locating lip (the over-cap skirt locates it).
+
+DEFERRED to next round (awaiting Mridul's measurements): motor redesign (real shaft/body/
+mount dims), and finalizing the jack cradle to the real bare-socket dimensions. print_batch/
++ zip NOT rebuilt yet for this reason.
+
+## v6.1 — 2026-06-12 (physical fit-test fixes — Anycubic Kobra Neo, 0.4mm PETG)
+
+Full PETG batch was printed and inspected in hand. See the **v6.1 addendum (§6.5)** in
+`.ai-sync/artifacts/cad_audit_v6_2026-06-04.md` for measured FDM limits.
+
+- **Magnet pockets resized for the REAL magnets — 8×1mm discs** (CAD assumed 3×2). Now 2 per
+  docking face at y=±14 with **teardrop tops** (round side-wall pockets fused closed on FDM).
+  Center magnet dropped (8.4mm pocket would collide with the pogo window).
+- **All fine braille removed from PETG parts** — 1.4mm dots printed as mush. Replaced with bold
+  shapes: box front chevron groove, 1/2/3 count-grooves under pod nav buttons, 3 bold ridges as
+  pod lid ID, 45° diamond orientation ridge (the old one was buried INSIDE the wall — never
+  printed). Real braille remains on resin parts only.
+- Sacrificial bridges 0.4→0.6mm; pilot holes M2 1.7→2.0 / M2.5 2.1→2.3; end-cap snap lips
+  0.5→1.0; switch nibs thickened; antenna slots 2→3mm; lid lip clearance +0.2; hall pocket +0.3.
+- **`pogo_end_cap.scad` had broken geometry** (mis-centered interior cube gutted the shell;
+  floating end marker) — fixed, now a proper hollow snap cap.
+- **Linkages: laser-cut metal → RESIN-printed** (rev 3.1; no laser vendor available). New
+  `print_batch/Batch4_Resin/` with cam, top_plate, nav_cap, linkage ×8. Stale reference table
+  refreshed for inner_radius=12.
+- **ULN2003 prototype fit:** module fits the 16mm cell pocket only with wires soldered flat
+  (~12mm vs 20mm with Duponts). Mid-plate gained a relief slot at (+X,−Y). Muscle-board PCB
+  fab deferred. Procedure documented in WIRING_AND_ASSEMBLY.md (also fixed stale comb step).
+- New `docs/SOURCING.md` (springs + pen-spring fallback, 2mm balls, deferred pogo, fasteners).
+- All changed parts render `Simple: yes`; print_batch + workshop zip rebuilt.
+
+## v6.0 — 2026-06-04 (pre-patent polish pass)
+
+See `.ai-sync/artifacts/cad_audit_v6_2026-06-04.md` for the full audit.
+
+- **DELETED `linkage_comb.scad` + `linkage_comb.stl` (SCRAPPED).** The 6 metal linkages are
+  constrained at **both ends** — the foot rides its cam track, and the nub is laterally guided by
+  the 2.5mm round hole in the top plate — so a separate comb guide is redundant. (It also carried
+  a stale `inner_radius=8` that no longer matched the cam/linkage `12.0`.)
+- Braille pitch decision: **kept at 4.8mm "jumbo"** (large-format / braille-learner positioning).
+- Material split locked: RESIN = cam, top_plate, nav_cap; PETG = box, plates, pod, end-cap.
+- Further v6 polish (keying, PETG bridges, wider gutters, pod ⠿ marker, nav braille, hall
+  comment, jack guard ring) tracked in the audit artifact.
+
+---
+
 ## Overview
 
 All five original OpenSCAD render files were audited before any physical prototyping. Four critical dimensional bugs were found that would have caused assembly failure on the first print. All were fixed. One new file was created (linkage set). A Blender presentation render was set up.
@@ -899,3 +1172,136 @@ All 9 STLs exported via OpenSCAD CLI — **all manifold (Simple: yes)**:
 - ESP32 pod positioned beside cell (x=-71mm)
 - All meshes: Shade Flat, material colors assigned
 - 9 materials: Shell grey, Plate dark metal, Cam blue, Linkage steel, Top cream, Cap white, Pod dark grey, Comb PETG green, EndCap TPU
+
+---
+
+## Section 17 — Independent Dimensional Audit #2 (2026-05-16)
+
+**Scope:** Cross-file dimensional audit of all SCAD files after the May 6 redesign. Found 12 additional findings (3 showstopper, 3 critical, 4 moderate, 2 informational).
+
+### 17.1 Findings Summary
+
+| # | Severity | Issue | File(s) | Fix |
+|---|----------|-------|---------|-----|
+| F1 | SHOWSTOPPER | Linkage arm_y collision (dots 1&4 both at 5.5mm) | linkage.scad | Per-dot arm_y values from reference table |
+| F2 | CRITICAL | Vertical stack 1mm over-height (plate top z=58 > shell z=57) | outer_box.scad | shell_height 57→58, cascading updates |
+| F3 | CRITICAL | Braille cap incompatible with linkage nub geometry | linkage.scad, top_plate.scad | Ball-on-nub approach (caps deprecated) |
+| F4 | MODERATE | Mid-plate motor collar crashes into -X corner bosses | mid_plate.scad | Boss relief notch cutouts in collar |
+| F5 | MODERATE | Top plate zero clearance in box (60mm in 60mm) | top_plate.scad | Plate reduced to 59×59mm |
+| F6 | MODERATE | Braille cap socket depth only 0.5mm (center=true bug) | braille_cap.scad | Moot — caps deprecated per F3 |
+| F7 | MODERATE | Spring pocket wall only 0.75mm thick (fragile) | top_plate.scad | Pocket 4.5mm dia, 2.0mm depth |
+| F8 | MINOR | Cam hub only 2mm shaft engagement | braille_cam2.scad | hub_h reduced 4→2 for full engagement |
+| F9 | MINOR | Linkage comb free-floating (no vertical lock) | linkage_comb.scad | M2 grub screw hole added |
+| F10 | MINOR | Screw size mismatch (M3 boss vs M2.5 standoff) | outer_box.scad, base_plate.scad | Unified to M2.5 |
+| F11 | INFO | Pod/cell magnet height — resolved by F2 fix | esp32_pod_params.scad | pogo_z updated to 31mm |
+| F12 | INFO | Braille dot horizontal spacing 4.8mm (2× standard) | — | Known limitation of cam mechanism |
+
+### 17.2 Key Parameter Changes
+
+| Parameter | Old | New | File |
+|-----------|-----|-----|------|
+| shell_height | 57 | **58** | outer_box.scad |
+| boss_height | 37 | **38** | outer_box.scad |
+| mag_z | 28.5 | **29** | outer_box.scad |
+| pogo_z | 30.5 | **31** | outer_box.scad |
+| pogo_z_from_bot | 30.5 | **31** | esp32_pod_params.scad |
+| boss screw hole d | 3.2 | **2.6** | outer_box.scad |
+| corner_radius | 2 | **3** | outer_box.scad |
+| plate_length/width | 60 | **59** | top_plate.scad |
+| hole_dia | 2.0 | **2.5** | top_plate.scad |
+| spring_pocket_dia | 3.5 | **4.5** | top_plate.scad |
+| spring_pocket_depth | 3.0 | **2.0** | top_plate.scad |
+| nub_w | 1.2 | **2.2** | linkage.scad |
+| arm_y(0) | 2.0 | **3.5** | linkage.scad |
+| arm_y(1) | 5.5 | **4.0** | linkage.scad |
+| arm_y(2) | 9.0 | **9.5** | linkage.scad |
+| arm_y(3) | 2.0 | **3.5** | linkage.scad |
+| arm_y(4) | 5.5 | **7.8** | linkage.scad |
+| arm_y(5) | 9.0 | **9.5** | linkage.scad |
+| hub_h | 4 | **2** | braille_cam2.scad |
+| standoff hole d | 2.6 | **2.2** | base_plate.scad |
+| raise_h (nav cap) | 0.8 | **1.2** | nav_cap.scad |
+
+### 17.3 Ball-on-Nub Dot Mechanism (replacing braille_cap)
+
+The braille_cap.scad is **DEPRECATED**. The new approach:
+- Linkage nub widened to 2.2mm (from 1.2mm) to hold a 2mm bearing ball cup
+- Top plate hole widened to 2.5mm (clearance for 2.2mm nub + 0.15mm/side)
+- Ball protrudes 0.2mm above plate when DOWN, 1.0mm when UP
+- Dot travel = 0.8mm (matches cam lift)
+- Spring in top plate pocket pushes down on nub through the hole
+
+### 17.4 Updated Stack Table (v4.1 — shell_height=58)
+
+| z (mm) | Component |
+|--------|-----------|
+| 0 | Outer box bottom |
+| 4 | Inner floor top |
+| 4-20 | Electronics pocket (16mm) |
+| 20-22 | Mid-plate (2mm) |
+| 22-41 | Motor body (19mm) |
+| 41 | Base plate bottom |
+| 46 | Base plate top |
+| 45 | Cam flat surface |
+| 45.8 | Cam bump top |
+| 54 | Top plate bottom (8mm standoffs) |
+| **58** | **Top plate top = shell_height** ✓ |
+| 57 | Linkage nub top (dot DOWN) |
+| 57.8 | Linkage nub top (dot UP) |
+| 58.2 | Ball top (dot DOWN, 0.2mm above plate) |
+| 59.0 | Ball top (dot UP, 1.0mm above plate) |
+
+### 17.5 Blind-User Ergonomic Improvements
+
+- **Nav cap raise_h** increased 0.8→1.2mm for confident tactile identification
+- **Box corner_radius** increased 2→3mm for comfortable handling
+- **Braille 'F' orientation** on front face repositioned to z=43 (58−15)
+
+---
+
+## Section 18 — Custom PCB: Braillix Muscle Board v1.0 (2026-05-16)
+
+**New files created in `pcb/` directory:**
+- `braillix_muscle_board.kicad_pro` — KiCad 10.0.2 project file
+- `braillix_muscle_board.kicad_sch` — Full schematic
+- `braillix_muscle_board.kicad_pcb` — 34×44mm PCB layout (component placement + GND zone)
+- `BOM_muscle_board_v1.0.txt` — Complete bill of materials with sourcing notes
+
+### 18.1 Purpose
+
+Replaces the Arduino Pro Mini + ULN2003 breakout board + hand-wired connections with a single 34×44mm SMD PCB. Fits in the 36×46mm electronics pocket with 1mm clearance per side.
+
+### 18.2 Key Components
+
+| Ref | Component | Package | Function |
+|-----|-----------|---------|----------|
+| U1 | ATmega328P-AU | TQFP-32 (7×7mm) | MCU (I2C slave + motor control) |
+| U2 | ULN2003A | SOIC-16 | Darlington motor driver |
+| Y1 | 16 MHz crystal | HC49-4H | MCU clock |
+| C1-C4 | 22pF / 100nF | 0402 | Crystal load + VCC decoupling |
+| C5 | 100µF / 10V | SMD elec 5×5.3mm | Motor bulk bypass |
+| D1 | SS14 | SMA (DO-214AC) | Reverse polarity protection |
+| J1 | 1×04 header | 2.54mm | Pogo interface (+5V, GND, SDA, SCL) |
+| J2 | JST XH 5-pin | B5B-XH-A | 28BYJ-48 motor connector |
+| J3 | 1×03 header | 2.54mm | Hall sensor (VCC, GND, SIGNAL) |
+| J4 | 2×03 header | 2.54mm | AVR ISP programming |
+
+### 18.3 Design Changes from Original Architecture
+
+- **Protocol changed from UART to I2C:** Each cell is an I2C slave (addresses 0x20-0x27 via solder jumpers on PB0-PB2). No more daisy-chain forwarding.
+- **I2C pull-ups:** 4.7K on SDA/SCL, enabled via solder jumper on last cell only.
+- **Board specs:** 2-layer, 1.6mm FR4, 1oz Cu, HASL lead-free.
+
+### 18.4 DRC Results
+
+KiCad 10.0.2 DRC validation:
+- **0 electrical errors** (no shorts, no clearance violations)
+- **50 unconnected items** — expected, traces to be routed in KiCad GUI
+- **21 lib_footprint_mismatch** — cosmetic (inline vs library footprints)
+- **4 silk_over_copper** — cosmetic (auto-clipped during Gerber export)
+
+### 18.5 Estimated Cost
+
+- BOM: ~$3.50 per board (LCSC/JLCPCB pricing, qty 10+)
+- PCB fabrication: ~$0.40/board (JLCPCB, 5-board MOQ)
+- Total per cell: ~$3.90 (vs ~$5+ for discrete modules + hand wiring)

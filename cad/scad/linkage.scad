@@ -1,179 +1,199 @@
 // =========================================================
-// BRAILLIX LINKAGE SET — Laser-Cut Metal Cranks
-// Revision 3.0 — Inline Feet (Phase-Shift Fix)
-// Updated 2026-05-06
+// BRAILLIX LINKAGE SET — Resin-Printed Cranks
+// Revision 4.1 — Coaxial dot spring (v7.1, 2026-07-26)
 //
-// NOT 3D-printed. Export as DXF for laser cutting.
-// Material: 1mm stainless steel or 1mm aluminium sheet.
-// Post-process: sand foot tip smooth, lubricate with silicone grease.
+// Print 8 (6 required + 2 spares) in TOUGH or ABS-like resin, flat on
+// the plate. Post-process: nothing. No bearing balls, no glue, no
+// machined cup — the braille dot is printed as part of the linkage.
 //
-// --- CRITICAL FIX FROM v2.0 (Audit 4.1) ---
-// v2.0 BUG: linkages were rotated by atan2(dot_y, dot_x) — each foot
-//   hit the cam at a DIFFERENT angle (dot 0 at 137deg, dot 4 at 0deg, etc).
-//   At 5.625deg/character, this scrambled the Braille output completely.
+// ---------------------------------------------------------
+// WHAT CHANGED IN v4.1
+// ---------------------------------------------------------
+// v4.0 put the return-spring seat on a 5mm pad HALFWAY ALONG THE ARM.
+// Wrong: physically the return force belongs on the dot axis, where the
+// dot is. v4.1 moves it there —
 //
-// v3.0 FIX: All 6 feet now land at Y=0 on the cam disc (same angular
-//   position). This is achieved by computing arm_span and assembly angle
-//   so that:
-//     - Nub lands at (dot_x, dot_y) — correct Braille position
-//     - Foot lands at (track_r, 0)  — all feet aligned on Y=0 axis
+//   * mid-arm pad DELETED
+//   * SPRING FLANGE added on the upper riser, below the dome. The spring
+//     lives in a counterbore in the top plate, wraps around the dot, and
+//     pushes down on this flange to hold the dot down when no cam bump is
+//     under the foot.
+//   * NUB SLIMMED 2.2 -> 1.0mm so it slides inside the 1.4mm spring bore,
+//     and the DOT DOME 2.2 -> 1.5mm, which is the real braille standard
+//     (1.44-1.6mm). The old 2.2mm dome was oversized.
+//   * count-dots moved back onto the arm (there is room again now the pad
+//     is gone; on the pad rim was only ever a workaround).
 //
-// Key equations:
-//   arm_span(d) = sqrt((track_r(d) - dot_x(d))^2 + dot_y(d)^2)
-//   asm_ang(d)  = atan2(-dot_y(d), track_r(d) - dot_x(d))
-//
-// Arm heights re-staggered for collision safety (dots 1 & 4 critical pair):
-//   dot 1 arm_y = 4.0mm, dot 4 arm_y = 7.8mm
-//   Gap = 7.8 - 4.0 - 1.0(arm_h) = 2.8mm static
-//   Worst case (cam bump): 2.8 - 0.8 = 2.0mm free — safe, no collision
-//
-// --- VERIFIED STACK (z from outer box bottom, v4.0) ---
-//   z=45.0  cam flat surface  -> foot bottom (nub flush = dot DOWN)
-//   z=45.8  cam bump top      -> foot bottom (nub 0.8mm proud = dot UP)
-//   z=57.0  top plate top surface
-//   total_h = 57.0 - 45.0 = 12.0mm (unchanged)
+// Everything from v4.0 stays: feet spread 60deg, ONE common arm height,
+// total_h 13.0, rolled foot, fillets. See mech_layout.scad for the why.
 // =========================================================
+
+include <mech_layout.scad>
 
 // --- 1. PARAMETERS ---
 
-thickness     = 1.0;    // Sheet metal thickness (extrusion depth for DXF)
-foot_w        = 2.0;    // Foot width — straddles cam track (1.6mm wide), 0.2mm overhang each side
-foot_len      = 2.5;    // Foot contact patch length
-foot_radius   = 0.8;    // Rounded foot tip (reduces cam surface wear)
-nub_w         = 1.2;    // Nub width — matches top_plate hole_dia clearance
-nub_len       = 2.0;    // Nub length (radial extent)
-nub_h         = 1.5;    // Nub protrusion above arm/upper-riser top
-arm_h         = 1.0;    // Horizontal arm thickness
-total_h       = 12.0;   // Total height: foot bottom to nub top (matches corrected stack)
+thickness   = link_thickness;  // 2.0, from mech_layout.scad — the assembly
+                     // transform needs the same number, so it lives there.
+                     // sheet thickness. Once assembled this is the foot's
+                     // TANGENTIAL contact width — it must fit inside the cam's
+                     // flat dwell zone (see braille_cam.scad v6.3 header).
+// foot_w comes from mech_layout.scad — the comb pocket is sized from it
+// foot_len comes from mech_layout.scad — the comb needs the same number
+// R-07: now declared in mech_layout.scad, because braille_cam.scad has to size
+// its ramps from it. Do not re-declare it here.
+assert(!is_undef(foot_roll_r), "linkage needs foot_roll_r from mech_layout.scad");
 
-// Cam geometry (must match braille_cam2.scad exactly)
-track_width   = 1.6;
-track_gap     = 0.1;
-inner_radius  = 8.0;
+// arm_h and riser_w come from mech_layout.scad — the comb pocket and the cam
+// ramp sizing both depend on this section, so it is not private to this file.
+assert(!is_undef(arm_h) && !is_undef(riser_w),
+       "linkage needs arm_h and riser_w from mech_layout.scad");
+// Arm top when a dot is raised = 3.5 + 3.0 + 0.5 = 7.0mm,
+// vs plate underside at 9.0mm -> 2.0mm clear.
 
-// Braille dot positions (must match top_plate.scad)
-col_spacing   = 4.8;    // Left column at x=-2.4, right at x=+2.4
-row_spacing   = 2.6;    // Rows at y=+2.6, 0, -2.6
+// Dot end — all from mech_layout.scad so the plate cannot disagree
+nub_w       = nub_width;      // 1.0mm, slides inside the 1.4mm spring bore
+// The nub is nub_w wide in X but `thickness` DEEP in Z, and both have to pass
+// through a round bore. This is what makes link_thickness un-growable.
+// Derived from spring_id, not hard-coded: the nub travels through the SPRING,
+// so the wire diameter sets the hole. A thinner wire opens it up.
+assert(sqrt(nub_w*nub_w + thickness*thickness) <= spring_id - 0.05,
+       str("nub is ", nub_w, " x ", thickness, "mm, diagonal ",
+           sqrt(nub_w*nub_w + thickness*thickness),
+           " - it cannot pass the ", spring_id, "mm spring bore"));
+dot_r       = dot_dome_dia/2; // 0.75 -> 1.5mm dome = braille standard
+total_h     = link_total_h;   // 13.0
 
-// Track centre radius for track index t
-function track_r(t) = inner_radius + t * (track_width + track_gap) + track_width / 2;
-//  t=0: 8.85mm   t=1: 10.55mm   t=2: 12.25mm
-//  t=3: 13.95mm  t=4: 15.65mm   t=5: 17.35mm
+fillet_in   = 0.6;   // internal corner fillets (strength)
+fillet_out  = 0.25;  // outer corner softening (feel/looks)
 
-function dot_x(dot) = (dot < 3) ? -col_spacing/2 : col_spacing/2;
-function dot_y(dot) = (dot == 0 || dot == 3) ?  row_spacing :
-                      (dot == 1 || dot == 4) ?  0 :
-                                                -row_spacing;
+$fn = 48;
 
-// --- INLINE FEET GEOMETRY ---
-// arm_span: horizontal distance from nub (at dot position) to foot (at cam track)
-// After assembly transform, foot lands at world (track_r, 0) and nub at (dot_x, dot_y)
-function arm_span(d) = sqrt(pow(track_r(d) - dot_x(d), 2) + pow(dot_y(d), 2));
+// --- 2. 2D BODY PROFILE ---
+// Local frame: X = arm direction (0 = nub end, span = foot end), Y = vertical.
+// Foot, flange and dome are built in 3D below, so this profile covers only the
+// risers + arm and overlaps them slightly.
 
-// Assembly angle: rotate linkage so foot points from nub toward (track_r, 0)
-function asm_ang(d) = atan2(-dot_y(d), track_r(d) - dot_x(d));
-
-// Arm Y position from foot bottom — per-dot stagger for collision safety
-// Critical pair: dots 1 and 4 (both at world Y=0, arms overlap in X)
-//   dot 1: arm_y=4.0, dot 4: arm_y=7.8 -> gap=2.8mm static, 2.0mm with bump
-function arm_y(d) = (d == 0 || d == 3) ? 2.0 :
-                    (d == 1 || d == 4) ? 5.5 :
-                                         9.0;
-
-// Derived heights
-function lower_riser_h(d) = arm_y(d) - foot_len;
-function upper_riser_h(d) = total_h - arm_y(d) - arm_h - nub_h;
-
-$fn = 40;
-
-// --- 2. MODULES ---
-
-// 2D profile of one linkage in its LOCAL coordinate frame.
-// Local axes: X = arm direction (0=nub end, span=foot end), Y = vertical (up).
-// Extruded to 'thickness' in Z for laser-cut preview.
-//
-// In assembly, each linkage is:
-//   1. Extruded to thickness
-//   2. Rotated by asm_ang(d) around Z
-//   3. Translated to (dot_x(d), dot_y(d), 0)
-// Result: nub at world (dot_x, dot_y), foot at world (track_r, 0)
-
-module linkage_2d_v3(dot) {
+module body_profile_raw(dot) {
     span = arm_span(dot);
-    ay   = arm_y(dot);
-    lr   = lower_riser_h(dot);
-    ur   = upper_riser_h(dot);
-
     union() {
-        // A. Foot — rounded rectangle at span end (cam/outer side)
-        translate([span - foot_w/2, 0])
-            hull() {
-                translate([foot_radius, foot_radius])
-                    circle(r=foot_radius);
-                translate([foot_w - foot_radius, foot_radius])
-                    circle(r=foot_radius);
-                translate([foot_radius, foot_len])
-                    square([foot_w - 2*foot_radius, 0.01]);
-                translate([foot_w - foot_radius, foot_len])
-                    square([0.01, 0.01]);
-            }
-
-        // B. Lower riser — from foot top up to arm bottom (at span end)
-        if(lr > 0.01)
-            translate([span - thickness/2, foot_len])
-                square([thickness, lr]);
-
-        // C. Horizontal arm — spans from X=0 (nub end) to X=span (foot end)
-        translate([0, ay])
+        // lower riser: foot top up to arm bottom, at the foot end.
+        // RADIAL width is riser_w, not thickness — see mech_layout.scad.
+        translate([span - riser_w/2, foot_len - 0.1])
+            square([riser_w, arm_y - foot_len + 0.1]);
+        // horizontal arm
+        translate([0, arm_y])
             square([span, arm_h]);
-
-        // D. Upper riser — from arm top up to nub bottom (at X=0, nub end)
-        if(ur > 0.01)
-            translate([-thickness/2 + nub_w/2, ay + arm_h])
-                square([thickness, ur]);
-
-        // E. Nub — rectangular tab at top, centred at X=0
-        //    This passes through top_plate hole and connects to braille_cap
-        translate([0, total_h - nub_h])
-            square([nub_w, nub_h]);
+        // upper riser: arm top all the way up into the dome
+        translate([-nub_w/2, arm_y + arm_h])
+            square([nub_w, (total_h - dot_r) - (arm_y + arm_h) + 0.1]);
     }
 }
 
-module linkage_3d_v3(dot) {
-    linear_extrude(height=thickness)
-        linkage_2d_v3(dot);
-}
-
-// --- 3. GENERATE ALL 6 LINKAGES ---
-// Laid flat side-by-side for DXF export. 30mm gap between each.
-// For assembly preview: use the commented section below instead.
-
-spacing = 30; // mm between linkage origins on DXF sheet
-
-for(dot = [0:5]) {
-    translate([dot * spacing, 0, 0])
-        linkage_3d_v3(dot);
-}
-
-// --- ASSEMBLY PREVIEW (comment out flat layout above, uncomment here) ---
-// All 6 feet should cluster at Y=0 on the cam. Nubs at their Braille dot positions.
-// for(dot = [0:5]) {
-//     ang = asm_ang(dot);
-//     color((dot < 3) ? "silver" : "lightgray")
-//     translate([dot_x(dot), dot_y(dot), 0])
-//     rotate([0, 0, ang])
-//         linkage_3d_v3(dot);
-// }
-
-// --- 4. REFERENCE TABLE ---
-// Dot | Track | Track r | Dot pos      | arm_y | arm_span | asm_ang  | lr   | ur
-//  0  |   0   |  8.85   | (-2.4, +2.6) |  3.5  |  11.55   | -13.0deg |  1.0 |  6.0
-//  1  |   1   | 10.55   | (-2.4,  0.0) |  4.0  |  12.95   | 180.0deg |  1.5 |  5.5
-//  2  |   2   | 12.25   | (-2.4, -2.6) |  9.5  |  14.88   | +10.1deg |  7.0 |  0.0
-//  3  |   3   | 13.95   | (+2.4, +2.6) |  3.5  |  11.84   | -12.7deg |  1.0 |  6.0
-//  4  |   4   | 15.65   | (+2.4,  0.0) |  7.8  |  13.25   |   0.0deg |  5.3 |  1.7
-//  5  |   5   | 17.35   | (+2.4, -2.6) |  9.5  |  15.18   |  +9.9deg |  7.0 |  0.0
+// Fillet pass.
+//   CLOSING (dilate then erode) fills concave corners = the strength fillets.
+//   OPENING (erode then dilate) softens convex corners = the "less blocky" look.
+// Both restore the original member thickness exactly.
 //
-// Collision clearance (dots 1 & 4 — critical pair, both at world Y=0):
-//   Static gap:  7.8 - 4.0 - 1.0 = 2.8mm
-//   With bump:   2.8 - 0.8 = 2.0mm free  -- SAFE
+// CAREFUL — OpenSCAD applies offset() INSIDE-OUT: the innermost offset runs
+// first. Writing the pair the natural-reading way round erodes by fillet_in
+// FIRST, which deletes every thin member (1.0 - 2*0.6 < 0) and leaves a hollow
+// shell. Keep this nesting order.
+module body_profile(dot) {
+    offset(r = fillet_out) offset(r = -fillet_out)      // ...then opening
+        offset(r = -fillet_in) offset(r = fillet_in)    // closing runs first...
+            body_profile_raw(dot);
+}
+
+// --- 3. 3D FEATURES ---
+
+// Rounded cam-follower foot: a roll lying ACROSS the track, so it is
+// curved in the direction of travel and flat across the track width.
+module foot_3d(dot) {
+    span = arm_span(dot);
+    hull() {
+        translate([span - foot_w/2, foot_roll_r, thickness/2])
+            rotate([0, 90, 0])
+                cylinder(r = foot_roll_r, h = foot_w);
+        translate([span - riser_w/2, foot_len, 0])
+            cube([riser_w, 0.01, thickness]);
+    }
+}
+
+// Braille dot: printed dome on top of the nub, 1.5mm = braille standard.
+module nub_dome_3d() {
+    hull() {
+        translate([-nub_w/2, total_h - dot_r - 0.2, 0])
+            cube([nub_w, 0.01, thickness]);
+        translate([0, total_h - dot_r, thickness/2])
+            sphere(r = dot_r);
+    }
+}
+
+// Return-spring flange: the disc the spring presses down on. Chamfered
+// underside so it prints without a sharp shelf hanging off the riser.
+module spring_flange_3d() {
+    translate([0, flange_bot_y, thickness/2])
+        rotate([-90, 0, 0])
+            cylinder(d1 = flange_dia - 0.6, d2 = flange_dia, h = flange_h);
+}
+
+// --- 4. COUNT-DOTS: which linkage is which ---
+// 1..6 small bumps = the braille dot number this linkage drives.
+//
+// They matter because the six arms differ by as little as 0.67mm in length
+// (dot 5 = 10.40 vs dot 4 = 11.08), so by eye they are indistinguishable —
+// and fitting the wrong one puts its foot on the wrong cam track, which
+// makes that dot read the wrong bit and garbles the letter.
+//
+// v7.2: moved to the arm's UNDERSIDE and shrunk (0.9 -> 0.6mm dia, 0.5 ->
+// 0.35mm proud) so they are invisible in normal view but still countable
+// with a fingernail. The underside faces the cam, with ~2.4mm of clearance
+// above the bump, so nothing touches. Sunk 0.3mm INTO the arm — sitting
+// flush on the surface leaves them as separate touching bodies that resin
+// prints as loose specks.
+module count_dots_3d(dot) {
+    for (i = [0 : dot - 1])
+        translate([1.8 + i * 1.0, arm_y + 0.3, thickness/2])
+            rotate([90, 0, 0])            // +Z -> -Y, i.e. downward
+                cylinder(d = 0.6, h = 0.65, $fn = 16);
+}
+
+// --- 5. COMPLETE LINKAGE ---
+
+module linkage_3d_v4(dot) {
+    union() {
+        linear_extrude(height = thickness) body_profile(dot);
+        foot_3d(dot);
+        nub_dome_3d();
+        spring_flange_3d();
+        count_dots_3d(dot);
+    }
+}
+
+// Backwards-compatible alias (older files call linkage_3d_v3)
+module linkage_3d_v3(dot) { linkage_3d_v4(dot); }
+
+// --- 6. FLAT LAYOUT FOR PRINTING ---
+// Print files use linkage_3d_v4() directly — see print_resin_*.scad.
+
+spacing = 22;
+for (d = [1 : 6])
+    translate([(d - 1) * spacing, 0, 0])
+        linkage_3d_v4(d);
+
+// --- 7. REFERENCE (computed live by mech_layout.scad — documentation only) ---
+// dot | track |  r    | foot@ | arm span | nub at
+//  1  |   2   | 18.20 | 120deg|  14.77   | (-2.4, +2.6)
+//  2  |   3   | 19.90 | 180deg|  17.50   | (-2.4,  0.0)
+//  3  |   4   | 21.60 | 240deg|  18.17   | (-2.4, -2.6)
+//  4  |   1   | 16.50 |  60deg|  13.07   | (+2.4, +2.6)
+//  5  |   0   | 14.80 |   0deg|  12.40   | (+2.4,  0.0)
+//  6  |   5   | 23.30 | 300deg|  19.86   | (+2.4, -2.6)
+//
+// R-07 (2026-09-01) moved inner_radius 12 -> 14, so every radius above is 2.0mm
+// larger and every arm 2.0-2.4mm longer than it was. The arms are now 12.4-19.9mm
+// on a 1.0 x 1.0mm section, which is the LONGEST they have ever been - see the
+// stiffness note in .ai-sync/handoff.md, still unresolved.
+//
+// Closest approach between any two arms: 2.60mm vs 1.0mm arm thickness,
+// so all six share arm_y = 3.5mm with margin to spare.

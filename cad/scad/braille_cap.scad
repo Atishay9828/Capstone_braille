@@ -1,5 +1,13 @@
 // =========================================================
-// COMPONENT: BRAILLE DOT CAPS — Bearing Ball Cup Design
+// *** DEPRECATED — 2026-05-15 ***
+// Replaced by ball-on-nub approach: 2mm bearing ball glued directly
+// into a laser-cut cup on the metal linkage nub tip. This eliminates
+// the braille cap entirely — fewer parts, more reliable, no socket
+// alignment issues. See linkage.scad nub_w=2.2mm.
+// =========================================================
+//
+// =========================================================
+// COMPONENT: BRAILLE DOT CAPS — Bearing Ball Cup Design (DEPRECATED)
 // Revision 1.0
 // Created 2026-05-06
 //
@@ -34,14 +42,21 @@ cup_r            = ball_dia / 2 + 0.1;
 $fn = 60;
 
 module braille_cap() {
-    // A. Pin shaft 
-    cylinder(d=cap_pin_dia, h=cap_pin_len);
+    // A. Pin shaft with RECTANGULAR SOCKET for metal linkage nub (audit 4)
+    //    Socket: 1.3mm x 1.1mm x ~1mm deep (0.1mm tolerance over 1.2mm x 1.0mm nub)
+    //    Metal nub slides in from below, secured with CA glue (cyanoacrylate)
+    difference() {
+        cylinder(d=cap_pin_dia, h=cap_pin_len);
+        // Rectangular blind socket at pin bottom — receives linkage nub
+        translate([0, 0, -0.01])
+            cube([1.3, 1.1, 2.0], center=true);
+    }
 
-    // B. Retention flange (Now correctly sits below 4mm plate)
+    // B. Retention flange (sits below 4mm plate underside)
     flange_z = cap_pin_len - plate_thickness - cap_flange_h;
     translate([0, 0, flange_z]) cylinder(d=cap_flange_dia, h=cap_flange_h);
 
-    // C. Body + bearing ball cup 
+    // C. Body + bearing ball cup
     translate([0, 0, cap_pin_len]) difference() {
         cylinder(d=cap_body_dia, h=cap_body_h);
         translate([0, 0, cap_body_h - cup_depth + cup_r]) sphere(r=cup_r);

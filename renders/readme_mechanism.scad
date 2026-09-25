@@ -1,0 +1,99 @@
+// =========================================================
+// RENDER SCENE — the mechanism, for the README
+//
+// Not a printable part. This assembles the real geometry so the README can show
+// a photograph of the mechanism instead of an ASCII sketch: the cam disc, the six
+// linkages standing in their true positions, the comb that guides them, and the
+// top plate above.
+//
+// One dot is RAISED and the other five are DOWN, which is the whole point of the
+// picture: the raised linkage's foot sits on a high section of its track, and its
+// dome stands proud of the reading surface.
+//
+// Render with PREVIEW, not --render. Transparency is an OpenCSG feature; CGAL
+// discards alpha and the enclosure comes out solid.
+//
+//   openscad --camera=... -o ../docs/img/mechanism.png readme_mechanism.scad
+//
+// Everything is placed in LINKAGE-LOCAL Z: z=0 is the flat cam surface, which is
+// the datum linkage_3d_v4() is built against. World z is not used here.
+// =========================================================
+
+include <../cad/scad/mech_layout.scad>
+use <../cad/scad/linkage.scad>        // linkage_3d_v4(dot)
+use <../cad/scad/braille_cam.scad>    // braille_cam()
+use <../cad/scad/linkage_comb.scad>   // linkage_comb()
+use <../cad/scad/top_plate.scad>      // top_plate()
+use <../cad/scad/dot_insert.scad>     // dot_insert()
+
+// Which dot is shown raised. 5 sits at phase 0 on the innermost track, so its
+// arm runs straight along +X and reads clearly from the side.
+raised_dot = 5;
+
+show_comb      = true;
+show_top_plate = true;
+show_insert    = true;
+
+// Export one component at a time, so Blender can give each its own material:
+//   openscad -D only=\"cam\" -o cam.stl readme_mechanism.scad
+// "all" renders the assembled scene, which is what the OpenSCAD preview uses.
+only = "all";
+function want(x) = (only == "all") || (only == x);
+
+// braille_cam() puts the hub bottom at z=0, so the flat cam surface lands at
+// hub_h + disk_base_thickness. Drop the disc by that much to put the flat at z=0.
+cam_drop = 4 + 2;
+
+$fn = 64;
+
+// Same transform as export_linkage_assembly.scad. The -link_thickness/2 shift is
+// load bearing: linkage_3d_v4() is extruded from local z=0, but its dome sits at
+// local z=thickness/2, so without it every dot lands half a thickness off its hole.
+module linkage_at(d, lift) {
+    p = dot_pos(d);
+    translate([p[0], p[1], lift])
+        rotate([0, 0, asm_ang(d)])
+            rotate([90, 0, 0])
+                translate([0, 0, -link_thickness / 2])
+                    linkage_3d_v4(d);
+}
+
+// --- the cam disc ---------------------------------------------------------
+if (want("cam"))
+    color([0.20, 0.22, 0.26])
+        translate([0, 0, -cam_drop])
+            braille_cam();
+
+// --- the six linkages -----------------------------------------------------
+// The raised one is warm and bright; the rest are cool grey and sit down.
+for (d = [1:6])
+    if ((want("linkages_down") && d != raised_dot) || (want("linkage_up") && d == raised_dot))
+        color(d == raised_dot ? [0.95, 0.62, 0.25] : [0.72, 0.75, 0.80])
+            linkage_at(d, d == raised_dot ? pin_lift : 0);
+
+// --- the guide ------------------------------------------------------------
+// Kept faint. It sits directly over the cam, and any more opacity than this
+// hides the track profile underneath, which is the thing worth seeing.
+if (show_comb && want("comb"))
+    color([0.35, 0.55, 0.75, 0.16])
+        linkage_comb();
+
+// --- the reading surface --------------------------------------------------
+// Ghosted, so the raised dome is visible through it rather than hidden by it.
+if (show_top_plate && want("plate"))
+    color([0.85, 0.87, 0.90, 0.13])
+        translate([0, 0, plate_under_y])
+            top_plate();
+
+// The resin tile is OPAQUE and is the reading surface itself: insert_h is defined
+// as the reading-surface height above the plate underside, so its top face IS the
+// surface a finger touches. With it solid, a lowered dome is flush and invisible,
+// and the raised dome clearly stands proud. That contrast is the whole picture.
+//
+// It sits AT plate_under_y. An earlier version added (4 - 3.2) and lifted the tile
+// 0.8mm, which put the reading surface level with the plate rim instead of inside
+// the finger recess, and hid the lift.
+if (show_insert && want("insert"))
+    color([0.88, 0.89, 0.92])
+        translate([0, 0, plate_under_y])
+            dot_insert();

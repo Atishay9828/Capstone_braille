@@ -1,0 +1,6 @@
+{
+  "project": "Capstone",
+  "created": "2026-05-21T22:07:00+05:30",
+  "agents": ["claude-code", "codex", "antigravity"],
+  "version": "1.0"
+}
