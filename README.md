@@ -97,6 +97,10 @@ angle is position zero. The controller counts steps from there.
 
     Capstone/
     |
+    +-- frontend/                    browser app and classroom interface
+    |   +-- app/                      React + TypeScript lesson experience
+    +-- backend/                     API, OCR, translation, and classroom services
+    +-- hal/                          boundary between software and the display
     +-- cad/                        the design
     |   +-- scad/                   OpenSCAD source, 35 files. This IS the design.
     |   |   +-- mech_layout.scad        every shared dimension lives here
