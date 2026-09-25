@@ -1,0 +1,258 @@
+.reader {
+  /* Reserved so switching between reading modes does not move everything below it. */
+  min-height: 300px;
+  margin-top: var(--s6);
+  padding: var(--s5);
+  border-radius: var(--radius);
+  background: var(--ink-050);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.reader__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-bottom: var(--s4);
+}
+
+/* The orientation line — the answer to "where am I", always on screen. */
+.reader__crumbs {
+  margin: 0 0 var(--s3);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius-sm);
+  background: var(--ink-000);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--signal);
+  font-family: var(--font-mono);
+  font-size: var(--t-small);
+  letter-spacing: 0.01em;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.reader__blurb {
+  margin: 0 0 var(--s4);
+  color: var(--text-300);
+  font-size: var(--t-small);
+  max-width: 60ch;
+}
+
+.reader__blurb strong {
+  color: var(--text-100);
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------ the d-pad */
+
+.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 64px);
+  grid-template-rows: repeat(3, 44px);
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+
+.dpad__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  border: 0;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--ink-300), var(--ink-200));
+  box-shadow:
+    inset 0 1px 0 var(--edge-strong),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+  color: var(--text-200);
+  font: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+  transition:
+    transform var(--dur-ui) ease,
+    background var(--dur-ui) ease;
+}
+
+.dpad__btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--ink-400), var(--ink-300));
+}
+
+/* Pressed keys should feel like keys. */
+.dpad__btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.dpad__btn:disabled {
+  background: var(--ink-100);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-400);
+  cursor: not-allowed;
+}
+
+.dpad__label {
+  font-size: var(--t-tiny);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-400);
+}
+
+.dpad__btn:not(:disabled) .dpad__label {
+  color: var(--text-300);
+}
+
+.dpad__btn--up {
+  grid-column: 2;
+  grid-row: 1;
+}
+.dpad__btn--left {
+  grid-column: 1;
+  grid-row: 2;
+}
+.dpad__btn--mid {
+  grid-column: 2;
+  grid-row: 2;
+  background: linear-gradient(180deg, var(--signal), var(--signal-deep));
+  color: #1a1204;
+}
+.dpad__btn--mid .dpad__label {
+  color: rgba(26, 18, 4, 0.7);
+}
+.dpad__btn--mid:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffb31a, var(--signal));
+}
+.dpad__btn--right {
+  grid-column: 3;
+  grid-row: 2;
+}
+.dpad__btn--down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+/* ------------------------------------------------------------------ rows */
+
+.reader__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3) var(--s4);
+  margin-bottom: var(--s3);
+}
+
+.reader__keys {
+  margin: 0;
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px var(--s2);
+  border-radius: var(--radius-sm);
+  background: var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-300);
+  font-size: 0.9em;
+}
+
+.reader__pod {
+  margin: 0 0 var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--edge);
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  max-width: 64ch;
+}
+
+.reader__pod strong {
+  color: var(--text-300);
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------------ speech row */
+
+.reader__speech {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--edge);
+}
+
+.switch {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--text-300);
+  font-size: var(--t-small);
+  cursor: pointer;
+}
+
+.switch input[type='checkbox'] {
+  accent-color: var(--signal);
+  width: 15px;
+  height: 15px;
+}
+
+.switch__label {
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.switch__range {
+  width: 90px;
+  accent-color: var(--signal);
+}
+
+.select {
+  padding: var(--s1) var(--s2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-200);
+  font: inherit;
+  font-size: var(--t-small);
+}
+
+@media (max-width: 640px) {
+  .reader {
+  margin-top: var(--s6);
+    padding: var(--s4);
+  }
+  .dpad {
+    grid-template-columns: repeat(3, 56px);
+  }
+}
+
+/* The transcript of what speech would say.
+   Shown because a machine with no Hindi voice installed can still demonstrate Hindi output, and
+   because a sighted teacher wants to see what the student is hearing. */
+.reader__spoken {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s3);
+  align-items: baseline;
+  margin: 0 0 var(--s4);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius-sm);
+  background: var(--ink-000);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-200);
+  font-size: var(--t-small);
+  line-height: 1.55;
+}
+
+.reader__spokenlabel {
+  flex: none;
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

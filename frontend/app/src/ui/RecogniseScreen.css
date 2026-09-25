@@ -1,0 +1,209 @@
+.rec__head {
+  max-width: 62ch;
+  margin-bottom: var(--s6);
+}
+
+.rec__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: var(--s5);
+  align-items: start;
+}
+
+.rec__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: var(--s4) 0;
+}
+
+.btn--primary {
+  background: linear-gradient(180deg, var(--signal), var(--signal-deep));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: #1a1204;
+  font-weight: 500;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #ffb31a, var(--signal));
+  color: #1a1204;
+}
+
+.btn--primary:disabled {
+  background: var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-400);
+}
+
+/* ------------------------------------------------------------------ preview */
+
+.rec__preview {
+  display: flex;
+  gap: var(--s4);
+  align-items: flex-start;
+  margin-bottom: var(--s3);
+}
+
+/* What the model actually sees, after cropping and inversion. Showing this is the difference
+   between "it didn't work" and "ah, it only got half the equation". */
+.rec__canvas {
+  width: 150px;
+  height: 150px;
+  flex: none;
+  border-radius: var(--radius);
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--edge-strong);
+  image-rendering: auto;
+}
+
+.rec__facts {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  line-height: 1.9;
+}
+
+.rec__facts li::before {
+  content: '· ';
+  color: var(--text-400);
+}
+
+/* ------------------------------------------------------------------ progress */
+
+.rec__progress {
+  position: relative;
+  margin: 0 0 var(--s4);
+  padding-bottom: var(--s3);
+  color: var(--text-300);
+  font-size: var(--t-small);
+}
+
+.rec__bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--ink-200);
+  overflow: hidden;
+}
+
+.rec__bar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--p, 0%);
+  background: var(--signal);
+  transition: width 200ms linear;
+}
+
+/* ------------------------------------------------------------------ quality */
+
+.quality {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: baseline;
+  margin: var(--s4) 0 var(--s2);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius-sm);
+  font-size: var(--t-small);
+  border-left: 2px solid var(--text-400);
+  background: var(--ink-100);
+}
+
+.quality--good {
+  border-left-color: var(--good);
+}
+.quality--good strong {
+  color: var(--good);
+}
+.quality--uncertain {
+  border-left-color: var(--warn);
+}
+.quality--uncertain strong {
+  color: var(--warn);
+}
+.quality--poor {
+  border-left-color: var(--bad);
+}
+.quality--poor strong {
+  color: var(--bad);
+}
+
+.quality span {
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+}
+
+.rec__notes {
+  margin: 0 0 var(--s4);
+  padding-left: var(--s4);
+  color: var(--text-300);
+  font-size: var(--t-small);
+  line-height: 1.7;
+}
+
+/* ------------------------------------------------------------------ samples */
+
+.samples {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+.samples__btn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s2);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--ink-100);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-300);
+  font: inherit;
+  font-size: var(--t-tiny);
+  cursor: pointer;
+  transition: background var(--dur-ui) ease;
+}
+
+.samples__btn:hover {
+  background: var(--ink-200);
+  color: var(--text-100);
+}
+
+.samples__img {
+  width: 100%;
+  aspect-ratio: 8 / 3;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.samples__label {
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .rec__preview {
+    flex-direction: column;
+  }
+  .rec__canvas {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+/* The second opinion: two readings, side by side, one click to take either. */
+.rec__second {
+  margin-top: var(--s3);
+}
+
+.notice--good {
+  border-left-color: var(--good);
+}

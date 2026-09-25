@@ -1,0 +1,20 @@
+# What never needs to leave this laptop for a deploy.
+#
+# `vercel deploy` uploads the working directory, and it does not honour .gitignore the way git
+# does — the first deploy carried 150 MB of model weights and ONNX runtime up to the build host,
+# where the build then deleted them again. Worse, it carried this machine's
+# `public/models/status.json`, which says the model IS installed, and the deployed app believed it.
+#
+# The build regenerates everything under public/ that it needs (see vercel.json's buildCommand).
+
+node_modules
+app/node_modules
+app/dist
+app/public/models
+app/public/ort
+app/public/sre
+app/screenshots
+app/test-results
+app/playwright-report
+.git
+.vercel

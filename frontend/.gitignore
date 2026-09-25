@@ -1,0 +1,55 @@
+node_modules/
+dist/
+dist-ssr/
+.vite/
+coverage/
+*.local
+
+# Secrets never live in files (CLAUDE.md · studio-security). These lines are a backstop.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# OCR weights are downloaded, never committed (DECISIONS.md D2.4 — AGPL-3.0, and >GitHub size limits)
+app/public/models/
+
+# Copied in at install time from node_modules by app/scripts/copy-sre-assets.mjs
+app/public/sre/
+app/public/ort/
+
+# Word-reading engine: worker+core copied from node_modules at install; language files fetched
+# once by tools/fetch-tesseract-langs.mjs. The BUILD asserts all of it exists in dist
+# (app/scripts/assert-assets.mjs) — absence is a build error, never a dead button (the v1 death).
+app/public/tesseract/
+
+# Vercel's local project link. Not a secret, but not ours to commit either.
+.vercel/
+
+# Test output. The root-level one appears when Playwright is run from the repo root rather than
+# from app/ — it is still test output, and it was committed once before this line existed.
+test-results/
+app/test-results/
+app/playwright-report/
+app/screenshots/*.png
+!app/screenshots/.gitkeep
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+
+# Internal planning documents never ship with the product (v3 brief order). They stay local.
+VISION-BRIEF-*.md
+ARC_PLAN.md
+NOTES.md
+PROGRESS.md
+DECISIONS.md
+RESEARCH.md
+SOFTWARE_TEAM_README*.pdf
+PLAN.md

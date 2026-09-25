@@ -1,0 +1,37 @@
+/*
+ * A strip across the top of the shell. The only place in Braillix outside the display where the
+ * signal colour appears on a background rather than an edge — because this is genuinely live, and
+ * it is the one message that goes stale if it is missed.
+ */
+
+.update {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  align-items: center;
+  justify-content: center;
+  padding: var(--s2) var(--s4);
+  background: var(--signal-glow);
+  box-shadow: inset 0 -1px 0 var(--signal-dim);
+  color: var(--text-100);
+  font-size: 0.875rem;
+}
+
+.update__text {
+  margin: 0;
+}
+
+.update__btn {
+  padding: var(--s1) var(--s3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--signal);
+  color: #17120a;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.update__btn:hover {
+  background: var(--signal-deep);
+}

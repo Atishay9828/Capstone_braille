@@ -1,0 +1,35 @@
+/*
+ * Self-hosted type. Nothing here touches a font CDN — Braillix has to look right with the Wi-Fi
+ * unplugged, and a fallback-font demo is a demo that looks broken.
+ *
+ * IBM Plex (SIL OFL 1.1) — an engineering typeface, which is what this instrument should sound
+ * like. Two families only: Sans for language, Mono for anything numeric or protocol-shaped.
+ *
+ * Only the subsets Braillix actually sets: **latin** for the interface and **devanagari** for
+ * Hindi. Fontsource's default stylesheets pull in Cyrillic, Greek and Vietnamese as well, which is
+ * fifty font files nobody in this product will ever read — and every one of them would be
+ * precached for offline use, on a connection that may be a phone hotspot in a school office.
+ *
+ * The Devanagari family is a separate IBM Plex face rather than a subset of the Latin one, and it
+ * is here because a bilingual interface that falls back to whatever font the machine happens to
+ * have is bilingual by accident. On a Windows laptop it would have borrowed Nirmala UI and looked
+ * passable; on a Linux one it would have shown empty boxes.
+ */
+
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource/ibm-plex-sans/latin-ext-400.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+
+@import '@fontsource/ibm-plex-sans-devanagari/devanagari-400.css';
+@import '@fontsource/ibm-plex-sans-devanagari/devanagari-500.css';
+@import '@fontsource/ibm-plex-sans-devanagari/devanagari-600.css';
+
+/*
+ * Temml's stylesheet for rendered mathematics. The "Local" variant asks for maths fonts the
+ * machine already has (Cambria Math on Windows, STIX/Noto elsewhere) and ships one small 9 KB
+ * woff2 for the script capitals it cannot borrow. Bundled, never fetched.
+ */
+@import 'temml/dist/Temml-Local.css';

@@ -1,0 +1,120 @@
+/* The board's writable next line. Ruled like the empty run under the last chalk line. */
+
+.inkstrip {
+  /* The writing surface owns the board region: sized by the viewport split in app.css,
+     never by its own content — the one guarantee that opening it shifts nothing. */
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: var(--s2) var(--s4) var(--s2);
+  border: 1px dashed var(--board-edge);
+  border-radius: var(--radius);
+  background: var(--board-050);
+  padding: var(--s2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.inkstrip__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.inkstrip__modes {
+  display: flex;
+  gap: var(--s1);
+}
+
+.inkstrip__mode {
+  min-height: 40px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--chalk-300);
+  font: inherit;
+  font-size: var(--t-small);
+  cursor: pointer;
+}
+
+.inkstrip__mode.is-current {
+  background: var(--board-200);
+  color: var(--chalk-100);
+  border-color: var(--signal-deep);
+}
+
+.inkstrip__status {
+  color: var(--signal);
+  font-size: var(--t-small);
+  min-height: 1em;
+}
+
+.inkstrip__tools {
+  margin-left: auto;
+  display: flex;
+  gap: var(--s1);
+}
+
+.inkstrip__tool {
+  min-height: 40px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  background: var(--board-100);
+  color: var(--chalk-200);
+  font: inherit;
+  font-size: var(--t-small);
+  cursor: pointer;
+}
+
+.inkstrip__tool:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.inkstrip__canvas {
+  width: 100%;
+  /* All the height the layout hands down, floor kept for the worst small screen. The old
+     clamp() heights are gone: the board region is the writing surface now. */
+  flex: 1 1 auto;
+  min-height: 110px;
+}
+
+.inkstrip__canvas {
+  border-radius: var(--radius);
+  background:
+    /* a faint writing baseline, the way a fresh board line invites the chalk */
+    linear-gradient(to top, transparent 24%, var(--board-edge) 24%, var(--board-edge) calc(24% + 1px), transparent calc(24% + 1px)),
+    var(--board-000);
+  touch-action: none; /* the finger draws; the page must not scroll out from under it */
+  cursor: crosshair;
+}
+
+/* One reserved line under the canvas — hint or warning, same box, zero layout shift. */
+.inkstrip__note,
+.inkstrip__hint {
+  margin: 0;
+  min-height: 1.5em;
+  font-size: var(--t-small);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inkstrip__note {
+  color: var(--warn);
+}
+
+.inkstrip__hint {
+  color: var(--chalk-300);
+}
+
+.inkstrip--off {
+  padding: var(--s3);
+}
+
+.inkstrip--off .inkstrip__note {
+  color: var(--chalk-300);
+}

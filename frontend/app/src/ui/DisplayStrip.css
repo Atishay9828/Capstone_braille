@@ -1,0 +1,113 @@
+.evidence {
+  padding-top: var(--s2);
+}
+
+.evidence__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s4);
+  margin-bottom: var(--s3);
+}
+
+.evidence__count {
+  margin: 0;
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.evidence__empty {
+  min-height: 340px;
+  margin: 0;
+  color: var(--text-400);
+  font-size: var(--t-small);
+  max-width: 48ch;
+}
+
+/* The whole expression as braille glyphs — large, because this is the answer. */
+.evidence__unicode {
+  min-height: 5.2rem;
+  margin: 0 0 var(--s4);
+  padding: var(--s4);
+  border-radius: var(--radius);
+  background: var(--ink-000);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-100);
+  font-size: 1.75rem;
+  line-height: 1.6;
+  word-break: break-all;
+  user-select: all;
+}
+
+.evidence__scroll {
+  /* A fixed height, not a max: this table arrives after the maths engine finishes loading, and a
+     box that grows from nothing to 340px is most of this page's layout shift. */
+  height: 340px;
+  overflow: auto;
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.wire {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--t-small);
+}
+
+.wire thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--s2) var(--s3);
+  background: var(--ink-100);
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  box-shadow: inset 0 -1px 0 var(--edge);
+}
+
+.wire td {
+  padding: var(--s1) var(--s3);
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+  color: var(--text-300);
+}
+
+.wire tr.is-on-display td {
+  background: rgba(240, 162, 2, 0.06);
+  color: var(--text-100);
+}
+
+.wire tr.is-on-display .wire__cam {
+  color: var(--signal);
+}
+
+.wire__glyph {
+  width: 3rem;
+}
+
+.wire__jump {
+  padding: 0 var(--s1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-100);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wire__jump:hover {
+  background: var(--ink-200);
+}
+
+.evidence__foot {
+  margin: var(--s3) 0 0;
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  max-width: 60ch;
+}

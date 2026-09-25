@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark" />
+    <meta
+      name="description"
+      content="Braillix — the teacher's blackboard for blind students. Write, type or photograph any maths and it lands on refreshable braille cells, live and verified. English and Hindi, fully offline."
+    />
+    <title>Braillix — the teacher’s blackboard</title>
+
+    <!-- Installable, and once installed it opens with the Wi-Fi off. See vite.config.ts. -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <meta name="theme-color" content="#0b0d0f" />
+
+    <!--
+      speech-rule-engine reads this BEFORE it initialises. Without it, SRE fetches its locale data
+      from a jsDelivr CDN — which works on a good connection and fails silently in a room with no
+      Wi-Fi, i.e. exactly where this product has to work. Setting the path via setupEngine() alone
+      was too late: base.json had already been requested. Caught by e2e/offline.spec.ts.
+    -->
+    <script type="text/x-sre-config">{ "json": "./sre/mathmaps/" }</script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

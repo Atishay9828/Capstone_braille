@@ -1,0 +1,164 @@
+/*
+ * Braillix design tokens — the single source. No magic values anywhere else.
+ *
+ * ART DIRECTION: "MACHINED INSTRUMENT".
+ * Deep graphite ground. Machined hairline edges, radius <= 4px. ONE signal colour (amber), used
+ * only for live / you-are-here. The braille dots are the hero: physically modelled with a fixed
+ * top-left light source, so a raised dot reads as a dome and a lowered one as a recess.
+ */
+
+:root {
+  /* ---- ground: graphite, five steps, separated by light not by hue ---- */
+  --ink-000: #0b0d0f; /* page */
+  --ink-050: #111416; /* panel */
+  --ink-100: #171b1e; /* raised panel */
+  --ink-200: #1e2327; /* control */
+  --ink-300: #2a3035; /* control hover */
+  --ink-400: #3a4248; /* hairline strong */
+
+  /* ---- type ---- */
+  --text-100: #f2f4f5; /* headings */
+  --text-200: #c3cace; /* body */
+  --text-300: #8b959b; /* secondary */
+  /* Raised from #5f696f, which measured 3.4:1 and failed WCAG AA. This is 5.1:1 on the panel
+     background and still reads as the quietest step in the scale. */
+  --text-400: #838d94; /* disabled / faint */
+
+  /* ---- the one signal colour ---- */
+  --signal: #f0a202;
+  --signal-dim: #8a5f06;
+  /* Dark text on amber needs the amber to stay bright: #8a5f06 with our ink text is 3.3:1.
+     This is the darkest amber that still clears AA, and is where amber gradients end. */
+  --signal-deep: #c07f02;
+  --signal-glow: rgba(240, 162, 2, 0.22);
+
+  /* ---- status (used sparingly, never decoratively) ---- */
+  --good: #4ea77a;
+  --warn: #d98324;
+  --bad: #d8564b;
+
+  /* ---- machined edges ---- */
+  --edge: rgba(255, 255, 255, 0.06);
+  --edge-strong: rgba(255, 255, 255, 0.12);
+  --radius: 4px;
+  --radius-sm: 2px;
+
+  /* ---- braille dot geometry (drives both screen and layout maths) ---- */
+  --dot-size: 22px;
+  --dot-gap-x: 16px;
+  --dot-gap-y: 12px;
+  --cell-pad: 18px;
+
+  /* ---- rhythm: a 4px base, used everywhere ---- */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+  --s8: 64px;
+
+  /* ---- type scale ---- */
+  /* The Devanagari face is named first for the glyphs it owns; the Latin face wins for the rest,
+     because a font stack is consulted per character, not per string. */
+  --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Devanagari', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+  --t-display: clamp(1.75rem, 1.2rem + 2vw, 2.75rem);
+  --t-h2: 1.25rem;
+  --t-body: 0.9375rem;
+  --t-small: 0.8125rem;
+  --t-tiny: 0.6875rem;
+
+  /* ---- motion: mechanism, not decoration ---- */
+  --ease-cam: cubic-bezier(0.34, 0.02, 0.2, 1);
+  --dur-cam: 420ms;
+  --dur-ui: 140ms;
+}
+
+/* ---- THE BOARD (v4): the one surface that is a blackboard ----
+   A real school board: deep slate green-black, chalk-cream writing, the amber signal reserved
+   for "the class is here". The drawer and its instruments keep the graphite above. */
+:root {
+  --board-000: #101613; /* the slate itself */
+  --board-050: #141b17; /* slate, raised (tray) */
+  --board-100: #1a221d; /* slate control */
+  --board-200: #232d27; /* slate control hover */
+  --chalk-100: #f4f2e7; /* chalk, pressed hard — headings, maths */
+  --chalk-200: #d8d6c9; /* chalk, normal hand — body */
+  --chalk-300: #a8a89b; /* chalk, faint — hints */
+  --board-edge: rgba(244, 242, 231, 0.08);
+  --board-vignette: radial-gradient(120% 90% at 50% 0%, rgba(244, 242, 231, 0.03), transparent 60%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-cam: 1ms;
+    --dur-ui: 1ms;
+  }
+}
+
+/* A phone held sideways is a real classroom posture and gets its own geometry: the dots and
+   the rhythm shrink so the board, the cells AND the chalk hand all stay on one screen at
+   390px of height (v5 audit defect L1 — the input was invisible in landscape). */
+@media (max-height: 540px) {
+  :root {
+    --dot-size: 12px;
+    --dot-gap-x: 8px;
+    --dot-gap-y: 6px;
+    --cell-pad: 10px;
+  }
+}
+
+/* A light theme is not part of the art direction — this is an instrument, and instruments are
+   read in the dark. But we still declare the ground explicitly so the page never borrows a
+   host background. */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--ink-000);
+  color: var(--text-200);
+  font-family: var(--font-sans);
+  font-size: var(--t-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Numbers are data. They get tabular figures everywhere, always. */
+.num,
+code,
+kbd,
+pre {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus is never removed — this app is operated by keyboard first (CLAUDE.md Law 6). */
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--signal-glow);
+  color: var(--text-100);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}

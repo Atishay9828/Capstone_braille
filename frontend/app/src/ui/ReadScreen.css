@@ -1,0 +1,166 @@
+.read {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  /* Input on the left, the cells and how to read them on the right, and the evidence for both
+     across the full width — a wide table wants the width, and it balances the two columns. */
+  grid-template-areas:
+    'input display'
+    'evidence evidence';
+  grid-template-rows: auto auto;
+  gap: var(--s6);
+  align-items: start;
+}
+
+.read__input {
+  grid-area: input;
+}
+.read__display {
+  grid-area: display;
+  /* The cells stay in view while the teacher works down the input column — the whole point of the
+     screen is watching them move, and a display that scrolls away is a display you stop watching. */
+  position: sticky;
+  top: var(--s4);
+  /* On a short laptop screen the display and the reader together are taller than the window. A
+     sticky column that does not scroll would simply hide its own bottom half. */
+  max-height: calc(100vh - var(--s6));
+  overflow-y: auto;
+  /* Room for the scrollbar so it never sits on top of the cells. */
+  padding-right: var(--s1);
+}
+.evidence {
+  grid-area: evidence;
+}
+
+.read__title {
+  margin: 0 0 var(--s3);
+  color: var(--text-100);
+  font-size: var(--t-display);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  max-width: 14ch;
+}
+
+.read__lede {
+  margin: 0 0 var(--s5);
+  color: var(--text-300);
+  max-width: 46ch;
+}
+
+.read__lede strong {
+  color: var(--text-100);
+  font-weight: 500;
+}
+
+.read__h2 {
+  margin: 0;
+  color: var(--text-100);
+  font-size: var(--t-h2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.read__hint {
+  margin: var(--s2) 0 var(--s5);
+  color: var(--text-400);
+  font-size: var(--t-small);
+  max-width: 52ch;
+}
+
+/* ------------------------------------------------------------------ input */
+
+.field {
+  display: block;
+}
+
+.field__label {
+  display: block;
+  margin-bottom: var(--s2);
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.field__input {
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--ink-000);
+  box-shadow: inset 0 0 0 1px var(--edge-strong);
+  color: var(--text-100);
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: box-shadow var(--dur-ui) ease;
+}
+
+.field__input:focus {
+  outline: none;
+  box-shadow:
+    inset 0 0 0 1px var(--signal-dim),
+    0 0 0 2px var(--signal-glow);
+}
+
+.field__help {
+  margin: var(--s2) 0 var(--s4);
+  color: var(--text-400);
+  font-size: var(--t-small);
+}
+
+.field__help code {
+  padding: 1px var(--s1);
+  border-radius: var(--radius-sm);
+  background: var(--ink-100);
+  color: var(--text-300);
+  font-size: 0.9em;
+}
+
+.examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+/* ------------------------------------------------------------------ display */
+
+.read__displayhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+
+/* ------------------------------------------------------------------ responsive */
+
+@media (max-width: 1080px) {
+  .read {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'input'
+      'display'
+      'evidence';
+    gap: var(--s6);
+  }
+  /* Stacked, sticky would pin the display over the thing being typed. */
+  .read__display {
+    position: static;
+  }
+  .read__title {
+    max-width: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .cellrow {
+    padding: var(--s4);
+    gap: var(--s3);
+  }
+  .read__displayhead {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+

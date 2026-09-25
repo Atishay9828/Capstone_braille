@@ -1,0 +1,27 @@
+{
+  "name": "braillix",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Braillix — refreshable braille display for mathematics. The software half.",
+  "workspaces": [
+    "app"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "dev": "npm --workspace app run dev",
+    "build": "npm --workspace app run build",
+    "preview": "npm --workspace app run preview",
+    "typecheck": "npm --workspace app run typecheck",
+    "lint": "npm --workspace app run lint",
+    "test": "npm --workspace app run test",
+    "e2e": "npm --workspace app run e2e",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run e2e",
+    "fetch:model": "node tools/fetch-model.mjs",
+    "pod": "node tools/virtual-pod/virtual-pod.mjs",
+    "lint:dead": "node tools/find-dead-exports.mjs",
+    "accuracy": "node tools/accuracy.mjs",
+    "check:deployed": "node tools/check-deployed.mjs"
+  }
+}

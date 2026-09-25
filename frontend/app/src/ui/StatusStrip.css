@@ -1,0 +1,175 @@
+/* overflow-x: clip (not hidden) so the tooltips above can still escape vertically while the
+   strip can never push the page sideways. */
+.strip {
+  overflow-x: clip;
+  overflow-y: visible;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3) var(--s5);
+  padding: var(--s3) var(--s5);
+  border-top: 1px solid var(--edge);
+  background: linear-gradient(180deg, var(--ink-050), var(--ink-000));
+  font-size: var(--t-tiny);
+}
+
+.strip__group {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.strip__group--grow {
+  flex: 1 1 220px;
+}
+
+.strip__key {
+  color: var(--text-400);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.strip__value {
+  color: var(--text-300);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.strip__caps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s1) var(--s3);
+  border-radius: var(--radius-sm);
+  background: var(--ink-100);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-300);
+  cursor: default;
+}
+
+.cap__led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-400);
+  flex: none;
+}
+
+.cap--ready .cap__led {
+  background: var(--good);
+  box-shadow: 0 0 6px rgba(78, 167, 122, 0.6);
+}
+.cap--degraded .cap__led {
+  background: var(--warn);
+  box-shadow: 0 0 6px rgba(217, 131, 36, 0.6);
+}
+.cap--unavailable .cap__led {
+  background: var(--bad);
+}
+.cap--checking .cap__led {
+  background: var(--text-400);
+  animation: cap-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cap-pulse {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cap--checking .cap__led {
+    animation: none;
+  }
+}
+
+.cap__label {
+  color: var(--text-200);
+}
+
+.cap__state {
+  color: var(--text-400);
+}
+
+/* The reason and the fix are always in the DOM — screen readers and tests get them
+   unconditionally — and revealed on hover/focus for sighted users. */
+.cap__reason,
+.cap__fix {
+  position: absolute;
+  bottom: calc(100% + var(--s2));
+  /* Anchored to the badge's RIGHT edge: these sit at the right end of the strip, so a tooltip
+     must grow inwards. Anchoring left pushed the page 61px sideways at 1440. */
+  right: 0;
+  left: auto;
+  z-index: 5;
+  width: max-content;
+  max-width: min(280px, 40vw);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius);
+  background: var(--ink-200);
+  box-shadow:
+    inset 0 0 0 1px var(--edge-strong),
+    0 8px 20px rgba(0, 0, 0, 0.6);
+  color: var(--text-200);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-ui) ease;
+}
+
+.cap__fix {
+  bottom: calc(100% + var(--s2));
+  color: var(--signal);
+}
+
+.cap:hover .cap__reason,
+.cap:focus-within .cap__reason {
+  opacity: 1;
+}
+
+.cap:hover .cap__fix,
+.cap:focus-within .cap__fix {
+  opacity: 1;
+  transform: translateY(-2.4em);
+}
+
+/* On a phone — and at any landscape-phone height — the strip is one sliding row so the board
+   keeps its height. Worst news is ranked first (rankedCapabilities), so what matters is never
+   off-screen at rest. */
+@media (max-width: 640px), (max-height: 540px) {
+  .strip {
+    padding: var(--s2) var(--s3);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .strip__caps {
+    flex-wrap: nowrap;
+  }
+  .cap {
+    flex: 0 0 auto;
+  }
+  .cap__reason,
+  .cap__fix {
+    display: none;
+  }
+}
+
+/* Landscape phone: the display/motion readouts live behind the Device door; the badges —
+   the news — keep the one slim row. */
+@media (max-height: 540px) {
+  .strip__group {
+    display: none;
+  }
+}

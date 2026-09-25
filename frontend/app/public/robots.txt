@@ -1,0 +1,4 @@
+User-agent: *
+Disallow:
+
+# Braillix runs offline on a laptop. There is nothing here to crawl and no server to reach.

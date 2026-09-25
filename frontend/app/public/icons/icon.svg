@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="dome" cx="34%" cy="30%" r="72%">
+      <stop offset="0%" stop-color="#fdfdfc"/>
+      <stop offset="42%" stop-color="#cfccc4"/>
+      <stop offset="100%" stop-color="#7c7871"/>
+    </radialGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#171b1e"/>
+      <stop offset="100%" stop-color="#0b0d0f"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="92.16" fill="url(#ground)"/>
+  <rect x="10.24" y="10.24" width="491.52" height="491.52" rx="81.92"
+        fill="none" stroke="rgba(255,255,255,.08)" stroke-width="5.12"/>
+  <circle cx="153.60000000000002" cy="129.96923076923076" r="47.616" fill="url(#dome)"/><circle cx="153.60000000000002" cy="129.96923076923076" r="47.616" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="3.072"/><circle cx="153.60000000000002" cy="256" r="43.80672" fill="#07080a"/><circle cx="153.60000000000002" cy="382.03076923076924" r="47.616" fill="url(#dome)"/><circle cx="153.60000000000002" cy="382.03076923076924" r="47.616" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="3.072"/><circle cx="358.4" cy="129.96923076923076" r="47.616" fill="url(#dome)"/><circle cx="358.4" cy="129.96923076923076" r="47.616" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="3.072"/><circle cx="358.4" cy="256" r="43.80672" fill="#07080a"/><circle cx="358.4" cy="382.03076923076924" r="47.616" fill="url(#dome)"/><circle cx="358.4" cy="382.03076923076924" r="47.616" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="3.072"/>
+</svg>

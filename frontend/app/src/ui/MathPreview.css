@@ -1,0 +1,54 @@
+/*
+ * The print form of the expression.
+ *
+ * It sits on a lighter plate than the panel around it, because this is the one surface in Braillix
+ * that a sighted teacher reads directly — it is a window onto the textbook, not another control.
+ */
+
+.mathpreview {
+  display: flex;
+  align-items: center;
+  min-height: 3.25rem;
+  padding: var(--s3) var(--s4);
+  background: var(--ink-100);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.mathpreview__math {
+  color: var(--text-100);
+  font-size: 1.5rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.mathpreview--large .mathpreview__math {
+  font-size: 2.25rem;
+}
+
+.mathpreview--huge .mathpreview__math {
+  font-size: clamp(2.5rem, 1.5rem + 4vw, 4.5rem);
+}
+
+.mathpreview--large {
+  min-height: 4.5rem;
+}
+
+.mathpreview--huge {
+  min-height: 7rem;
+  justify-content: center;
+}
+
+.mathpreview__placeholder {
+  color: var(--text-400);
+  font-size: var(--t-small);
+}
+
+/* temml marks a failed parse with this class; the message next to the input is the real report. */
+.mathpreview .temml-error {
+  color: var(--bad);
+  font-family: var(--font-mono);
+  font-size: var(--t-small);
+}

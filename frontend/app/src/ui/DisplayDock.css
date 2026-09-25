@@ -1,0 +1,132 @@
+/* The dock and its cells. Shared by every screen that drives the display. */
+
+.dock__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+
+.cellcount {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.cellcount__label {
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.cellcount__range {
+  width: 140px;
+  accent-color: var(--signal);
+}
+
+.cellcount__value {
+  min-width: 2.5ch;
+  padding: 2px var(--s2);
+  border-radius: var(--radius-sm);
+  background: var(--ink-100);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--signal);
+  font-size: var(--t-small);
+  text-align: center;
+}
+
+
+/* The dock: a machined rail the cells sit in.
+   Never wraps — a real display is one row of cells, and wrapping would quietly tell the user
+   something false about the hardware. Too many to fit? The rail scrolls, like the real thing. */
+.cellrow {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  gap: var(--s4);
+  padding: var(--s5);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0)) ,
+    linear-gradient(180deg, var(--ink-050), var(--ink-000));
+  box-shadow:
+    inset 0 1px 0 var(--edge),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+  min-height: 140px;
+  align-items: center;
+}
+
+.cellrow > .cell,
+.cellrow > .cellwrap {
+  flex: none;
+}
+
+
+.scroller {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-top: var(--s4);
+}
+
+.scroller__label {
+  color: var(--text-300);
+  font-size: var(--t-small);
+}
+
+
+/* ------------------------------------------------------------------ fold markers */
+
+.cellwrap {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+}
+
+/* A folded sub-expression is the one thing on the dock you can step into, so it says so. */
+.cellwrap.is-fold .cell__face {
+  box-shadow:
+    inset 0 1px 0 var(--edge-strong),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--signal-dim);
+}
+
+.cellwrap__tag {
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px var(--s2);
+  border-radius: 999px;
+  background: var(--signal-dim);
+  color: #1a1204;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.cellwrap.is-fold:hover .cell__face {
+  box-shadow:
+    inset 0 1px 0 var(--edge-strong),
+    0 0 0 1px var(--signal),
+    0 0 18px var(--signal-glow);
+}
+
+@media (max-width: 640px) {
+  .cellrow {
+    padding: var(--s4);
+    gap: var(--s3);
+  }
+  .dock__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

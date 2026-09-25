@@ -1,0 +1,330 @@
+/* Shell, masthead, and the shared control language. Tokens only — no magic values. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* The hall: the whole viewport is the board. No page scroll — the board scrolls, the page
+   never does; the tray and the cells stay under the hand like real furniture. */
+.hall {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--board-000);
+}
+
+.hall__board {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--board-000);
+  background-image: var(--board-vignette);
+}
+
+.hall__lines {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Writing mode: the board region stops scrolling as a page and splits by LAYOUT — a slim
+   band of recent lines above, the ink surface owning the rest. Sized by the viewport, never
+   by content, so opening the pencil cannot shift the cells, the tray, or anything else. */
+.hall__lines.is-writing {
+  overflow-y: hidden;
+}
+
+.hall__lines.is-writing .board__lines {
+  flex: 0 1 auto;
+  max-height: 24%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.hall__lines.is-writing .board__foot {
+  display: none; /* wiping the whole board is not a mid-writing act */
+}
+
+.hall__lines.is-writing .board__empty {
+  flex: 0 0 auto;
+  padding: var(--s3);
+}
+
+/* While the pencil is open the hand deserves the height: the symbol rail folds to one
+   sliding row and the tray hint yields — every key still reachable, nothing hidden. */
+.hall__lines.is-writing ~ .tray .tray__rail {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.hall__lines.is-writing ~ .tray .tray__help {
+  display: none;
+}
+
+/* A phone held sideways with the pencil open: the writing hand takes priority over the
+   recent-lines band and the rail — the reading box and the cells still tell the truth,
+   and closing the pencil brings everything back. */
+@media (max-height: 540px) {
+  .hall__lines.is-writing .board__lines {
+    display: none;
+  }
+
+  .hall__lines.is-writing ~ .tray .tray__rail {
+    display: none;
+  }
+}
+
+.skip-link {
+  position: absolute;
+  left: var(--s4);
+  top: -3rem;
+  z-index: 20;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--radius);
+  background: var(--signal);
+  color: var(--ink-000);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top var(--dur-ui) ease;
+}
+
+.skip-link:focus {
+  top: var(--s4);
+}
+
+/* ------------------------------------------------------------------ top rail */
+
+.rail-top {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s2) var(--s4);
+  border-bottom: 1px solid var(--board-edge);
+  background: var(--board-050);
+}
+
+.rail-top__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+/* The logo is a braille cell: ⠭ — the letter x. Not decoration; it is the product. */
+.rail-top__mark {
+  display: grid;
+  grid-template-columns: repeat(2, 6px);
+  grid-template-rows: repeat(3, 6px);
+  gap: 3px 4px;
+  padding: var(--s2);
+  border-radius: var(--radius-sm);
+  background: var(--board-100);
+  box-shadow: inset 0 0 0 1px var(--board-edge);
+}
+
+.rail-top__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #0b0d0f;
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.rail-top__dot.is-on {
+  background: radial-gradient(circle at 32% 28%, #fdfdfc 0%, #cfccc4 40%, #7c7871 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+
+.rail-top__name {
+  color: var(--chalk-100);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.rail-top__doors {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.door {
+  min-height: 40px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--chalk-300);
+  font: inherit;
+  font-size: var(--t-small);
+  cursor: pointer;
+  transition:
+    background var(--dur-ui) ease,
+    color var(--dur-ui) ease;
+}
+
+.door:hover {
+  background: var(--board-100);
+  color: var(--chalk-100);
+}
+
+.door.is-open {
+  background: var(--board-200);
+  color: var(--chalk-100);
+}
+
+/* ------------------------------------------------------------------ controls */
+
+.btn {
+  padding: var(--s2) var(--s4);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--ink-200);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-200);
+  font: inherit;
+  font-size: var(--t-small);
+  cursor: pointer;
+  transition:
+    background var(--dur-ui) ease,
+    color var(--dur-ui) ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--ink-300);
+  color: var(--text-100);
+}
+
+.btn:disabled {
+  color: var(--text-400);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.chip {
+  padding: var(--s1) var(--s3);
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink-100);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-300);
+  font: inherit;
+  font-size: var(--t-small);
+  cursor: pointer;
+  transition:
+    background var(--dur-ui) ease,
+    color var(--dur-ui) ease;
+}
+
+.chip:hover {
+  background: var(--ink-200);
+  color: var(--text-100);
+}
+
+.chip.is-current {
+  background: var(--signal);
+  color: #1a1204;
+  box-shadow: none;
+  font-weight: 500;
+}
+
+/* A segmented control: two or three exclusive choices that live in one plate.
+   Shared by the Board, the Reader and the Device, so it belongs here rather than in any
+   one screen's stylesheet. */
+.segmented {
+  display: flex;
+  gap: var(--s1);
+  padding: var(--s1);
+  border-radius: var(--radius);
+  background: var(--ink-000);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.segmented__btn {
+  padding: var(--s2) var(--s3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-300);
+  font: inherit;
+  font-size: var(--t-small);
+  cursor: pointer;
+  transition:
+    background var(--dur-ui) ease,
+    color var(--dur-ui) ease;
+}
+
+.segmented__btn:hover:not(:disabled) {
+  color: var(--text-100);
+  background: var(--ink-200);
+}
+
+.segmented__btn.is-current {
+  background: var(--ink-300);
+  color: var(--text-100);
+  box-shadow: inset 0 0 0 1px var(--edge-strong);
+}
+
+.segmented__btn:disabled {
+  color: var(--text-400);
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------ notices */
+
+.notice {
+  margin: var(--s4) 0 0;
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius);
+  background: var(--ink-100);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  font-size: var(--t-small);
+  border-left: 2px solid var(--text-400);
+}
+
+.notice--bad {
+  border-left-color: var(--bad);
+}
+
+.notice--warn {
+  border-left-color: var(--warn);
+}
+
+.notice__fix {
+  display: block;
+  margin-top: var(--s1);
+  color: var(--text-300);
+}
+
+@media (max-width: 640px) {
+  .rail-top {
+    padding: var(--s2) var(--s3);
+  }
+  .door {
+    padding: 0 var(--s2);
+    font-size: var(--t-tiny);
+  }
+}
+
+@media (max-height: 540px) {
+  .rail-top {
+    padding: var(--s1) var(--s3);
+  }
+  .door {
+    min-height: 34px;
+  }
+}
+
+/* The Device screen's sub-tabs sit above a whole screen, so they need their own breathing room. */
+.device__tabs {
+  margin-bottom: var(--s5);
+}

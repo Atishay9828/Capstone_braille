@@ -1,0 +1,347 @@
+.hw__head {
+  max-width: 62ch;
+  margin-bottom: var(--s6);
+}
+
+.hw__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: var(--s5);
+  margin-bottom: var(--s5);
+  align-items: start;
+}
+
+.panel {
+  padding: var(--s5);
+  border-radius: var(--radius);
+  background: var(--ink-050);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.panel__title {
+  margin: 0 0 var(--s3);
+  color: var(--text-100);
+  font-size: var(--t-h2);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.panel__lede {
+  margin: 0 0 var(--s4);
+  color: var(--text-300);
+  font-size: var(--t-small);
+  max-width: 56ch;
+}
+
+/* ------------------------------------------------------------------ facts */
+
+.facts {
+  margin: 0 0 var(--s4);
+  padding: var(--s3) var(--s4);
+  border-radius: var(--radius-sm);
+  background: var(--ink-000);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.facts__row {
+  display: flex;
+  gap: var(--s4);
+  padding: var(--s1) 0;
+  font-size: var(--t-small);
+}
+
+.facts__row dt {
+  flex: none;
+  width: 5.5rem;
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding-top: 2px;
+}
+
+.facts__row dd {
+  margin: 0;
+  color: var(--text-200);
+  word-break: break-word;
+}
+
+.state {
+  padding: 0 var(--s2);
+  border-radius: var(--radius-sm);
+  font-size: var(--t-tiny);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.state--connected {
+  background: rgba(78, 167, 122, 0.15);
+  color: var(--good);
+}
+.state--connecting {
+  background: rgba(217, 131, 36, 0.15);
+  color: var(--warn);
+}
+.state--disconnected {
+  background: var(--ink-200);
+  color: var(--text-400);
+}
+.state--error {
+  background: rgba(216, 86, 75, 0.15);
+  color: var(--bad);
+}
+
+/* ------------------------------------------------------------------ actions */
+
+.hw__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+
+.hw__row {
+  display: flex;
+  gap: var(--s2);
+}
+
+.hw__row .field__input {
+  flex: 1;
+  min-width: 0;
+}
+
+.field--inline {
+  margin-bottom: var(--s2);
+}
+
+.hw__note {
+  margin: 0 0 var(--s4);
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  max-width: 60ch;
+  line-height: 1.6;
+}
+
+.hw__note code {
+  padding: 1px var(--s1);
+  border-radius: var(--radius-sm);
+  background: var(--ink-100);
+  color: var(--text-300);
+  font-family: var(--font-mono);
+}
+
+.hw__note strong {
+  color: var(--signal);
+}
+
+.cellcount--block {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+
+/* ------------------------------------------------------------------ dot test */
+
+.dottest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+}
+
+.dottest__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 68px;
+  padding: var(--s2) var(--s3);
+  border: 0;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, var(--ink-300), var(--ink-200));
+  box-shadow:
+    inset 0 1px 0 var(--edge-strong),
+    0 1px 2px rgba(0, 0, 0, 0.5);
+  color: var(--text-200);
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--dur-ui) ease;
+}
+
+.dottest__btn:hover {
+  background: linear-gradient(180deg, var(--ink-400), var(--ink-300));
+}
+
+.dottest__btn.is-current {
+  background: linear-gradient(180deg, var(--signal), var(--signal-deep));
+  color: #1a1204;
+}
+
+.dottest__num {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.dottest__cam {
+  font-size: var(--t-tiny);
+  color: var(--text-400);
+}
+
+.dottest__btn.is-current .dottest__cam {
+  color: rgba(26, 18, 4, 0.75);
+}
+
+/* ------------------------------------------------------------------ bit map */
+
+.bitmap {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--s4);
+  font-size: var(--t-small);
+}
+
+.bitmap th[scope='col'] {
+  padding: var(--s2) var(--s3);
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-align: left;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--edge);
+}
+
+.bitmap th[scope='row'] {
+  padding: var(--s2) var(--s3);
+  color: var(--text-300);
+  font-weight: 400;
+  text-align: left;
+}
+
+.bitmap td {
+  padding: var(--s1) var(--s3);
+}
+
+/* ------------------------------------------------------------------ wire code */
+
+.wirecode {
+  margin: 0 0 var(--s3);
+  padding: var(--s4);
+  border-radius: var(--radius);
+  background: var(--ink-000);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-300);
+  font-family: var(--font-mono);
+  font-size: var(--t-tiny);
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  .panel {
+    padding: var(--s4);
+  }
+  .facts__row {
+    flex-direction: column;
+    gap: 0;
+  }
+  .facts__row dt {
+    width: auto;
+  }
+}
+
+/* Choosing what several pods mean together. Radio buttons, because the two are exclusive and the
+   difference matters enough to spell out under each one. */
+.hw__modes {
+  margin: var(--s4) 0 0;
+  padding: var(--s3);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--ink-000);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.hw__mode {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+  padding: var(--s2) 0;
+  cursor: pointer;
+}
+
+.hw__mode span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.hw__mode strong {
+  color: var(--text-100);
+  font-weight: 500;
+  font-size: var(--t-small);
+}
+
+.hw__mode small {
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  line-height: 1.5;
+}
+
+/*
+ * The line between "a teacher plugging in a display" and "whoever assembled it".
+ *
+ * Everything past this button is needed once, by one person, and never again — so it is one press
+ * away rather than in front of a teacher who has twelve children waiting.
+ */
+.hw__disclosure {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  width: 100%;
+  margin: var(--s5) 0 var(--s4);
+  padding: var(--s3) var(--s4);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--ink-000);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--text-200);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow var(--dur-ui) ease;
+}
+
+.hw__disclosure:hover {
+  box-shadow: inset 0 0 0 1px var(--edge-strong);
+}
+
+.hw__disclosurehead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hw__disclosurehead strong {
+  color: var(--text-100);
+  font-weight: 500;
+}
+
+.hw__disclosurehead small {
+  color: var(--text-400);
+  font-size: var(--t-tiny);
+  line-height: 1.5;
+}
+
+.hw__disclosureaction {
+  flex: none;
+  color: var(--signal);
+  font-size: var(--t-small);
+}
+
+/* With the technical half away, the connection panel has the row to itself. */
+.hw__grid:has(> .panel:only-child) {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 640px;
+}

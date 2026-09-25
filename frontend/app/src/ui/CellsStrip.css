@@ -1,0 +1,145 @@
+/* The cells strip — an instrument shelf let into the slate. The dots stay the hero. */
+
+.cells {
+  flex: 0 0 auto;
+  background: var(--ink-050);
+  border-top: 1px solid var(--edge);
+  padding: var(--s2) var(--s4);
+}
+
+.cells__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.cells__dots {
+  display: flex;
+  gap: var(--s2);
+  overflow-x: auto;
+  padding: var(--s1) 0;
+}
+
+.cells__page {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--ink-200);
+  color: var(--text-200);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.cells__page:hover:not(:disabled) {
+  background: var(--ink-300);
+}
+
+.cells__page:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cells__side {
+  margin-left: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+.cells__label {
+  color: var(--text-300);
+  font-size: var(--t-tiny);
+  white-space: nowrap;
+}
+
+.cells__controls {
+  display: flex;
+  gap: var(--s1);
+}
+
+.cells__count {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.cells__range {
+  width: 90px;
+  accent-color: var(--signal);
+}
+
+.cells__ctl {
+  min-height: 32px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--ink-200);
+  color: var(--text-300);
+  font-size: var(--t-tiny);
+  cursor: pointer;
+}
+
+.cells__ctl.is-on {
+  border-color: var(--signal-deep);
+  color: var(--signal);
+}
+
+.cells__reader {
+  border-top: 1px solid var(--edge);
+  margin-top: var(--s2);
+  padding-top: var(--s2);
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+@media (max-width: 640px) {
+  .cells {
+    padding: var(--s2);
+  }
+
+  .cells__side {
+    flex-direction: column;
+  }
+
+  .cells__label {
+    display: none; /* the pager buttons carry position by feel; space goes to the dots */
+  }
+}
+
+/* Landscape phone: the shelf drops to one slim row so the board keeps its height. */
+@media (max-height: 540px) {
+  .cells {
+    padding: var(--s1) var(--s3);
+  }
+
+  .cells__page {
+    min-width: 38px;
+    min-height: 38px;
+  }
+
+  .cells__count {
+    display: none; /* device settings live behind the Device door; not at this height */
+  }
+
+  .cells__ctl {
+    min-height: 28px;
+  }
+
+  .cells__side {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--s2);
+  }
+
+  .cells__label {
+    display: none;
+  }
+
+  .cells__reader {
+    max-height: 32vh;
+  }
+}

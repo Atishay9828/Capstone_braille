@@ -1,0 +1,106 @@
+/*
+ * Scanning a full question. The stage is the photograph; the amber box is the teacher's
+ * selection — the one signal colour, meaning "you are here", exactly as everywhere else.
+ */
+
+.qs__hint {
+  color: var(--text-300);
+  font-size: var(--t-small);
+  margin: var(--s3) 0 var(--s2);
+}
+
+.qs__stage {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none; /* the drag IS the gesture; the page must not scroll under it */
+  user-select: none;
+}
+
+.qs__img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  /* Photographs are white paper; on the graphite ground they need no further treatment. */
+  background: #fff;
+}
+
+.qs__box {
+  position: absolute;
+  border: 2px solid var(--signal);
+  background: var(--signal-glow);
+  pointer-events: none;
+}
+
+.qs__ask {
+  margin-top: var(--s3);
+}
+
+.qs__composer {
+  margin-top: var(--s5);
+  border-top: 1px solid var(--edge);
+  padding-top: var(--s4);
+}
+
+.qs__parts {
+  list-style: none;
+  margin: 0 0 var(--s4);
+  padding: 0;
+  display: grid;
+  gap: var(--s2);
+}
+
+.qs__part {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-wrap: wrap;
+}
+
+.qs__part.is-doubtful .qs__value {
+  border-color: var(--warn);
+}
+
+.qs__kind {
+  color: var(--text-300);
+  font-size: var(--t-tiny);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex: none;
+  min-width: 5ch;
+}
+
+.qs__value {
+  flex: 1;
+  min-width: 12ch;
+}
+
+.qs__doubt {
+  color: var(--warn);
+  font-size: var(--t-small);
+  flex: none;
+}
+
+.qs__note {
+  flex-basis: 100%;
+  color: var(--text-300);
+  font-size: var(--t-tiny);
+  padding-left: calc(5ch + var(--s2));
+}
+
+.qs__preview {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+  margin-bottom: var(--s3);
+}
+
+.qs__previewwords {
+  font-size: var(--t-body);
+  color: var(--text-100);
+}

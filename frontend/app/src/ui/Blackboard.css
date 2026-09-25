@@ -1,0 +1,201 @@
+/* The board surface. Chalk on slate; the amber stroke is the only signal (tokens.css). */
+
+.board__lines {
+  list-style: none;
+  margin: 0;
+  padding: var(--s5) var(--s4) var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.boardline {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  min-width: 0; /* long questions scroll inside their own line, never the page (D10.8) */
+}
+
+.boardline__face {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s4);
+  min-height: 52px;
+  padding: var(--s3) var(--s4);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--chalk-100);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-ui) ease;
+}
+
+.boardline__face:hover {
+  background: var(--board-100);
+}
+
+.boardline__index {
+  flex: 0 0 auto;
+  min-width: 1.5em;
+  color: var(--chalk-300);
+  font-size: var(--t-small);
+}
+
+/* The chalk itself. Print maths comes from temml; a worded question is the sentence. */
+.chalkline {
+  font-size: 1.5rem;
+  line-height: 1.35;
+  color: var(--chalk-100);
+  /* a breath of chalk dust — legible, not a glow effect */
+  text-shadow: 0 0 6px rgba(244, 242, 231, 0.12);
+  overflow-x: auto;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.chalkline--words {
+  font-size: 1.25rem;
+  overflow-wrap: anywhere; /* words wrap; only mathematics earns a sideways scroll */
+}
+
+/* The amber chalk stroke: where the class is. A stroke, never a box. */
+.boardline.is-current .boardline__face {
+  background: var(--board-100);
+}
+
+.boardline.is-current::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--signal);
+  box-shadow: 0 0 8px var(--signal-glow);
+}
+
+.boardline__busy {
+  color: var(--chalk-300);
+  font-size: var(--t-tiny);
+  margin-left: var(--s3);
+}
+
+/* The teacher's own hand, kept faintly behind the typeset line. */
+.boardline__ghost {
+  position: absolute;
+  left: var(--s7);
+  top: 50%;
+  transform: translateY(-50%);
+  height: 85%;
+  max-width: 40%;
+  object-fit: contain;
+  opacity: 0.28;
+  /* The ink was written dark-on-white. Invert → white strokes on black; screen-blend →
+     the black page vanishes into the slate and only the hand's strokes remain, faint. */
+  filter: invert(1);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.boardline__tools {
+  display: flex;
+  gap: var(--s1);
+  opacity: 0;
+  transition: opacity var(--dur-ui) ease;
+}
+
+.boardline:hover .boardline__tools,
+.boardline:focus-within .boardline__tools {
+  opacity: 1;
+}
+
+.boardline__tool {
+  min-width: 40px;
+  min-height: 40px;
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  background: var(--board-100);
+  color: var(--chalk-200);
+  font-size: var(--t-body);
+  cursor: pointer;
+}
+
+.boardline__tool:hover {
+  background: var(--board-200);
+  color: var(--chalk-100);
+}
+
+.board__empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+  padding: var(--s6);
+  text-align: center;
+}
+
+.board__empty-word {
+  margin: 0;
+  color: var(--chalk-200);
+  font-size: var(--t-h2);
+}
+
+.board__empty-hint {
+  margin: 0;
+  color: var(--chalk-300);
+  font-size: var(--t-body);
+}
+
+.board__foot {
+  padding: 0 var(--s4) var(--s4);
+}
+
+.chip--board {
+  background: var(--board-100);
+  border-color: var(--board-edge);
+  color: var(--chalk-300);
+}
+
+.chip--board:hover {
+  color: var(--chalk-100);
+  background: var(--board-200);
+}
+
+@media (max-width: 640px) {
+  .chalkline {
+    font-size: 1.25rem;
+  }
+}
+
+/* No hover, no hidden tools: on ANY touch-first device — a 12.9" iPad included — the line
+   tools are always present, quieter. Width was the wrong test (v5 audit defect T1). */
+@media (hover: none) {
+  .boardline__tools {
+    opacity: 0.6;
+  }
+}
+
+/* Landscape phone: the chalk shrinks a size so the working still stacks. */
+@media (max-height: 540px) {
+  .board__lines {
+    padding: var(--s2) var(--s3);
+    gap: var(--s1);
+  }
+
+  .boardline__face {
+    min-height: 40px;
+    padding: var(--s1) var(--s3);
+  }
+
+  .chalkline {
+    font-size: 1.15rem;
+  }
+}

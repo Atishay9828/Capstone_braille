@@ -1,0 +1,37 @@
+/* A line of words and maths, reading left to right as one sentence. */
+
+.sourceview {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s2);
+  max-width: 100%;
+  min-width: 0;
+}
+
+.sourceview__words {
+  color: var(--text-100);
+  font-size: 1.0625rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.sourceview--large .sourceview__words {
+  font-size: 1.5rem;
+}
+
+.sourceview--huge .sourceview__words {
+  font-size: clamp(1.75rem, 1rem + 2.5vw, 3rem);
+}
+
+/* Inside a sentence the maths is a word, not a panel. It may still be wider than the space it has
+   — a three-hundred-character expression is a real thing a teacher can paste — so it scrolls
+   inside its own box rather than taking the page with it. */
+.sourceview .mathpreview {
+  min-height: 0;
+  max-width: 100%;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  overflow-x: auto;
+}

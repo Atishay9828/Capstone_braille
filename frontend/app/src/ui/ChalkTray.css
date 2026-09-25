@@ -1,0 +1,301 @@
+/* The chalk tray — the rail at the base of a real board. Sits on slate, one shade raised. */
+
+.tray {
+  /* The tray may shrink and scroll inside itself, but it must never grow past the hall —
+     a pathological question once pushed the Put button underneath the status strip. */
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--board-050);
+  border-top: 1px solid var(--board-edge);
+  padding: var(--s2) var(--s4) var(--s2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.tray > * {
+  flex: 0 0 auto; /* children keep their height; the tray is what scrolls */
+}
+
+/* Preview of the line still in the hand — the reply-bar of a chat, but for chalk. */
+.tray__preview {
+  background: var(--board-000);
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  padding: var(--s2) var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  min-width: 0;
+  max-width: 100%;
+  /* Wide mathematics scrolls in its own box, never the page (D10.8) — and a monstrous
+     question must not grow the tray past the viewport, where the Put button slides under
+     the status strip. Caught by a timed-out click, not by eye. */
+  max-height: 32vh;
+  overflow: auto;
+}
+
+.tray__notice {
+  margin: 0;
+}
+
+/* ---- the symbol rail: every key visible, never the page scrolling ---- */
+.tray__rail {
+  display: flex;
+  gap: var(--s1);
+  overflow-x: auto;
+  scrollbar-width: thin;
+  padding-bottom: var(--s1);
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Where there is room, the whole senior vocabulary stands in two rows with nothing hidden —
+   coverage IS the product (D-V5.1). The single sliding row is for phones, and for any screen
+   too short to give the board its height back. */
+@media (min-width: 834px) and (min-height: 541px) {
+  .tray__rail {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+
+.tray__key {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  background: var(--board-100);
+  color: var(--chalk-100);
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  cursor: pointer;
+  transition: background var(--dur-ui) ease;
+}
+
+.tray__key--math {
+  font-family: 'Latin Modern Math', 'STIX Two Math', 'Cambria Math', serif;
+}
+
+.tray__key:hover {
+  background: var(--board-200);
+}
+
+/* ---- the hand: scan · field · put ---- */
+.tray__hand {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--s2);
+}
+
+.tray__grip {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  background: var(--board-100);
+  color: var(--chalk-200);
+  cursor: pointer;
+}
+
+.tray__grip:hover,
+.tray__grip[aria-expanded='true'] {
+  background: var(--board-200);
+  color: var(--chalk-100);
+}
+
+.tray__fieldwrap {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+}
+
+.tray__field {
+  /* field-sizing: content grows BOTH axes; pin the inline size to the flex slot so only the
+     height follows the text. Without width:0 a 300-character line widened the whole page —
+     caught by the no-sideways-scroll gate, not by eye. */
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
+  resize: none;
+  min-height: 48px;
+  max-height: 30vh;
+  padding: var(--s3) var(--s3);
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  background: var(--board-000);
+  color: var(--chalk-100);
+  font-size: 1.125rem;
+  line-height: 1.4;
+  field-sizing: content; /* grows with the line where supported; the max-height caps it */
+}
+
+.tray__field::placeholder {
+  color: var(--chalk-300);
+}
+
+.tray__put {
+  flex: 0 0 auto;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 var(--s3);
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--signal);
+  color: #241a02;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tray__put:disabled {
+  background: var(--board-200);
+  color: var(--chalk-300);
+  cursor: default;
+}
+
+.tray__cancel {
+  flex: 0 0 auto;
+  height: 48px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  background: var(--board-100);
+  color: var(--chalk-200);
+  cursor: pointer;
+}
+
+.tray__help {
+  margin: 0;
+  color: var(--chalk-300);
+  font-size: var(--t-tiny);
+}
+
+/* The scan sheet: photograph work needs the whole hall, not a slot in the tray. A fixed
+   sheet over the board, its own scroll — the crop stage is never clipped mid-drag. */
+.tray__scan {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: var(--board-000);
+  overflow-y: auto;
+  padding: var(--s4) var(--s5) var(--s6);
+}
+
+.tray__scan-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--s2);
+}
+
+.tray__scan-close {
+  min-height: 44px;
+  padding: 0 var(--s3);
+  border: 1px solid var(--board-edge);
+  border-radius: var(--radius);
+  background: var(--board-100);
+  color: var(--chalk-200);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ---- the verdict line ---- */
+.verdict {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  font-size: var(--t-small);
+}
+
+.verdict__mark {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+.verdict--good .verdict__mark {
+  background: var(--good);
+}
+.verdict--good .verdict__word {
+  color: var(--good);
+}
+.verdict--warn .verdict__mark {
+  background: var(--warn);
+}
+.verdict--warn .verdict__word {
+  color: var(--warn);
+}
+.verdict--bad .verdict__mark {
+  background: var(--bad);
+}
+.verdict--bad .verdict__word {
+  color: var(--bad);
+}
+
+.verdict {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.verdict__reading {
+  color: var(--chalk-300);
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+@media (max-width: 640px) {
+  .tray {
+    padding: var(--s2) var(--s2) var(--s2);
+  }
+
+  .tray__help {
+    display: none; /* the placeholder carries the hint on a phone */
+  }
+}
+
+/* Landscape phone: every control a size down, the hint gone, the hand always on screen. */
+@media (max-height: 540px) {
+  .tray {
+    padding: var(--s1) var(--s3);
+    gap: var(--s1);
+  }
+
+  .tray__help {
+    display: none;
+  }
+
+  .tray__key {
+    min-width: 38px;
+    min-height: 38px;
+    font-size: 0.95rem;
+  }
+
+  .tray__field {
+    min-height: 40px;
+    font-size: 1rem;
+    padding: var(--s2) var(--s3);
+  }
+
+  .tray__grip,
+  .tray__cancel {
+    width: 40px;
+    height: 40px;
+  }
+
+  .tray__put {
+    min-width: 40px;
+    height: 40px;
+  }
+
+  .tray__preview {
+    max-height: 26vh;
+  }
+}

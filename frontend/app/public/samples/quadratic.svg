@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240">
+  <rect width="640" height="240" fill="#ffffff"/>
+  <g fill="#111111" font-family="Cambria, 'Times New Roman', Georgia, serif" font-style="italic" font-size="72" text-anchor="middle">
+    <text x="320" y="145">x<tspan font-size="42" dy="-28">2</tspan><tspan dy="28"> + 3x + 2 = 0</tspan></text>
+  </g>
+</svg>

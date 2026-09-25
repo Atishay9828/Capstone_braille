@@ -1,0 +1,167 @@
+/*
+ * The braille cell. Everything here serves one illusion: that these dots are physical objects
+ * lit from the top left, sitting in a machined faceplate.
+ */
+
+.cell {
+  --dot-light: 315deg; /* top-left, fixed for every dot on the page */
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s2);
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+}
+
+.cell.is-clickable {
+  cursor: pointer;
+}
+
+/* The faceplate: a machined plate with a hairline edge and a very slight inner light. */
+.cell__face {
+  display: grid;
+  grid-template-columns: repeat(2, var(--dot-size));
+  grid-template-rows: repeat(3, var(--dot-size));
+  gap: var(--dot-gap-y) var(--dot-gap-x);
+  padding: var(--cell-pad);
+  border-radius: var(--radius);
+  background: linear-gradient(160deg, var(--ink-200), var(--ink-100) 60%, var(--ink-050));
+  box-shadow:
+    inset 0 1px 0 var(--edge-strong),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+  transition: box-shadow var(--dur-ui) ease;
+}
+
+/* You-are-here. The only place the signal colour is allowed on a cell. */
+.cell.is-active .cell__face {
+  box-shadow:
+    inset 0 1px 0 var(--edge-strong),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 0 0 1px var(--signal-dim),
+    0 0 18px var(--signal-glow);
+}
+
+/* ---------------------------------------------------------------- the dots */
+
+.dot {
+  position: relative;
+  width: var(--dot-size);
+  height: var(--dot-size);
+  border-radius: 50%;
+
+  /* Lowered: a recess. The light source means the shadow falls top-left, highlight bottom-right. */
+  background: radial-gradient(circle at 65% 65%, #0f1214 0%, #0a0c0e 70%);
+  box-shadow:
+    inset 2px 2px 4px rgba(0, 0, 0, 0.9),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.05);
+  transition:
+    background var(--dur-cam) var(--ease-cam),
+    box-shadow var(--dur-cam) var(--ease-cam),
+    transform var(--dur-cam) var(--ease-cam);
+  transform: translateZ(0) scale(0.94);
+}
+
+/* Raised: a dome. Highlight top-left, cast shadow bottom-right, and it grows slightly. */
+.dot.is-raised {
+  background:
+    radial-gradient(circle at 32% 28%, #fdfdfc 0%, #d9d6cf 22%, #a9a49a 55%, #6f6b63 78%, #4a4741 100%);
+  box-shadow:
+    0 3px 5px rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 255, 255, 0.18) inset,
+    0 -2px 3px rgba(0, 0, 0, 0.35) inset;
+  transform: translateZ(0) scale(1);
+}
+
+/* The specular pinpoint. Small, and only on raised dots — this is what sells the dome. */
+.dot.is-raised::after {
+  content: '';
+  position: absolute;
+  top: 16%;
+  left: 20%;
+  width: 26%;
+  height: 22%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  filter: blur(1.5px);
+}
+
+/* ---------------------------------------------------------------- the mechanism */
+
+/*
+ * When the cam turns, the faceplate gets a brief ring sweep. It exists so the user can SEE that
+ * a motor moved — and, in the hardware screens, see which cells the scheduler chose not to move.
+ */
+.cell.is-turning .cell__face {
+  animation: cam-turn var(--dur-cam) var(--ease-cam);
+}
+
+@keyframes cam-turn {
+  0% {
+    box-shadow:
+      inset 0 1px 0 var(--edge-strong),
+      0 0 0 1px var(--signal-dim),
+      0 0 0 var(--signal-glow);
+  }
+  40% {
+    box-shadow:
+      inset 0 1px 0 var(--edge-strong),
+      0 0 0 1px var(--signal),
+      0 0 22px var(--signal-glow);
+  }
+  100% {
+    box-shadow:
+      inset 0 1px 0 var(--edge-strong),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5),
+      0 1px 2px rgba(0, 0, 0, 0.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell.is-turning .cell__face {
+    animation: none;
+  }
+  .dot {
+    transition: none;
+  }
+}
+
+/* ---------------------------------------------------------------- the footer */
+
+.cell__foot {
+  display: flex;
+  gap: var(--s2);
+  align-items: baseline;
+  font-size: var(--t-tiny);
+  letter-spacing: 0.04em;
+}
+
+.cell__index {
+  color: var(--text-400);
+}
+
+.cell__cam {
+  color: var(--text-300);
+  padding: 1px var(--s1);
+  border-radius: var(--radius-sm);
+  background: var(--ink-100);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.cell.is-active .cell__cam {
+  color: var(--signal);
+}
+
+/* ---------------------------------------------------------------- small screens */
+
+@media (max-width: 640px) {
+  .cell {
+    --dot-size: 16px;
+    --dot-gap-x: 11px;
+    --dot-gap-y: 8px;
+    --cell-pad: 12px;
+  }
+}

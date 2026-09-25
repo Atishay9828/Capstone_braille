@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="240" viewBox="0 0 640 240">
+  <rect width="640" height="240" fill="#ffffff"/>
+  <g fill="#111111" font-family="Cambria, 'Times New Roman', Georgia, serif" font-style="italic" font-size="72" text-anchor="middle">
+    <path d="M 170 130 l 18 0 l 16 42 l 26 -92 l 150 0" fill="none" stroke="#111111" stroke-width="4"/>
+    <text x="300" y="150">144</text>
+    <text x="440" y="150">= 12</text>
+  </g>
+</svg>
