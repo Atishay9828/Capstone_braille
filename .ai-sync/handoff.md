@@ -1,9 +1,22 @@
 # Active Handoff
-> Last updated by: Claude Code (Mridul's fork)
-> Timestamp: 2026-08-26
+> Last updated by: Codex (AJ workspace)
+> Timestamp: 2026-09-25T16:29:20+05:30
 
 ---
 
+## 2026-09-25 REPOSITORY CONSOLIDATION — PUSHED
+
+The canonical private repository is `Atishay9828/Capstone_braille`.
+
+- Negi's current hardware `main` is merged at the repository root. Merge commit: `4c548b1`; it has both the target's prior `main` and Negi's hardware history as parents.
+- The upstream frontend `main` from `SHV27/braillix` is imported under `frontend/` with an unsquashed subtree merge: `83c4d5f`.
+- The target's backend remains at the root; its former root `CLAUDE.md` is retained at `backend/CLAUDE.md`.
+- The integration was pushed to `main` at `27e4bc1`. Remote main matched local HEAD after fetch.
+- GitHub reports contributors `Atishay9828` (8), `MridulNegi2005` (163), and `SHV27` (76) after the push.
+- The local-only frontend commit `e1dba18` was not imported because it is not part of upstream frontend `main`; its branch remains untouched in `_sources/braillix-software`.
+- No tests were run. The merge was checked through commit ancestry, remote HEAD, and imported tree paths.
+
+---
 ## DOCK CONNECTOR: PIN 5 IS A SECOND GROUND, + 2 MAGNET ITEMS (2026-09-01)
 
 From the electronics fork. Item 1 is a decision, items 2 and 3 are for the CAD fork.

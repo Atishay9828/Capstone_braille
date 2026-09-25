@@ -536,3 +536,12 @@ MY ARM THICKENING WAS WRONG AND MRIDUL CAUGHT IT IN THE RENDER. link_thickness i
 THE CAM POLYHEDRON HAS BEEN INVALID ALL ALONG: top faces were non-planar quads wherever a track is on a ramp. OpenSCAD 2021 silently picked a diagonal; the 2026 nightly throws CGAL assertion violations on every one. Now split into explicit triangles.
 TOOLCHAIN: use the nightly with --backend=CGAL - identical volume to 2021 to three decimals, but strict. Manifold is 230x faster (7m39s -> 2s) but returns a volume SMALLER than the disc floor alone, which is impossible for a union containing it; CGAL matches hand arithmetic. Probable cause is that every track polyhedron starts at z=0 while the floor spans 0..2.0, so 2mm of each track is buried in the floor - a huge coincident-face overlap. Starting tracks at z=disk_base_thickness would likely fix it and unlock the speedup.
 THE DOT NOT CLEARING THE PLATE RIM IS NOT A BUG: it rises 0.5mm above the recessed reading surface, which is what the finger touches; the rim is 0.8mm proud and 30mm away. Raising the linkage cannot help - it is rigid, so it moves both dot states together.
+
+---
+## [2026-09-25 16:29] - Codex
+**Task:** Consolidate the SHV27/braillix frontend and MridulNegi2005/Capstone hardware into Atishay9828/Capstone_braille.
+**Changes:** Merged the hardware repository at the root in two-parent commit `4c548b1`, keeping target backend files and the newer hardware CAD state. Imported upstream frontend `main` under `frontend/` in unsquashed subtree merge `83c4d5f`. Preserved the target backend guide as `backend/CLAUDE.md` and documented the combined layout in the root README.
+**Status:** Pushed to private `origin/main`; remote and local HEAD both resolve to `27e4bc1`. Working tree was clean after push.
+**Evidence:** Target base `da4fc41`, hardware tip `3d67083`, and frontend tip `5206eab` are all ancestors of `main`. GitHub contributor API now lists `Atishay9828` 8, `MridulNegi2005` 163, and `SHV27` 76. No tests were run; this was a repository/history integration.
+**Boundary:** Imported each source repository's GitHub `main`. The local-only frontend branch commit `e1dba18` was left untouched and excluded; it is not part of the upstream frontend `main` and removes substantial current frontend functionality.
+---
