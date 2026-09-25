@@ -12,33 +12,85 @@ show.
 
 ---
 
+## Live demos
+
+- **Classroom frontend:** [braillix.vercel.app](https://braillix.vercel.app) — the browser-based
+  teaching app.
+- **Hardware simulator:** [MridulNegi2005.github.io/Capstone](https://mridulnegi2005.github.io/Capstone/)
+  — the refreshable-cell mechanism simulator.
+- **Backend API:** no public deployment is configured yet. Run it locally using the steps below;
+  its interactive documentation is available at `http://localhost:8000/docs` while it is running.
+
+The Vercel frontend and GitHub Pages simulator are separate deployments. The FastAPI service
+currently runs locally and is not required by the frontend's main lesson flow.
+
 ## Software components
 
-This repository brings together the browser frontend, Python API, and refreshable-Braille
-hardware. The frontend and backend are separate components with separate setup steps.
+The software is split into a browser classroom app and a separately runnable Python API. Both
+connect to the same Braillix goal—turning lesson content into Braille—but they do not currently
+depend on each other for their main flows. The browser app performs its recognition and lesson
+translation locally; the API exposes independent translation, OCR, and classroom-session
+endpoints. The hardware and simulator live alongside them in this repository.
 
-- **Frontend** (`frontend/`) — React and TypeScript classroom app with local recognition,
-  translation, and Braille-pod transports. Its source history comes from
-  [SHV27/braillix](https://github.com/SHV27/braillix). For a local run:
+### Frontend classroom app (`frontend/`)
 
-  ```bash
-  cd frontend
-  npm install
-  npm run dev
-  ```
+The React and TypeScript app provides a teacher-facing lesson blackboard. Teachers can type,
+write, or photograph lesson content; inspect recognition and Braille readback; and send the
+result to a simulator, a USB-connected pod, or Wi-Fi pods. English and Hindi text, mathematical
+notation, speech, and multi-cell navigation are part of the browser app. Recognition and lesson
+translation run on-device after the needed assets have been downloaded, so the basic lesson flow
+does not require the Python API.
 
-  See [`frontend/README.md`](frontend/README.md) for model and language-asset setup.
-- **Backend** (`backend/`) — FastAPI endpoints for text/math translation, image and PDF OCR,
-  and classroom sessions. Install Python dependencies with
-  `python -m pip install -r requirements.txt`, ensure system `liblouis` and its tables are installed, then run
-  `make dev`. The API docs are served at `http://localhost:8000/docs`. See
-  [`scripts/setup.sh`](scripts/setup.sh) for Linux/macOS setup steps.
-- **Hardware** (`cad/`, `firmware/`, `hal/`, `sim/`) — CAD, firmware, hardware interfaces,
-  and the mechanism simulator. The hardware history from
-  [MridulNegi2005/Capstone](https://github.com/MridulNegi2005/Capstone) is preserved here.
+The frontend was imported with its commit history from
+[SHV27/braillix](https://github.com/SHV27/braillix). It uses Node.js 20.19 or newer. To run it:
 
-The frontend's browser-side recognition and translation can run locally; the FastAPI backend
-is a separate API service.
+```bash
+cd frontend
+npm install
+npm run fetch:model                 # one-time download of the math recognition model
+node tools/fetch-tesseract-langs.mjs # one-time download of English and Hindi OCR data
+npm run dev
+```
+
+Open the local URL printed by Vite (normally `http://localhost:5173`). For architecture,
+feature details, optional pod simulation, and all frontend commands, see
+[`frontend/README.md`](frontend/README.md) and [`frontend/ARCHITECTURE.md`](frontend/ARCHITECTURE.md).
+
+### Backend API (`backend/`)
+
+The Python service is built with FastAPI. It provides:
+
+- Text and LaTeX mathematics translation to Braille, including converted cam-angle data.
+- Image and PDF OCR endpoints for extracting lesson content and converting images to Braille.
+- Classroom sessions with teacher and student WebSocket connections.
+- A health endpoint and interactive API documentation.
+
+The API creates its SQLite database (`braillix.db`) when it starts. Translation depends on the
+system `liblouis` library and its tables. On Linux or macOS, the setup helper installs that
+library, creates a virtual environment, and installs the Python dependencies:
+
+```bash
+bash scripts/setup.sh
+source .venv/bin/activate
+make dev
+```
+
+The service listens on `http://localhost:8000`; interactive documentation is at
+[`/docs`](http://localhost:8000/docs). Main routes include `POST /translate`,
+`POST /translate-math`, `POST /translate/cam-angles`, `POST /ocr/image`,
+`POST /ocr/image-to-braille`, `POST /ocr/process-pdf`, `POST /classroom/sessions`, and the
+`/classroom/teacher/{code}` and `/classroom/student/{code}` WebSocket routes. Starting without
+`liblouis` is possible, but translation endpoints that need it report that the dependency is
+unavailable. The setup helper currently supports Linux and macOS; on other systems install
+`liblouis` and its tables manually before installing `requirements.txt` and running `make dev`.
+
+### Hardware and simulator
+
+The hardware path includes CAD, ESP32 firmware, the hardware abstraction layer, and the
+mechanism simulator in `cad/`, `firmware/`, `hal/`, and `sim/`. Its original history is preserved
+from [MridulNegi2005/Capstone](https://github.com/MridulNegi2005/Capstone). The browser app's
+protocol and hardware setup are documented in [`frontend/docs/PROTOCOL.md`](frontend/docs/PROTOCOL.md)
+and [`docs/`](docs/).
 
 ## What the device does
 

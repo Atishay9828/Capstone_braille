@@ -1,13 +1,32 @@
-# --- Agent / tool scratch (not part of the project) ---
+# Local agent settings and tool scratch
 .claude
 GEMINI.md
 .codex-remote-attachments/
 
-# Keep local coding-agent instructions and coordination notes out of the GitHub tree.
+# Keep machine-specific instructions and coordination notes out of the GitHub tree.
 **/AGENTS.md
 **/CLAUDE.md
 **/.ai-sync/
 /docs/session-log.md
+
+# --- Node.js ---
+**/node_modules/
+**/dist/
+
+# Downloaded recognition models and language data (fetch with frontend/tools scripts).
+frontend/app/public/models/formulanet/
+frontend/app/public/tesseract/lang/*.traineddata.gz
+
+# --- Local configuration and generated data ---
+.env
+.env.*
+!.env.example
+!.env.*.example
+braillix.db
+braillix.db-*
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
 # --- Python ---
 __pycache__/
