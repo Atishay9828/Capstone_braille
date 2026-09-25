@@ -14,10 +14,11 @@ show.
 
 ## Live demos
 
-- **Classroom frontend:** [braillix.vercel.app](https://braillix.vercel.app) — the browser-based
-  teaching app.
-- **Hardware simulator:** [MridulNegi2005.github.io/Capstone](https://mridulnegi2005.github.io/Capstone/)
-  — the refreshable-cell mechanism simulator.
+| Classroom frontend | Hardware mechanism |
+|:--:|:--:|
+| [<img src="frontend/docs/shots/board-hero.jpeg" alt="Screenshot of the Braillix classroom frontend" width="100%">](https://braillix.vercel.app) | [<img src="docs/img/mechanism.png" alt="3D render of the Braillix refreshable Braille cell mechanism" width="100%">](https://mridulnegi2005.github.io/Capstone/) |
+| [Open the live classroom app](https://braillix.vercel.app) | [Open the live hardware simulator](https://mridulnegi2005.github.io/Capstone/) |
+
 - **Backend API:** no public deployment is configured yet. Run it locally using the steps below;
   its interactive documentation is available at `http://localhost:8000/docs` while it is running.
 
