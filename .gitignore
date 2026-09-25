@@ -3,8 +3,11 @@
 GEMINI.md
 .codex-remote-attachments/
 
-# NOTE: .ai-sync/ is NOT ignored — it's the real cross-agent context log
-# (Claude/Codex/Antigravity), meant to be committed and shared.
+# Keep local coding-agent instructions and coordination notes out of the GitHub tree.
+**/AGENTS.md
+**/CLAUDE.md
+**/.ai-sync/
+/docs/session-log.md
 
 # --- Python ---
 __pycache__/

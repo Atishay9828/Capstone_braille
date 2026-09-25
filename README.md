@@ -12,6 +12,34 @@ show.
 
 ---
 
+## Software components
+
+This repository brings together the browser frontend, Python API, and refreshable-Braille
+hardware. The frontend and backend are separate components with separate setup steps.
+
+- **Frontend** (`frontend/`) — React and TypeScript classroom app with local recognition,
+  translation, and Braille-pod transports. Its source history comes from
+  [SHV27/braillix](https://github.com/SHV27/braillix). For a local run:
+
+  ```bash
+  cd frontend
+  npm install
+  npm run dev
+  ```
+
+  See [`frontend/README.md`](frontend/README.md) for model and language-asset setup.
+- **Backend** (`backend/`) — FastAPI endpoints for text/math translation, image and PDF OCR,
+  and classroom sessions. Install Python dependencies with
+  `python -m pip install -r requirements.txt`, ensure system `liblouis` and its tables are installed, then run
+  `make dev`. The API docs are served at `http://localhost:8000/docs`. See
+  [`scripts/setup.sh`](scripts/setup.sh) for Linux/macOS setup steps.
+- **Hardware** (`cad/`, `firmware/`, `hal/`, `sim/`) — CAD, firmware, hardware interfaces,
+  and the mechanism simulator. The hardware history from
+  [MridulNegi2005/Capstone](https://github.com/MridulNegi2005/Capstone) is preserved here.
+
+The frontend's browser-side recognition and translation can run locally; the FastAPI backend
+is a separate API service.
+
 ## What the device does
 
 A braille character uses a cell of six dots. Each dot is up or down. Six dots give
